@@ -23,7 +23,7 @@ configurations—our IDE provides all the tools you need in one streamlined inte
 
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=microsoft)](#) 
 [![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-black?logo=apple)](#) 
-[![Goto Releases](https://img.shields.io/badge/Releases-purple)](#) 
+[![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
 
 
 ## How it works?

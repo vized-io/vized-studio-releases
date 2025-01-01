@@ -44,7 +44,7 @@ We're here to assist you with any questions or issues you may face. Whether you'
 > **Oops! Bugs happen.** Let us know so we can resolve them quickly. Your feedback is invaluable in helping us improve.
 
 ## About Us
-We are a dynamic couple on a mission to craft the ultimate IDE that supercharges developers—enabling them to build cloud-native solutions at lightning speed, all while keeping flexibility and extensibility firmly intact. It's like giving developers a rocket ship with no manual required
+We're a couple driven by a genuine passion to build an IDE that helps developers create cloud-native solutions quickly, while still offering the flexibility and extensibility they need. It's all about making the development process smoother, without cutting any corners.
 
 [<img src="https://github.com/user-attachments/assets/24a7b08a-87ba-460e-b18c-637f1d1f7dc9" alt="Sagar" width="100">](https://www.linkedin.com/in/vidhyasagar-jeevendran/)
 [<img src="https://github.com/user-attachments/assets/efdea233-1525-46ad-b964-4fde21a5e331" alt="Induja" width="100">](https://www.linkedin.com/in/induja-babu/)

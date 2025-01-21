@@ -53,7 +53,7 @@ We're a couple driven by a genuine passion to build an IDE that helps developers
 
 [<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](buymeacoffee.com/vidhyasagarj)
 
-We’re seeking forward-thinking dveelopers, investors and partners to scale this transformative solution.
+We’re seeking forward-thinking engineers, investors and partners to scale this transformative solution.
 
 #### Contact us
 

@@ -25,7 +25,7 @@ configurations—our IDE provides all the tools you need in one streamlined inte
 [![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-black?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.0/vized-mac-0.1.0.dmg) 
 [![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
 
-[<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](buymeacoffee.com/vidhyasagarj)
+[<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](https://buymeacoffee.com/vidhyasagarj)
 
 
 ## How it works?
@@ -51,7 +51,7 @@ We're a couple driven by a genuine passion to build an IDE that helps developers
 [<img src="https://github.com/user-attachments/assets/24a7b08a-87ba-460e-b18c-637f1d1f7dc9" alt="Sagar" width="100">](https://www.linkedin.com/in/vidhyasagar-jeevendran/)
 [<img src="https://github.com/user-attachments/assets/efdea233-1525-46ad-b964-4fde21a5e331" alt="Induja" width="100">](https://www.linkedin.com/in/induja-babu/)
 
-[<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](buymeacoffee.com/vidhyasagarj)
+[<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](https://buymeacoffee.com/vidhyasagarj)
 
 We’re seeking forward-thinking engineers, investors and partners to scale this transformative solution.
 

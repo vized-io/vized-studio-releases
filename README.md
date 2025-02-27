@@ -21,8 +21,8 @@ configurations—our IDE provides all the tools you need in one streamlined inte
 
 > ***Warning:*** The product is still under-construction so it may contain traces of "Work in Progress" signs. Proceed with curiosity!
 
-[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=microsoft)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.2/vized-windows-0.1.2.exe) 
-[![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-black?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.2/vized-mac-0.1.2.dmg) 
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=microsoft)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.5/vized-windows-0.1.5.exe) 
+[![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-black?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.5/vized-mac-0.1.5.dmg) 
 [![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
 
 [<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](https://buymeacoffee.com/vidhyasagarj)

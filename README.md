@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/da9f6e0c-294d-4c63-93d0-e5ee422626f2" alt="Vized" width="200"/>
+<img src="https://github.com/user-attachments/assets/ff4d14d5-18d1-40ab-b48c-f0be2546561c" alt="Vized" width="200"/>
 
 ###  Exclusive Integrated IDE for Apache Camel
  A powerful, all-in-one development environment for building, testing, and deploying 

@@ -4,8 +4,7 @@
  A powerful, all-in-one development environment for building, testing, and deploying 
 integrations and workflows.
 
-![Preview GIF](images/preview.gif)
-
+![VizedDemo - Made with Clipchamp](https://github.com/user-attachments/assets/d6fb0eb9-7d0d-4ac9-93ec-4494ca5392af)
 
 **Vized Studio** is designed for developers and integration architects to simplify and accelerate 
 building, testing, and deploying powerful integration flows. Say goodbye to complex 

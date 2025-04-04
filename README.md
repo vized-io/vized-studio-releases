@@ -20,7 +20,7 @@ configurations—our IDE provides all the tools you need in one streamlined inte
 
 > ***Warning:*** The product is still under-construction so it may contain traces of "Work in Progress" signs. Proceed with curiosity!
 
-[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=microsoft)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.5/vized-windows-0.1.5.exe) 
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=microsoft)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-windows-0.1.6.exe) 
 [![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-black?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.5/vized-mac-0.1.5.dmg) 
 [![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
 

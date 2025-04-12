@@ -1,0 +1,80 @@
+- route:
+    id: ContentBasedRouter
+    from:
+      id: Read File
+      uri: file:sample
+      parameters:
+        includeExt: txt,csv
+        move: done
+      steps:
+        - log:
+            id: Log FileName
+            message: Processing ${header.CamelFileName}
+        - choice:
+            id: choice-2443
+            otherwise:
+              id: other
+              steps:
+                - log:
+                    id: logOther
+                    message: Processing Other Files
+                - to:
+                    id: To Other
+                    uri: direct:OtherQueue
+                    parameters: {}
+            when:
+              - id: when error
+                steps:
+                  - log:
+                      id: logError
+                      message: Processing Error Files
+                  - to:
+                      id: To Error
+                      uri: direct:ErrorQueue
+                      parameters: {}
+                expression:
+                  simple:
+                    expression: ${header.CamelFileName} contains 'error'
+              - id: when success
+                steps:
+                  - log:
+                      id: logSuccess
+                      message: Processing Success Files
+                  - to:
+                      id: To Success
+                      uri: direct:SuccessQueue
+                      parameters: {}
+                expression:
+                  simple:
+                    expression: ${header.CamelFileName} contains 'success'
+- route:
+    id: OtherQueue
+    from:
+      id: OtherQueue
+      uri: direct:OtherQueue
+      parameters: {}
+      steps:
+        - log:
+            id: logOtherQueue
+            message: Processed Other Files
+- route:
+    id: ErrorQueue
+    from:
+      id: ErrorQueue
+      uri: direct:ErrorQueue
+      parameters: {}
+      steps:
+        - log:
+            id: logErrorQueue
+            message: Processed Error Files
+- route:
+    id: SuccessQueue
+    from:
+      id: SuccessQueue
+      uri: direct:SuccessQueue
+      parameters: {}
+      steps:
+        - log:
+            id: logSuccessQueue
+            message: Processed Success Files
+- beans: []

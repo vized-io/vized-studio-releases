@@ -1,0 +1,82 @@
+{
+  "name": "ContentBasedRouter",
+  "version": "0.0.1",
+  "artifactId": "ContentBasedRouter",
+  "group": "com.vized.project",
+  "relativePath": "ContentBasedRouter",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "ContentBasedRouter.camel.yaml": {
+        "ContentBasedRouter": {
+          "id": "ContentBasedRouter",
+          "breakpoints": [
+            "Read File",
+            "Log FileName"
+          ],
+          "from": [
+            {
+              "uri": "file:sample",
+              "id": "Read File"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:OtherQueue",
+              "id": "To Other"
+            },
+            {
+              "uri": "direct:ErrorQueue",
+              "id": "To Error"
+            },
+            {
+              "uri": "direct:SuccessQueue",
+              "id": "To Success"
+            }
+          ]
+        },
+        "OtherQueue": {
+          "id": "OtherQueue",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:OtherQueue",
+              "id": "OtherQueue"
+            }
+          ],
+          "to": []
+        },
+        "ErrorQueue": {
+          "id": "ErrorQueue",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:ErrorQueue",
+              "id": "ErrorQueue"
+            }
+          ],
+          "to": []
+        },
+        "SuccessQueue": {
+          "id": "SuccessQueue",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:SuccessQueue",
+              "id": "SuccessQueue"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "ContentBasedRouter.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

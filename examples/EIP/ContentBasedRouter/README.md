@@ -14,72 +14,19 @@ This project demonstrates how to implement **Content-Based Routing**, one of the
 
 ## Prerequisites
 
-Before you begin, you'll need to install three important piece of software:
-
-### Install Java (OpenJDK)
-
-1. Visit the [Java SE Development Kit (JDK) download page](https://adoptium.net/)
-2. Download the LTS (Long Term Support) version (e.g., Java 17 or Java 21) for your operating system.
-3. Run the installer, accepting the default settings
-4. Verify Java Installation
-    - Open a command prompt (cmd) / terminal.
-    - Type this command:
-      ```bash
-      java --version
-      ```
-
-### Install JBang
-
-<!-- JBang is a tool that lets you run Java applications easily from the command line. It's especially useful for running Apache Camel via the Camel CLI. -->
-
-1. Visit the [official JBang download page](https://jbang.dev/download)
-2. Choose the installation method based on your operating system below.
-      #### For Windows
-      1. Open **PowerShell** as Administrator.
-      2. Run the following command:
-          ```powershell
-          iex "& { $(iwr https://get.jbang.dev) }" 
-          ```
-      #### For Mac Users (using Homebrew):
-      1. Open **Terminal**.
-      2. Run the following command:
-          ```bash
-          brew install jbangdev/tap/jbang
-          ```
-      #### For Linux Users:
-      1. Open **Terminal**.
-      2. Run the following command:
-          ```bash
-          curl -Ls https://sh.jbang.dev | bash -s - app setup
-          ```
-3. Verify JBang Installation
-    ```bash
-    jbang version
-    ```
-
-### Install Apache Camel
-1. Install Apache Camel using JBang (recommended)
-2. Run the following command in your terminal:
-   ```bash
-    jbang app install camel@apache
-    ```
-3. Verify Apache Camel Installation
-    ```bash
-    camel --version
-    ```
 
 ## Creating the Route Using Vized
 1. Navigate to the Workspace and create a new Integration Project.
 
-    ![Vized - Create Project](/EIP/ContentBasedRouter/assets/CreateIntegrationProject.gif)
+    ![Vized - Create Project](assets/CreateIntegrationProject.gif)
 
 2. Click on the "Add Route" button within the visual designer. Search for the File Component and add it from the Component tab.
 
-    ![Vized - Create Project](/EIP/ContentBasedRouter/assets/AddFileComponent.gif)
+    ![Vized - Create Project](assets/AddFileComponent.gif)
 
 4. Add the Choice processor and configure multiple routing conditions. For each condition, add a Direct component to define different message destinations.
 
-    ![Vized - Create Project](/EIP/ContentBasedRouter/assets/ChoiceComponent.gif)
+    ![Vized - Create Project](assets/ChoiceComponent.gif)
 
 6. Create three new routes:
 
@@ -87,11 +34,11 @@ Before you begin, you'll need to install three important piece of software:
     - SuccessQueue
     - OtherQueue
 
-    ![Vized - Create Project](/EIP/ContentBasedRouter/assets/AddDirectComponent.gif)
+    ![Vized - Create Project](assets/AddDirectComponent.gif)
 
 7. Add Log Processor to the each of the destination routes to record message details.
 
-    ![alt text](/EIP/ContentBasedRouter/assets/image.png)
+    ![alt text](assets/image.png)
 
 
 ## Running the Project With Monitoring in Vized
@@ -100,11 +47,11 @@ Monitor your integration visually using Vized’s built-in Topology View for rea
 
 - Select your integration project in Vized, Right-click on Camel file, open context menu, and select "Run".
 
-    ![alt text](/EIP/ContentBasedRouter/assets/run.png)
+    ![alt text](assets/run.png)
 
 - Once running, Click View Monitoring. Each component (node) in the topology view will show real-time **execution counts** next to it.
     
-    ![alt text](/EIP/ContentBasedRouter/assets/RunWithMonitoring.gif)
+    ![alt text](assets/RunWithMonitoring.gif)
 
 
 ## 🐞 Running the Project in Debug Mode
@@ -113,11 +60,11 @@ Debug your routes step-by-step using Vized’s integrated debugging tools.
 
 - Right-click the Camel file in your project and choose **Debug** from the context menu.
 
-    ![alt text](/EIP/ContentBasedRouter/assets/debug.png)
+    ![alt text](assets/debug.png)
 
 - The terminal will open, Switch to the **Debug** tab to step through the route, inspect values, and troubleshoot logic in real time.
     
-    ![alt text](/EIP/ContentBasedRouter/assets/RunWithDebug.gif)
+    ![alt text](assets/RunWithDebug.gif)
 
 
 
@@ -136,13 +83,13 @@ Leverage Vized's built-in **Topology View** to monitor your Apache Camel routes 
    - In Vized, right-click on the Camel file of your integration project.
    - Select **Run** from the context menu.
    
-   ![Run Project](/EIP/ContentBasedRouter/assets/run.png)
+   ![Run Project](assets/run.png)
 
 2. **Open Monitoring View**
    - Once execution begins, click on **View Monitoring**.
    - The Topology View will display live **execution counts** next to each route component, helping you trace message flow visually.
    
-   ![Monitoring View](/EIP/ContentBasedRouter/assets/RunWithMonitoring.gif)
+   ![Monitoring View](assets/RunWithMonitoring.gif)
 
 
 ## 🐞 Running the Project in Debug Mode
@@ -154,13 +101,13 @@ Debug your routes step-by-step using Vized’s integrated debugging tools.
 1. **Start in Debug Mode**
    - Right-click the Camel file in your project and choose **Debug** from the context menu.
    
-   ![Debug Option](/EIP/ContentBasedRouter/assets/debug.png)
+   ![Debug Option](assets/debug.png)
 
 2. **Inspect and Trace**
    - The terminal will open for runtime logs.
    - Switch to the **Debug** tab to step through the route, inspect values, and troubleshoot logic in real time.
    
-   ![Debugging View](/EIP/ContentBasedRouter/assets/RunWithDebug.gif)
+   ![Debugging View](assets/RunWithDebug.gif)
 
 
 

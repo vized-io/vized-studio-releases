@@ -2,6 +2,12 @@
 
 Welcome to VIZED, the visual integration development environment designed to simplify complex integration workflows. Here we have provided some examples of common integration patterns you can implement using VIZED.
 
+## Download and Install the Latest Release
+
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=windows)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-windows-0.1.6.exe) 
+[![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-grey?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-mac-0.1.6.dmg) 
+[![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
+
 ## Prerequisites
 
 Before you begin, you'll need to install three important pieces of software:

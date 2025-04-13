@@ -59,18 +59,18 @@ Before you begin, you'll need to install three important pieces of software:
 
 VIZED supports implementing various Enterprise Integration Patterns (EIPs) with a visual, drag-and-drop interface. Below is a table of common integration patterns you can build:
 
-| Pattern | Description | Example Use Cases | Implementation Steps |
-|---------|-------------|-------------------|----------------------|
-| **Content-Based Router** | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments | 1. Add source component (e.g., REST endpoint)<br>2. Add Content-Based Router component<br>3. Configure routing conditions<br>4. Connect to destination endpoints |
-| **Message Filter** | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages | 1. Add source component<br>2. Connect to Filter component<br>3. Define filter conditions<br>4. Connect to destination |
-| **Splitter** | Break a composite message into individual messages | • Process batch files by splitting into records<br>• Break down complex XML documents | 1. Add source component<br>2. Add Splitter component<br>3. Configure splitting expression<br>4. Connect to downstream processors |
-| **Aggregator** | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 1. Start with multiple inputs or a Splitter<br>2. Add Aggregator component<br>3. Configure correlation and completion<br>4. Connect to output destination |
-| **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 1. Add Transformer component<br>2. Use visual mapping tool<br>3. Configure data type conversions<br>4. Connect to destination |
-| **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 1. Create API Gateway project<br>2. Define REST resources/methods<br>3. Configure backend routing<br>4. Add security policies<br>5. Deploy gateway |
-| **Dead Letter Channel** | Handle failed message processing | • Capture failed messages for analysis<br>• Implement retry mechanisms | 1. Add Error Handler component<br>2. Configure Dead Letter Channel<br>3. Connect to error destination<br>4. Add retry policies |
-| **File Transfer** | Reliable file transfer between systems | • Secure file transfers<br>• ETL processes | 1. Add File/FTP source<br>2. Configure polling and filters<br>3. Add validation/transformation<br>4. Configure destination<br>5. Add error handling |
-| **Request-Reply** | Send a request and wait for corresponding reply | • Synchronous API calls<br>• Database query operations | 1. Configure requestor endpoint<br>2. Set up correlation ID<br>3. Configure timeout handling<br>4. Connect to reply processors |
-| **Publish-Subscribe** | Broadcast messages to multiple recipients | • Notify systems about events<br>• Implement event-driven architectures | 1. Add message source<br>2. Connect to Pub-Sub component<br>3. Define subscriber routes<br>4. Configure topics/selectors |
+| Pattern | Description | Example Use Cases |
+|---------|-------------|-------------------|
+| [**Content-Based Router**](EIP/ContentBasedRouter/README.md) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
+| **Message Filter** | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages | 
+| **Splitter** | Break a composite message into individual messages | • Process batch files by splitting into records<br>• Break down complex XML documents | 
+| **Aggregator** | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
+| **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 
+| **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 
+| **Dead Letter Channel** | Handle failed message processing | • Capture failed messages for analysis<br>• Implement retry mechanisms | 
+| **File Transfer** | Reliable file transfer between systems | • Secure file transfers<br>• ETL processes |
+| **Request-Reply** | Send a request and wait for corresponding reply | • Synchronous API calls<br>• Database query operations | 
+| **Publish-Subscribe** | Broadcast messages to multiple recipients | • Notify systems about events<br>• Implement event-driven architectures | 
 
 
 

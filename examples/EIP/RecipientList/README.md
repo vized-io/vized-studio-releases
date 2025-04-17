@@ -59,23 +59,13 @@ Set up the recipients endpoint for your messages:
 ![Vized - Endpoint](./assets/Endpoint.gif)
 
 
-## Monitoring Your Integration in Real-Time
-
-VIZED provides powerful tools to observe your integration as it runs:
-
-### Using Topology View
-
-Monitor your integration visually with VIZED's Topology View:
+## Running the Integration Project
 
 1. Select your integration project in VIZED
 2. Right-click on the Camel file and select "Run" from the context menu
+3. Terminal will open showing the logs in application logs tab.
 
-![alt text](./assets/run.png)
-
-3. When the integration is running, click "View Monitoring"
-4. Watch as each component in the topology view displays real-time execution counts
-
-![Real-time Monitoring](./assets/RunWithMonitoring.gif)
+![Real-time Monitoring](./assets/Executing.gif)
 
 <!-- ## Advanced Debugging Capabilities
 

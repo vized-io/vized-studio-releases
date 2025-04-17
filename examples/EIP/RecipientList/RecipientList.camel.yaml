@@ -24,6 +24,34 @@
             expression:
               simple:
                 expression: "${header.RecipientListHeader} "
+        - doTry:
+            id: doTry-4091
+            steps:
+              - log:
+                  id: log-1387
+                  message: ${body}
+            doCatch:
+              - id: doCatch-2246
+                steps: []
+                exception:
+                  - java.lang.NullPointerException
+            doFinally:
+              id: doFinally-3975
+              steps: []
+        - filter:
+            id: filter-2702
+            steps:
+              - to:
+                  id: to-1509
+                  uri: log:InfoLogger
+                  parameters: {}
+              - log:
+                  id: log-9331
+                  message: ${body}
+            expression:
+              simple: {}
+        - enrich:
+            id: enrich-2950
 - route:
     id: endpointOne
     from:
@@ -32,7 +60,7 @@
       parameters: {}
       steps:
         - log:
-            id: Log
+            id: Log1
             message: Message received at endpoint1
 - route:
     id: endpointTwo
@@ -42,7 +70,7 @@
       parameters: {}
       steps:
         - log:
-            id: Log
+            id: Log2
             message: Message received at endpoint2
 - route:
     id: endpointThree
@@ -52,5 +80,5 @@
       parameters: {}
       steps:
         - log:
-            id: Log
+            id: Log3
             message: Message received at endpoint3

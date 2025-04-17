@@ -1,0 +1,66 @@
+{
+  "name": "RecipientList",
+  "version": "0.0.1",
+  "artifactId": "RecipientList",
+  "group": "com.vized.project",
+  "relativePath": "RecipientList",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "RecipientList.camel.yaml": {
+        "RecipientList": {
+          "id": "RecipientList",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:.",
+              "id": "Read File"
+            }
+          ],
+          "to": []
+        },
+        "endpointOne": {
+          "id": "endpointOne",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:endpoint1",
+              "id": "Direct"
+            }
+          ],
+          "to": []
+        },
+        "endpointTwo": {
+          "id": "endpointTwo",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:endpoint2",
+              "id": "Direct"
+            }
+          ],
+          "to": []
+        },
+        "endpointThree": {
+          "id": "endpointThree",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:endpoint3",
+              "id": "Direct"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "RecipientList.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

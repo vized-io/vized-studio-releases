@@ -1,0 +1,33 @@
+{
+  "name": "MessageFilter",
+  "version": "0.0.1",
+  "artifactId": "MessageFilter",
+  "group": "com.vized.project",
+  "relativePath": "MessageFilter",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "MessageFilter.camel.yaml": {
+        "MessageFilter": {
+          "id": "MessageFilter",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:.",
+              "id": "ReadFile"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "MessageFilter.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

@@ -1,0 +1,28 @@
+- route:
+    id: MessageFilter
+    from:
+      id: ReadFile
+      uri: file:.
+      parameters:
+        fileName: orders.json
+        noop: "true"
+      steps:
+        - unmarshal:
+            id: Unmarshal
+            json:
+              library: jackson
+        - split:
+            id: Split
+            steps:
+              - filter:
+                  id: FilterJson
+                  steps:
+                    - log:
+                        id: FilteredLog
+                        message: "High value order detected:  ${body}"
+                  expression:
+                    simple:
+                      expression: ${body['orderValue']} > 1000
+            expression:
+              simple:
+                expression: ${body}

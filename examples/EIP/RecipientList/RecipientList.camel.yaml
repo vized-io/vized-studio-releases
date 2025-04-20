@@ -1,0 +1,56 @@
+- route:
+    id: RecipientList
+    from:
+      id: Read File
+      uri: file:.
+      parameters:
+        fileName: recipient.txt
+        noop: "true"
+      steps:
+        - convertBodyTo:
+            id: convertBody
+            type: java.lang.String
+        - setHeader:
+            id: setHeader
+            expression:
+              simple:
+                expression: ${body}
+            name: RecipientListHeader
+        - log:
+            id: log
+            message: "Routing message to recipients: ${header.RecipientListHeader}"
+        - recipientList:
+            id: recipientList
+            expression:
+              simple:
+                expression: "${header.RecipientListHeader} "
+- route:
+    id: endpointOne
+    from:
+      id: Direct
+      uri: direct:endpoint1
+      parameters: {}
+      steps:
+        - log:
+            id: Log1
+            message: Message received at endpoint1
+- route:
+    id: endpointTwo
+    from:
+      id: Direct
+      uri: direct:endpoint2
+      parameters: {}
+      steps:
+        - log:
+            id: Log2
+            message: Message received at endpoint2
+- route:
+    id: endpointThree
+    from:
+      id: Direct
+      uri: direct:endpoint3
+      parameters: {}
+      steps:
+        - log:
+            id: Log3
+            message: Message received at endpoint3

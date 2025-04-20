@@ -13,7 +13,7 @@ This tutorial demonstrates how to implement **Messaage Filtering** using **VIZED
 
 - **JSON Processing**: Parses structured data from a JSON file.
 - **Message Splitting**: Iterates through an array of records (orders).
-- **Dynamic Filtering**: Filters only those records with orderValue > 1000.
+- **Filtering**: Filters only those records with orderValue > 1000.
 
 ## Step-by-Step Implementation Guide
 

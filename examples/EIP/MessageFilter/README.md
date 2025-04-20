@@ -66,7 +66,7 @@ Apply business logic to filter only those orders with a value greater than 1000:
 
 ![Real-time Monitoring](./assets/Executing.gif)
 
-<!-- ## Advanced Debugging Capabilities
+## Advanced Debugging Capabilities
 
 ### Step-by-Step Debugging
 
@@ -74,13 +74,10 @@ Debug your routes with precision using VIZED's integrated debugging tools:
 
 1. Right-click the Camel file in your project
 2. Choose **Debug** from the context menu
-
-![Debug Option](assets/debug.png)
-
 3. When the terminal opens, switch to the **Debug** tab
 4. Step through your route, inspect message values, and troubleshoot logic in real time
 
-![Interactive Debugging](assets/RunWithDebug.gif) -->
+![Interactive Debugging](./assets/Debug.gif)
 
 ## Need Help?
 

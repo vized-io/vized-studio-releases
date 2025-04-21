@@ -1,3 +1,7 @@
+[![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=windows)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-windows-0.1.6.exe) 
+[![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-grey?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-mac-0.1.6.dmg)
+[![Quick Start & Examples](https://img.shields.io/badge/Documentation-lightblue?logo=help)](examples/README.md)  
+ 
 <img src="https://github.com/user-attachments/assets/ff4d14d5-18d1-40ab-b48c-f0be2546561c" alt="Vized" width="200"/>
 
 ###  Exclusive Integrated IDE for Apache Camel

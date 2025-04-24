@@ -10,8 +10,8 @@
   "camel": {
     "routes": {
       "CircuitBreaker.camel.yaml": {
-        "route-3339": {
-          "id": "route-3339",
+        "CircuitBreaker": {
+          "id": "CircuitBreaker",
           "breakpoints": [],
           "from": [
             {

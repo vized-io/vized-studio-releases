@@ -1,5 +1,5 @@
 - route:
-    id: route-3339
+    id: CircuitBreaker
     from:
       id: Circuit Breaker Timer
       uri: timer:Circuit Breaker Timer
@@ -13,24 +13,25 @@
             id: circuitBreaker
             steps:
               - log:
-                  id: "log "
-                  message: |
-                    Attempting to fetch inventory from Vendor API
+                  id: |
+                    Log Fetch
+                  message: Attempting to fetch inventory from Vendor API
               - to:
                   id: Inventory Fetch
                   uri: https://6807f6ba942707d722dcf1b0.mockapi.io/api/v1/inventory
                   parameters:
                     httpMethod: GET
-                    throwExceptionOnFailure: "true"
               - log:
                   id: log Inventory List
-                  message: "Inventory Lists: ${body}"
+                  message: "Inventory list: ${body}"
             onFallback:
+              id: Fallback
               steps:
                 - log:
-                    message: Unable to fetch data from api
+                    id: log fallback
+                    message: Unable to fetch Inventory List
             resilience4jConfiguration:
-              failureRateThreshold: "1"
-              permittedNumberOfCallsInHalfOpenState: "3"
-              slidingWindowSize: "10"
-              waitDurationInOpenState: "10"
+              failureRateThreshold: "50"
+              permittedNumberOfCallsInHalfOpenState: "2"
+              slidingWindowSize: "4"
+              waitDurationInOpenState: "20"

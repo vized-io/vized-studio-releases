@@ -1,0 +1,38 @@
+{
+  "name": "CircuitBreaker",
+  "version": "0.0.1",
+  "artifactId": "CircuitBreaker",
+  "group": "com.vized.project",
+  "relativePath": "CircuitBreaker",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "CircuitBreaker.camel.yaml": {
+        "CircuitBreaker": {
+          "id": "CircuitBreaker",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:Circuit Breaker Timer",
+              "id": "Circuit Breaker Timer"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://6807f6ba942707d722dcf1b0.mockapi.io/api/v1/inventory",
+              "id": "Inventory Fetch"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "CircuitBreaker.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

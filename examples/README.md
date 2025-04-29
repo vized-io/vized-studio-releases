@@ -67,12 +67,12 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 
 | Pattern | Description | Example Use Cases |
 |---------|-------------|-------------------|
-| [**Content-Based Router**](EIP/ContentBasedRouter/README.md) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
-| [**Recipient List**](EIP/RecipientList/README.md) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
-| [**Message Filter**](EIP/MessageFilter/README.md) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
-| [**Circuit Breaker**](EIP/CircuitBreaker/README.md) | Prevents a failing service from being repeatedly called | • Avoid cascading failures<br>• Allow services to recover |
-| **Splitter** | Break a composite message into individual messages | • Process batch files by splitting into records<br>• Break down complex XML documents | 
-| **Aggregator** | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
+| [**Content-Based Router**](EIP/ContentBasedRouter) | Send messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
+| [**Recipient List**](EIP/RecipientList) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
+| [**Message Filter**](EIP/MessageFilter) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
+| [**Circuit Breaker**](EIP/CircuitBreaker) | Prevents a failing service from being repeatedly called | • Avoid cascading failures<br>• Allow services to recover |
+| [**Splitter**](EIP/Aggregation) | Break a composite message into individual messages | • Process batch files by splitting into records<br>• Break down complex XML documents | 
+| [**Aggregator**](EIP/Aggregation) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
 | **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 
 | **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 
 | **Dead Letter Channel** | Handle failed message processing | • Capture failed messages for analysis<br>• Implement retry mechanisms | 

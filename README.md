@@ -1,6 +1,6 @@
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=windows)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-windows-0.1.6.exe) 
 [![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-grey?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-mac-0.1.6.dmg)
-[![Quick Start & Examples](https://img.shields.io/badge/Documentation-lightblue?logo=help)](examples/README.md)  
+[![Quick Start & Examples](https://img.shields.io/badge/Documentation-red?logo=help)](examples/README.md)  
  
 <img src="https://github.com/user-attachments/assets/ff4d14d5-18d1-40ab-b48c-f0be2546561c" alt="Vized" width="200"/>
 
@@ -27,7 +27,7 @@ configurations—our IDE provides all the tools you need in one streamlined inte
 [![Download for Windows](https://img.shields.io/badge/Download%20for%20Windows-blue?logo=windows)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-windows-0.1.6.exe) 
 [![Download for Mac](https://img.shields.io/badge/Download%20for%20Mac-grey?logo=apple)](https://github.com/vized-io/vized-studio-releases/releases/download/0.1.6/vized-mac-0.1.6.dmg)
 [![Goto Releases](https://img.shields.io/badge/Releases-purple)](https://github.com/vized-io/vized-studio-releases/releases) 
- [![Quick Start & Examples](https://img.shields.io/badge/Documentation-lightblue?logo=help)](examples/README.md) 
+ [![Quick Start & Examples](https://img.shields.io/badge/Documentation-red?logo=help)](examples/README.md) 
 
 
 [<img src="https://github.com/user-attachments/assets/806d0fc0-0a00-4d63-81a3-8f2df15d5528" alt="BuyMeCoffee" width="150"/>](https://buymeacoffee.com/vidhyasagarj)

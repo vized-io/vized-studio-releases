@@ -1,0 +1,38 @@
+{
+  "name": "Aggregation",
+  "version": "0.0.1",
+  "artifactId": "Aggregation",
+  "group": "com.vized.project",
+  "relativePath": "Aggregation",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "Aggregation.camel.yaml": {
+        "Aggregate": {
+          "id": "Aggregate",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:.",
+              "id": "Read Csv"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:report",
+              "id": "Write Report"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "Aggregation.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

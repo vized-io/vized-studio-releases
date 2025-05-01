@@ -61,27 +61,38 @@ Monitor your integration visually with VIZED's Topology View:
 1. Select your integration project in VIZED
 2. Right-click on the Camel file and select "Run" from the context menu
 3. When the integration is running, click "View Monitoring"
-4. Watch successful and failed API calls live
-    - Success - inventory data logged
-    - Failure - fallback route triggered via circuit breaker
+4. For successful API calls, the circuit breaker allows the request and logs the inventory response.
+5. Temporarily disable the api.
+6. For failed API calls, the circuit breaker detects the failure and triggers the fallback route
 
 ![Real-time Monitoring](./assets/Executing.gif)
 
-<!-- ## Advanced Debugging Capabilities
+## Advanced Debugging Capabilities
 
-### Step-by-Step Debugging
+### Debugging Successfull Circuit Breaker
 
 Debug your routes with precision using VIZED's integrated debugging tools:
 
-1. Right-click the Camel file in your project
-2. Choose **Debug** from the context menu
+1. Right-click the Camel file and Choose **Debug**.
+2. When the terminal opens, switch to the **Debug** tab.
+3. Step through your route, in Circuit Breaker the API call completes successfully and logs the response.
+4. The fallback route is not triggered, indicating normal execution
 
-![Debug Option](assets/debug.png)
+![Interactive Debugging](./assets/Debug1.gif)
 
-3. When the terminal opens, switch to the **Debug** tab
-4. Step through your route, inspect message values, and troubleshoot logic in real time
+### Debugging Fallback Circuit Breaker
 
-![Interactive Debugging](assets/RunWithDebug.gif) -->
+Disable the backend api to trigger fallback mechanism:
+
+1. Temporarily disable vendor API.
+1. Right-click the Camel file and Choose **Debug**.
+2. When the terminal opens, switch to the **Debug** tab.
+3. Step through your route, in Circuit Breaker the api call will fail.
+4. The fallback mechanism is executed, providing a graceful degradation of service.
+
+![Interactive Debugging](./assets/DebugFailed.gif)
+
+
 
 ## Need Help?
 

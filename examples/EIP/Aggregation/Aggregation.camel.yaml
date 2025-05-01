@@ -1,0 +1,68 @@
+- route:
+    id: Aggregate
+    from:
+      id: Read Csv
+      uri: file:.
+      parameters:
+        fileName: bike-sales.csv
+        noop: "true"
+      steps:
+        - unmarshal:
+            id: unmarshal
+            csv:
+              delimiter: ","
+              skipHeaderRecord: "true"
+              useMaps: "true"
+        - split:
+            id: split
+            steps:
+              - setHeader:
+                  id: set bike model
+                  expression:
+                    simple:
+                      expression: ${body[model]}
+                  name: BikeModel
+              - log:
+                  id: processing log
+                  message: "Processing row : ${exchangeProperty.CamelSplitIndex}"
+              - aggregate:
+                  id: aggregate
+                  steps:
+                    - setBody:
+                        id: set file Body
+                        expression:
+                          groovy:
+                            expression: >-
+                              def globalOptions =
+                              exchange.getContext().getGlobalOptions()
+
+
+                              if (!globalOptions.containsKey("headerWritten")) {
+
+                              globalOptions.put("headerWritten", "true")
+                                                              
+                              return "BikeModel,Count\n" +
+                              exchange.getIn().getHeader("BikeModel") + "," +
+                              exchange.getProperty("CamelAggregatedSize") + "\n"
+
+                              } 
+
+
+                              else {
+                                  return exchange.getIn().getHeader("BikeModel") + "," + exchange.getProperty("CamelAggregatedSize") + "\n"
+                              }
+                    - to:
+                        id: Write Report
+                        uri: file:report
+                        parameters:
+                          fileExist: Append
+                          fileName: sales_report.csv
+                  aggregationStrategy: "#class:org.apache.camel.processor.aggregate.GroupedBodyAg\
+                    gregationStrategy"
+                  completionSize: -1
+                  completionTimeout: 2000
+                  correlationExpression:
+                    simple: ${body[bike_id]}
+            expression:
+              simple:
+                expression: ${body}

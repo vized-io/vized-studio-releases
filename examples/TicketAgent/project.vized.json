@@ -1,0 +1,92 @@
+{
+  "name": "WhatsappTicketAgent",
+  "version": "0.0.1",
+  "artifactId": "WhatsappTicketAgent",
+  "group": "com.vized.project",
+  "relativePath": "WhatsappTicketAgent",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "WhatsappTicketAgent.camel.yaml": {
+        "route-2246": {
+          "id": "route-2246",
+          "breakpoints": [
+            "unmarshal-1404"
+          ],
+          "from": [
+            {
+              "uri": "platform-http:/webhook/whatsapp",
+              "id": "from-3437"
+            }
+          ],
+          "to": [
+            {
+              "uri": "caffeine-cache://activeTickets",
+              "id": "to-caffeine-cache"
+            },
+            {
+              "uri": "direct:process-whatsapp-message",
+              "id": "process-whatsapp-message"
+            }
+          ]
+        },
+        "ProcessWhatsappMessage": {
+          "id": "ProcessWhatsappMessage",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:process-whatsapp-message",
+              "id": "from-2300"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-llm-api",
+              "id": "call-llm-api"
+            },
+            {
+              "uri": "direct:create-trello-ticket",
+              "id": "create-trello-ticket"
+            }
+          ]
+        },
+        "CallLLMAPI": {
+          "id": "CallLLMAPI",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-llm-api",
+              "id": "from-2300"
+            }
+          ],
+          "to": []
+        },
+        "CreateTrelloTicket": {
+          "id": "CreateTrelloTicket",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:create-trello-ticket",
+              "id": "from-2300"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://api.trello.com/1/cards"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "WhatsappTicketAgent.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": [],
+    "TRELLO_API_KEY": "",
+    "TRELLO_API_TOKEN": ""
+  }
+}

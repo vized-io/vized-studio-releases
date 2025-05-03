@@ -1,1 +1,5 @@
 examples/EIP/CircuitBreaker/.camel-jbang/camel-jbang-run.properties
+llm_chat.py
+test.md
+examples/EIP/Aggregation/.camel-jbang/camel-jbang-run.properties
+examples/TicketAgent/.camel-jbang/camel-jbang-run.properties

@@ -1,0 +1,42 @@
+{
+  "name": "JsonataMapper",
+  "version": "0.0.1",
+  "artifactId": "JsonataMapper",
+  "group": "com.vized.project",
+  "relativePath": "JsonataMapper",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "JsonataMapper.camel.yaml": {
+        "route-3916": {
+          "id": "route-3916",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:input",
+              "id": "from-1367"
+            }
+          ],
+          "to": [
+            {
+              "uri": "jsonata:classpath:jsonata.json",
+              "id": "to-3722"
+            },
+            {
+              "uri": "log:logger-1",
+              "id": "to-5610"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "JsonataMapper.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

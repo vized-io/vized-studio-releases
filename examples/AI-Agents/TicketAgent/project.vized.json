@@ -1,0 +1,97 @@
+{
+  "name": "TicketAgent",
+  "version": "0.0.1",
+  "artifactId": "TicketAgent",
+  "group": "com.vized.project",
+  "relativePath": "TicketAgent",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "TicketAgent.camel.yaml": {
+        "TicketAgent": {
+          "id": "TicketAgent",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "imaps://imap.gmail.com:993",
+              "id": "Mail Fetch"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-llm-api",
+              "id": "call-llm-api"
+            },
+            {
+              "uri": "caffeine-cache://activeTickets",
+              "id": "to-caffeine-cache"
+            },
+            {
+              "uri": "direct:create-trello-ticket",
+              "id": "create-trello-ticket"
+            },
+            {
+              "uri": "direct:add-comment-to-ticket",
+              "id": "add-comment"
+            }
+          ]
+        },
+        "CallAI": {
+          "id": "CallAI",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-llm-api",
+              "id": "from-2300"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://openrouter.ai/api/v1/chat/completions",
+              "id": "LLM API"
+            }
+          ]
+        },
+        "CreateTrelloTicket": {
+          "id": "CreateTrelloTicket",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:create-trello-ticket",
+              "id": "create Trello ticket"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://api.trello.com/1/cards",
+              "id": "Create Ticket Api"
+            },
+            {
+              "uri": "caffeine-cache://activeTickets",
+              "id": "Set Ticket Cache"
+            }
+          ]
+        },
+        "AddCommentToTicket": {
+          "id": "AddCommentToTicket",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:add-comment-to-ticket",
+              "id": "Add-comment-to-ticket"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "TicketAgent.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

@@ -1,0 +1,394 @@
+- route:
+    id: TicketAgent
+    from:
+      id: Mail Fetch
+      uri: imaps://imap.gmail.com:993
+      parameters:
+        delay: "30000"
+        maxMessagesPerPoll: 1
+        password: wueexvyjkhenvvyb
+        unseen: "true"
+        username: theparttimewriters@gmail.com
+      steps:
+        - log:
+            id: LogMailStatus
+            message: Processing mail...
+        - setHeader:
+            id: setHeaderMailFrom
+            expression:
+              simple:
+                expression: ${header.From}
+            name: mailFrom
+        - to:
+            id: call-llm-api
+            uri: direct:call-llm-api
+            parameters: {}
+        - setBody:
+            id: SetAnalysis
+            expression:
+              simple:
+                expression: ${header.analysis}
+        - log:
+            id: LogAnalysisStatus
+            message: Analysis done.
+        - script:
+            id: script-3962
+            expression:
+              groovy:
+                expression: |-
+                  def payload = exchange.getIn().getBody()
+                  if (!payload) {
+                    println "Payload is undefined or null";
+                    exchange.getIn().setBody(null);
+                    return
+                  }
+                  def fromHeader = exchange.in.headers['mailFrom']?.toString()
+                  def name = null
+                  def email = null
+                  if (fromHeader) {
+                    def matcher = fromHeader =~ /(.*)\s<([^>]+)>/
+                    if (matcher.matches()) {
+                        name = matcher[0][1]?.trim()
+                        email = matcher[0][2]?.trim()
+                    } else {
+                        email = fromHeader.replaceAll(/[<>]/, '').trim()
+                    }
+                  }
+                  def subject = exchange.in.headers['Subject'] ?: 'No Subject';
+                  exchange.getIn().setBody([
+                    ticketId : payload['ticketId'],
+                    customerName : payload['name'] ?: name,
+                    customerEmail : email,
+                    message: payload['text'],
+                    subject : subject,
+                    timestamp : System.currentTimeMillis(),
+                    intent: payload['intent'],
+                    mood: payload['mood'],
+                    urgency: payload['urgency'],
+                    severity: payload['severity'],
+                  ])
+        - filter:
+            id: FilterBody
+            steps:
+              - setHeader:
+                  id: setHeaderTicketId
+                  expression:
+                    simple:
+                      expression: ${body[ticketId]}
+                  name: ticketId
+              - setHeader:
+                  id: setHeaderCustomerName
+                  expression:
+                    simple:
+                      expression: ${body[customerName]}
+                  name: customerName
+              - setHeader:
+                  id: setHeaderCustomerEmail
+                  expression:
+                    simple:
+                      expression: ${body[customerEmail]}
+                  name: customerEmail
+              - setHeader:
+                  id: setHeaderSubject
+                  expression:
+                    simple:
+                      expression: ${body[subject]}
+                  name: subject
+              - setHeader:
+                  id: setHeaderText
+                  expression:
+                    simple:
+                      expression: ${body[message]}
+                  name: messageText
+              - setHeader:
+                  id: setHeaderTimestamp
+                  expression:
+                    simple:
+                      expression: ${body[timestamp]}
+                  name: messageTimestamp
+              - setHeader:
+                  id: setHeaderIntent
+                  expression:
+                    simple:
+                      expression: ${body[intent]}
+                  name: intent
+              - setHeader:
+                  id: setHeaderSeverity
+                  expression:
+                    simple:
+                      expression: ${body[severity]}
+                  name: severity
+              - setHeader:
+                  id: setHeaderMood
+                  expression:
+                    simple:
+                      expression: ${body[mood]}
+                  name: mood
+              - setHeader:
+                  id: setHeaderUrgency
+                  expression:
+                    simple:
+                      expression: ${body[urgency]}
+                  name: urgency
+              - log:
+                  id: LogCheckCache
+                  message: Checking if ticket is active...
+              - setHeader:
+                  id: setHeader-cache-action
+                  constant: GET
+                  name: CamelCaffeineAction
+              - setHeader:
+                  id: setHeader-cache-key
+                  expression:
+                    simple:
+                      expression: ${header.customerEmail}
+                  name: CamelCaffeineKey
+              - to:
+                  id: to-caffeine-cache
+                  uri: caffeine-cache://activeTickets
+              - choice:
+                  id: choice-1204
+                  otherwise:
+                    id: otherwise
+                    steps:
+                      - log:
+                          id: log-1125
+                          message: No active ticket found for customer ${header.customerName}, will create
+                            new ticket
+                      - to:
+                          id: create-trello-ticket
+                          uri: direct:create-trello-ticket
+                          parameters: {}
+                  when:
+                    - id: when
+                      steps:
+                        - setHeader:
+                            id: setHeader
+                            expression:
+                              simple:
+                                expression: ${body}
+                            name: activeTicketId
+                        - log:
+                            id: log-1239
+                            message: Found active ticket ${header.activeTicketId} for customer
+                              ${header.customerEmail}
+                        - to:
+                            id: add-comment
+                            uri: direct:add-comment-to-ticket
+                            parameters: {}
+                      expression:
+                        simple:
+                          expression: ${header.CamelCaffeineActionHasResult} == true
+            expression:
+              simple:
+                expression: ${body} != null
+- route:
+    id: CallAI
+    from:
+      id: from-2300
+      uri: direct:call-llm-api
+      parameters: {}
+      steps:
+        - log:
+            id: log-llm
+            message: Analysing Message using AI
+        - removeHeaders:
+            id: RemoveHttpHeaders-1
+            pattern: CamelHttp*
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            constant: Bearer
+              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
+            name: Authorization
+        - setHeader:
+            id: API Data
+            expression:
+              simple:
+                expression: |-
+                  Analyze Email:
+                    Extract the following:
+
+                    intent: Customer's request
+
+                    mood: Emotional tone (e.g., angry, confused)
+
+                    urgency: Low / Medium / High
+
+                    severity: Low / Medium / High
+
+                    Rules:
+
+                    Ignore \"Thanks\", \"Regards\", etc.
+
+                    Use '' for missing fields
+
+                    sample Output format:
+                    {
+                      \"ticketId\": \"1023\",
+                      \"text\": \"Some email message body\",
+                      \"name\": \"customerName\",
+                      \"intent\": \"\",
+                      \"mood\": \"\",
+                      \"urgency\": \"\",
+                      \"severity\": \"\"
+                    }
+
+                  Here is the Email: Subject: ${header.Subject} Body: ${body}
+            name: apiData
+        - setBody:
+            id: Set API Data
+            expression:
+              simple:
+                expression: >-
+                  {
+                    "model": "qwen/qwen3-1.7b:free",
+                    "messages": [ { "role": "user", "content": "${header.apiData}" } ]
+                  }
+        - doTry:
+            id: Try
+            steps:
+              - to:
+                  id: LLM API
+                  uri: https://openrouter.ai/api/v1/chat/completions
+                  parameters:
+                    bridgeEndpoint: "true"
+                    httpMethod: POST
+              - unmarshal:
+                  id: Unmarshal Response
+                  json: {}
+              - setBody:
+                  id: set api content
+                  expression:
+                    simple: ${body[choices][0][message][content]}
+              - unmarshal:
+                  id: unmarshal content
+                  json: {}
+              - setHeader:
+                  expression:
+                    simple: ${body}
+                  name: analysis
+            doCatch:
+              - steps:
+                  - log:
+                      message: "Error calling API: ${exception.message}"
+                  - setBody:
+                      expression:
+                        constant: '{"ticketId":"", "text": "", "intent":"Cannot determine - API error",
+                          "mood":"unknown", "urgency":"Medium",
+                          "severity":"Medium"}'
+                exception: java.lang.Exception
+- route:
+    id: CreateTrelloTicket
+    from:
+      id: create Trello ticket
+      uri: direct:create-trello-ticket
+      parameters: {}
+      steps:
+        - removeHeader:
+            id: RemoveAuthorization
+            name: Authorization
+        - removeHeaders:
+            id: RemoveHttpHeaders-2
+            pattern: CamelHttp*
+        - removeHeader:
+            id: remove use agent trello
+            name: User-Agent
+        - setHeader:
+            id: Set Content - Type
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            expression:
+              simple: name=${header.customerName}%20${header.customerEmail}&desc=Original%20Message:%20${header.messageText}%0AIntent:%20${header.intent}%0AUrgencyn:%20${header.urgency}%0ASeverity:%20${header.severity}&idList=68148cc61f43f14863948ee7&key=c0381c1417ef32cc9b86147f5684e0c6&token=ATTAb182187d32e022b488bdc5d3f69381fcbec2452a8dbaf88fdd033ec205eabd1a2FB43A05
+            name: CamelHttpQuery
+        - log:
+            id: log-create-tickets
+            message: Creating Trello ticket for customer ${header.customerName}
+        - setBody:
+            id: Reset Body
+            expression:
+              simple: ${null}
+        - doTry:
+            id: Try trello api
+            steps:
+              - to:
+                  id: Create Ticket Api
+                  uri: https://api.trello.com/1/cards
+                  parameters:
+                    bridgeEndpoint: "true"
+                    followRedirects: "true"
+                    httpMethod: POST
+                    useSystemProperties: "false"
+              - unmarshal:
+                  id: unmarshal Trello res
+                  json: {}
+              - log:
+                  id: Log Create Status
+                  message: Ticket created successfully
+              - setHeader:
+                  constant: PUT
+                  name: CamelCaffeineAction
+              - setHeader:
+                  name: CamelCaffeineKey
+                  simple: ${header.customerEmail}
+              - setHeader:
+                  name: CamelCaffeineValue
+                  simple: ${body['id']}
+              - to:
+                  id: Set Ticket Cache
+                  uri: caffeine-cache://activeTickets
+                  parameters: {}
+            doCatch:
+              - steps:
+                  - log:
+                      message: "Error creating Trello ticket: ${exception.message}"
+                  - setBody:
+                      expression:
+                        constant: '{"status":"error","message":"Failed to create Trello ticket"}'
+                exception: java.lang.Exception
+- route:
+    id: AddCommentToTicket
+    from:
+      id: Add-comment-to-ticket
+      uri: direct:add-comment-to-ticket
+      parameters: {}
+      steps:
+        - setBody:
+            simple: |-
+              Follow-up message from customer:
+
+              ${header.messageText}
+        - removeHeaders:
+            id: RemoveHttpHeaders-3
+            pattern: CamelHttp*
+        - removeHeader:
+            id: RemoveUserAgent-3
+            name: User-Agent
+        - setHeader:
+            expression:
+              simple: text=${header.messageText}&key=c0381c1417ef32cc9b86147f5684e0c6&token=ATTAb182187d32e022b488bdc5d3f69381fcbec2452a8dbaf88fdd033ec205eabd1a2FB43A05
+            name: CamelHttpQuery
+        - setHeader:
+            name: TrelloCardId
+            simple: ${header.activeTicketId}
+        - doTry:
+            steps:
+              - toD:
+                  uri: https://api.trello.com/1/cards/${header.activeTicketId}/actions/comments
+                  parameters:
+                    bridgeEndpoint: "true"
+                    followRedirects: "true"
+                    httpMethod: POST
+                    useSystemProperties: "false"
+            doCatch:
+              - steps:
+                  - log:
+                      message: "Error adding comment to ticket: ${exception.message}"
+                  - setBody:
+                      expression:
+                        constant: '{"status":"error","message":"Failed to create Trello ticket"}'
+                exception: java.lang.Exception
+        - log: Added comment to ticket ${header.activeTicketId} for customer
+            ${header.customerEmail}

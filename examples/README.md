@@ -86,5 +86,5 @@ VIZED also supports implementing AI Agents connecting with various LLM APIs to b
 
 | Project | Use Cases Description |
 |---------|-------------|
-| [**TicketAgent**](AI-Agent/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
+| [**TicketAgent**](AI-Agents/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 

@@ -80,5 +80,11 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | **Request-Reply** | Send a request and wait for corresponding reply | • Synchronous API calls<br>• Database query operations | 
 | **Publish-Subscribe** | Broadcast messages to multiple recipients | • Notify systems about events<br>• Implement event-driven architectures | 
 
+## AI Agent Examples
 
+VIZED also supports implementing AI Agents connecting with various LLM APIs to build smart workflow.
+
+| Project | Use Cases Description |
+|---------|-------------|-------------------|
+| [**TicketAgent**](AI-Agent/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 

@@ -85,6 +85,6 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 VIZED also supports implementing AI Agents connecting with various LLM APIs to build smart workflow.
 
 | Project | Use Cases Description |
-|---------|-------------|-------------------|
+|---------|-------------|
 | [**TicketAgent**](AI-Agent/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 

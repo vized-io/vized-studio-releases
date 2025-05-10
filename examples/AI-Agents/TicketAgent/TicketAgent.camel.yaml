@@ -4,7 +4,7 @@
       id: Mail Fetch
       uri: imaps://imap.gmail.com:993
       parameters:
-        delay: "30000"
+        delay: "20000"
         maxMessagesPerPoll: 1
         password: wueexvyjkhenvvyb
         unseen: "true"
@@ -13,7 +13,7 @@
         - log:
             id: LogMailStatus
             message: Processing mail...
-        - setHeader:
+        - setProperty:
             id: setHeaderMailFrom
             expression:
               simple:
@@ -23,113 +23,68 @@
             id: call-llm-api
             uri: direct:call-llm-api
             parameters: {}
-        - setBody:
-            id: SetAnalysis
-            expression:
-              simple:
-                expression: ${header.analysis}
-        - log:
-            id: LogAnalysisStatus
-            message: Analysis done.
         - script:
-            id: script-3962
+            id: ProcessMailScript
             expression:
               groovy:
-                expression: |-
-                  def payload = exchange.getIn().getBody()
-                  if (!payload) {
-                    println "Payload is undefined or null";
-                    exchange.getIn().setBody(null);
-                    return
+                expression: >-
+                  def payload = exchange.getProperty('analysis')
+
+
+                  def fromHeader = exchange.getProperty('mailFrom')?.toString()
+
+
+                  println "Processing From: " + fromHeader
+
+
+                  def (name, email) = (fromHeader =~ /(.*?)\s*<([^>]+)>/).with
+                  { 
+                    it.find() ? [it[0][1].trim(), it[0][2]] : [null, null] 
                   }
-                  def fromHeader = exchange.in.headers['mailFrom']?.toString()
-                  def name = null
-                  def email = null
-                  if (fromHeader) {
-                    def matcher = fromHeader =~ /(.*)\s<([^>]+)>/
-                    if (matcher.matches()) {
-                        name = matcher[0][1]?.trim()
-                        email = matcher[0][2]?.trim()
-                    } else {
-                        email = fromHeader.replaceAll(/[<>]/, '').trim()
-                    }
-                  }
+
+
+                  println "Name: " + name 
+
+                  println "Email: " + email
+
+
                   def subject = exchange.in.headers['Subject'] ?: 'No Subject';
-                  exchange.getIn().setBody([
-                    ticketId : payload['ticketId'],
-                    customerName : payload['name'] ?: name,
-                    customerEmail : email,
-                    message: payload['text'],
-                    subject : subject,
-                    timestamp : System.currentTimeMillis(),
-                    intent: payload['intent'],
-                    mood: payload['mood'],
-                    urgency: payload['urgency'],
-                    severity: payload['severity'],
-                  ])
+
+
+                  exchange.setProperty("ticketId", payload['ticketId'] ?: "")
+
+                  exchange.setProperty("customerName", payload['name'] ?: name)
+
+                  exchange.setProperty("customerEmail", email)
+
+                  exchange.setProperty("messageText", payload['text'])
+
+                  exchange.setProperty("subject", subject)
+
+                  exchange.setProperty("timestamp", System.currentTimeMillis())
+
+                  exchange.setProperty("intent", payload['intent'])
+
+                  exchange.setProperty("mood", payload['mood'])
+
+                  exchange.setProperty("urgency", payload['urgency'])
+
+                  exchange.setProperty("severity", payload['severity'])
+        - log:
+            id: LogAnalysisStatus
+            message: |-
+              Analysis done. 
+               Name ${exchangeProperty.customerName} 
+               Email ${exchangeProperty.customerEmail} 
+               Message ${exchangeProperty.messageText} 
+               Subject ${exchangeProperty.subject} 
+               Intent ${exchangeProperty.intent} 
+               Mood ${exchangeProperty.mood} 
+               Urgency ${exchangeProperty.urgency} 
+               Severity ${exchangeProperty.severity}
         - filter:
             id: FilterBody
             steps:
-              - setHeader:
-                  id: setHeaderTicketId
-                  expression:
-                    simple:
-                      expression: ${body[ticketId]}
-                  name: ticketId
-              - setHeader:
-                  id: setHeaderCustomerName
-                  expression:
-                    simple:
-                      expression: ${body[customerName]}
-                  name: customerName
-              - setHeader:
-                  id: setHeaderCustomerEmail
-                  expression:
-                    simple:
-                      expression: ${body[customerEmail]}
-                  name: customerEmail
-              - setHeader:
-                  id: setHeaderSubject
-                  expression:
-                    simple:
-                      expression: ${body[subject]}
-                  name: subject
-              - setHeader:
-                  id: setHeaderText
-                  expression:
-                    simple:
-                      expression: ${body[message]}
-                  name: messageText
-              - setHeader:
-                  id: setHeaderTimestamp
-                  expression:
-                    simple:
-                      expression: ${body[timestamp]}
-                  name: messageTimestamp
-              - setHeader:
-                  id: setHeaderIntent
-                  expression:
-                    simple:
-                      expression: ${body[intent]}
-                  name: intent
-              - setHeader:
-                  id: setHeaderSeverity
-                  expression:
-                    simple:
-                      expression: ${body[severity]}
-                  name: severity
-              - setHeader:
-                  id: setHeaderMood
-                  expression:
-                    simple:
-                      expression: ${body[mood]}
-                  name: mood
-              - setHeader:
-                  id: setHeaderUrgency
-                  expression:
-                    simple:
-                      expression: ${body[urgency]}
-                  name: urgency
               - log:
                   id: LogCheckCache
                   message: Checking if ticket is active...
@@ -141,20 +96,20 @@
                   id: setHeader-cache-key
                   expression:
                     simple:
-                      expression: ${header.customerEmail}
+                      expression: ${exchangeProperty.customerEmail}
                   name: CamelCaffeineKey
               - to:
                   id: to-caffeine-cache
                   uri: caffeine-cache://activeTickets
               - choice:
-                  id: choice-1204
+                  id: IsTicketActive
                   otherwise:
                     id: otherwise
                     steps:
                       - log:
                           id: log-1125
-                          message: No active ticket found for customer ${header.customerName}, will create
-                            new ticket
+                          message: No active ticket found for customer ${exchangeProperty.customerName},
+                            will create new ticket
                       - to:
                           id: create-trello-ticket
                           uri: direct:create-trello-ticket
@@ -162,7 +117,7 @@
                   when:
                     - id: when
                       steps:
-                        - setHeader:
+                        - setProperty:
                             id: setHeader
                             expression:
                               simple:
@@ -170,8 +125,8 @@
                             name: activeTicketId
                         - log:
                             id: log-1239
-                            message: Found active ticket ${header.activeTicketId} for customer
-                              ${header.customerEmail}
+                            message: Found active ticket ${exchangeProperty.activeTicketId} for customer
+                              ${exchangeProperty.customerEmail}
                         - to:
                             id: add-comment
                             uri: direct:add-comment-to-ticket
@@ -199,10 +154,9 @@
             constant: application/json
             name: Content-Type
         - setHeader:
-            constant: Bearer
-              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
+            constant: Bearer {{LLM_API_KEY}}
             name: Authorization
-        - setHeader:
+        - setProperty:
             id: API Data
             expression:
               simple:
@@ -228,56 +182,68 @@
                     {
                       \"ticketId\": \"1023\",
                       \"text\": \"Some email message body\",
-                      \"name\": \"customerName\",
+                      \"name\": \"customerName\",                      
                       \"intent\": \"\",
                       \"mood\": \"\",
                       \"urgency\": \"\",
                       \"severity\": \"\"
                     }
 
-                  Here is the Email: Subject: ${header.Subject} Body: ${body}
+                  Here is the Email:                  
+                  Subject: ${header.Subject} 
+                  Body: ${body}
             name: apiData
         - setBody:
-            id: Set API Data
+            id: SetLLMBody
             expression:
               simple:
                 expression: >-
                   {
                     "model": "qwen/qwen3-1.7b:free",
-                    "messages": [ { "role": "user", "content": "${header.apiData}" } ]
+                    "messages": [ { "role": "user", "content": "${exchangeProperty.apiData}" } ]
                   }
         - doTry:
             id: Try
             steps:
               - to:
-                  id: LLM API
+                  id: llm_api_call
                   uri: https://openrouter.ai/api/v1/chat/completions
                   parameters:
-                    bridgeEndpoint: "true"
+                    bridgeErrorHandler: "true"
+                    copyHeaders: "false"
                     httpMethod: POST
               - unmarshal:
-                  id: Unmarshal Response
+                  id: unmarshal
                   json: {}
               - setBody:
                   id: set api content
                   expression:
                     simple: ${body[choices][0][message][content]}
               - unmarshal:
-                  id: unmarshal content
+                  id: unmarshal
                   json: {}
-              - setHeader:
+              - setProperty:
                   expression:
                     simple: ${body}
                   name: analysis
             doCatch:
               - steps:
                   - log:
+                      id: CatchLog
                       message: "Error calling API: ${exception.message}"
-                  - setBody:
+                  - setProperty:
+                      id: default analysis
                       expression:
-                        constant: '{"ticketId":"", "text": "", "intent":"Cannot determine - API error",
-                          "mood":"unknown", "urgency":"Medium",
-                          "severity":"Medium"}'
+                        groovy: |-
+                          [
+                            ticketId: "",
+                            text: "",
+                            intent: "Cannot determine - API error",
+                            mood: "unknown", 
+                            urgency: "Medium",
+                            severity: "Medium"                            
+                          ]
+                      name: analysis
                 exception: java.lang.Exception
 - route:
     id: CreateTrelloTicket
@@ -301,11 +267,11 @@
             name: Content-Type
         - setHeader:
             expression:
-              simple: name=${header.customerName}%20${header.customerEmail}&desc=Original%20Message:%20${header.messageText}%0AIntent:%20${header.intent}%0AUrgencyn:%20${header.urgency}%0ASeverity:%20${header.severity}&idList=68148cc61f43f14863948ee7&key=c0381c1417ef32cc9b86147f5684e0c6&token=ATTAb182187d32e022b488bdc5d3f69381fcbec2452a8dbaf88fdd033ec205eabd1a2FB43A05
+              simple: name=${exchangeProperty.customerName}%20${exchangeProperty.customerEmail}&desc=${exchangeProperty.messageText}&idList=68148cc61f43f14863948ee7&key={{TRELLO_API_KEY}}&token={{TRELLO_API_KEY}}
             name: CamelHttpQuery
         - log:
-            id: log-create-tickets
-            message: Creating Trello ticket for customer ${header.customerName}
+            id: log create tickets
+            message: Creating Trello ticket for customer ${exchangeProperty.customerName}
         - setBody:
             id: Reset Body
             expression:
@@ -317,13 +283,14 @@
                   id: Create Ticket Api
                   uri: https://api.trello.com/1/cards
                   parameters:
-                    bridgeEndpoint: "true"
-                    followRedirects: "true"
+                    copyHeaders: "false"
                     httpMethod: POST
-                    useSystemProperties: "false"
               - unmarshal:
                   id: unmarshal Trello res
                   json: {}
+              - setProperty:
+                  name: cardId
+                  simple: ${body['id']}
               - log:
                   id: Log Create Status
                   message: Ticket created successfully
@@ -332,10 +299,10 @@
                   name: CamelCaffeineAction
               - setHeader:
                   name: CamelCaffeineKey
-                  simple: ${header.customerEmail}
+                  simple: ${exchangeProperty.customerEmail}
               - setHeader:
                   name: CamelCaffeineValue
-                  simple: ${body['id']}
+                  simple: ${exchangeProperty.cardId}
               - to:
                   id: Set Ticket Cache
                   uri: caffeine-cache://activeTickets
@@ -343,11 +310,76 @@
             doCatch:
               - steps:
                   - log:
+                      id: catch api log
                       message: "Error creating Trello ticket: ${exception.message}"
                   - setBody:
+                      id: set default body
                       expression:
                         constant: '{"status":"error","message":"Failed to create Trello ticket"}'
                 exception: java.lang.Exception
+        - removeHeaders:
+            id: RemoveHttpHeaders-4
+            pattern: CamelHttp*
+        - removeHeader:
+            id: Reset Query - 2
+            name: CamelHttpQuery
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - setBody:
+            id: Reset Body - 2
+            expression:
+              simple: ${null}
+        - setHeader:
+            expression:
+              simple: color=blue&name=Urgency:%20${exchangeProperty.urgency}&key={{TRELLO_API_KEY}}&token={{TRELLO_API_TOKEN}}
+            name: CamelHttpQuery
+        - toD:
+            id: Create Label on Ticket - 1
+            uri: https://api.trello.com/1/cards/${exchangeProperty.cardId}/labels
+            parameters:
+              copyHeaders: "false"
+              httpMethod: POST
+        - removeHeaders:
+            id: RemoveHttpHeaders-5
+            pattern: CamelHttp*
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - setBody:
+            id: Reset Body - 3
+            expression:
+              simple: ${null}
+        - setHeader:
+            expression:
+              simple: color=red&name=Severity:%20${exchangeProperty.severity}&key={{TRELLO_API_KEY}}&token={{TRELLO_API_TOKEN}}
+            name: CamelHttpQuery
+        - toD:
+            id: Create Label on Ticket - 2
+            uri: https://api.trello.com/1/cards/${exchangeProperty.cardId}/labels
+            parameters:
+              copyHeaders: "false"
+              httpMethod: POST
+        - removeHeader:
+            id: Reset Query - 4
+            name: CamelHttpQuery
+        - setBody:
+            id: Reset Body - 4
+            expression:
+              simple: ${null}
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            expression:
+              simple: color=pink&name=Intent:%20${header.intent}&key={{TRELLO_API_KEY}}&token={{TRELLO_API_TOKEN}}
+            name: CamelHttpQuery
+        - toD:
+            id: Create Label on Ticket - 3
+            uri: https://api.trello.com/1/cards/${header.cardId}/labels
+            parameters:
+              copyHeaders: "false"
+              httpMethod: POST
 - route:
     id: AddCommentToTicket
     from:

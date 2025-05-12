@@ -28,6 +28,8 @@
             expression:
               groovy:
                 expression: >-
+                  import java.net.URLEncoder
+
                   def payload = exchange.getProperty('analysis')
 
 
@@ -57,7 +59,9 @@
 
                   exchange.setProperty("customerEmail", email)
 
-                  exchange.setProperty("messageText", payload['text'])
+                  def rawMessageText = payload['text'] != null ? payload['text'].toString() : ""
+
+                  exchange.setProperty("messageText", URLEncoder.encode(rawMessageText, 'UTF-8'))
 
                   exchange.setProperty("subject", subject)
 

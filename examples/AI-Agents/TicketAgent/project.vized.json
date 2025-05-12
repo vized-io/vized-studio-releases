@@ -50,13 +50,15 @@
           "to": [
             {
               "uri": "https://openrouter.ai/api/v1/chat/completions",
-              "id": "LLM API"
+              "id": "llm_api_call"
             }
           ]
         },
         "CreateTrelloTicket": {
           "id": "CreateTrelloTicket",
-          "breakpoints": [],
+          "breakpoints": [
+            null
+          ],
           "from": [
             {
               "uri": "direct:create-trello-ticket",
@@ -92,6 +94,9 @@
     }
   },
   "environments": {
-    "default": []
+    "default": [],
+    "TRELLO_API_KEY":"",
+    "TRELLO_API_TOKEN":"",
+    "LLM_API_KEY":""
   }
 }

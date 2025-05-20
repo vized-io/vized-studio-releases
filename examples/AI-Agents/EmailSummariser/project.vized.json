@@ -1,0 +1,54 @@
+{
+  "name": "EmailSummariser",
+  "version": "0.0.1",
+  "artifactId": "EmailSummariser",
+  "group": "com.vized.project",
+  "relativePath": "EmailSummariser",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "EmailSummariser.camel.yaml": {
+        "EmailSummarizer": {
+          "id": "EmailSummarizer",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "imaps://imap.gmail.com:993",
+              "id": "Mail Fetch"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-ai-summarizer",
+              "id": "call-ai-summarizer"
+            }
+          ]
+        },
+        "CallAISummarizer": {
+          "id": "CallAISummarizer",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-ai-summarizer",
+              "id": "from-ai-summarizer"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://openrouter.ai/api/v1/chat/completions",
+              "id": "ai_api_call"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "EmailSummariser.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

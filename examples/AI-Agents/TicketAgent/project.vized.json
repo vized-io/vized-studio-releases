@@ -95,8 +95,8 @@
   },
   "environments": {
     "default": [],
-    "TRELLO_API_KEY":"",
-    "TRELLO_API_TOKEN":"",
-    "LLM_API_KEY":""
+    "TRELLO_API_KEY": "",
+    "TRELLO_API_TOKEN": "",
+    "LLM_API_KEY": ""
   }
 }

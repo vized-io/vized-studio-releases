@@ -6,9 +6,9 @@
       parameters:
         delay: "20000"
         maxMessagesPerPoll: 1
-        password: wueexvyjkhenvvyb
+        password: 
         unseen: "true"
-        username: theparttimewriters@gmail.com
+        username: 
       steps:
         - log:
             id: LogMailStatus

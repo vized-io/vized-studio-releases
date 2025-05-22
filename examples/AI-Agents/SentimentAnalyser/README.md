@@ -51,7 +51,7 @@ Use an AI to analyze the feedback and determine its sentiment:
 2. Configure the AI to classify the feedback as positive, negative, or neutral.
 
 <!-- ![Analysis](./assets/analysis.gif) -->
-<video src="./assets/analysis.mp4" controls></video>
+<video src="https://raw.githubusercontent.com/vized-io/vized-studio-releases/refs/heads/examples/examples/AI-Agents/SentimentAnalyser/assets/analysis.mp4" controls></video>
 
 ### 4. Store Sentiment Results
 

@@ -39,7 +39,7 @@ Set up the entry point for your integration flow:
 1. Add an HTTP endpoint to accept feedback via POST requests.
 2. Configure the endpoint to listen on `/feedback`.
 
-![Source](./assets/source.mp4)
+![Source](https://raw.githubusercontent.com/vized-io/vized-studio-releases/refs/heads/examples/examples/AI-Agents/SentimentAnalyser/assets/analysis.mp4)
 
 ### 3. Implement Sentiment Analysis
 

@@ -1,0 +1,245 @@
+- route:
+    id: SentimentAnalysis
+    from:
+      id: feedback-endpoint
+      uri: platform-http
+      parameters:
+        httpMethodRestrict: POST
+        path: /feedback
+      steps:
+        - log:
+            id: log feedback
+            message: Received feedback for analysis ${body}
+        - unmarshal:
+            id: unmarshal feedback
+            json: {}
+        - setBody:
+            id: SetBody
+            expression:
+              simple:
+                expression: ${body[feedback]}
+        - convertBodyTo:
+            id: convertBody
+            type: java.lang.String
+        - setProperty:
+            expression:
+              simple: ${body}
+            name: originalFeedback
+        - to:
+            id: call-ml-service
+            uri: direct:call-ml
+            parameters: {}
+- route:
+    id: CallLLM
+    from:
+      id: ml-service-route
+      uri: direct:call-ml
+      parameters: {}
+      steps:
+        - removeHeaders:
+            id: RemoveHttpHeaders
+            pattern: CamelHttp*
+        - setHeader:
+            expression:
+              constant: application/json
+            name: Content-Type
+        - removeHeader:
+            name: Accept-Encoding
+        - setHeader:
+            expression:
+              constant: Bearer
+                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
+            name: Authorization
+        - setProperty:
+            id: API Data
+            expression:
+              simple:
+                expression: "Analyze the sentiment of this feedback. Response should be either
+                  POSITIVE, NEGATIVE or NEUTRAL. feedback :
+                  ${exchangeProperty.originalFeedback}"
+            name: apiData
+        - setBody:
+            id: SetLLMBody
+            expression:
+              simple:
+                expression: >-
+                  {
+                    "model": "qwen/qwq-32b:free",
+                    "messages": [ { "role": "user", "content": "${exchangeProperty.apiData}" } ]
+                  }
+        - log:
+            id: log llm request
+            message: Analysing feedback using AI...
+        - doTry:
+            id: Try
+            steps:
+              - to:
+                  id: Llm api
+                  uri: https
+                  parameters:
+                    bridgeEndpoint: "true"
+                    bridgeErrorHandler: "true"
+                    copyHeaders: "false"
+                    httpMethod: POST
+                    httpUri: openrouter.ai/api/v1/chat/completions
+              - unmarshal:
+                  id: unmarshal response
+                  json: {}
+              - setBody:
+                  id: extract sentiment
+                  expression:
+                    simple: ${body[choices][0][message][content]}
+              - log:
+                  id: log sentiment response
+                  message: "Received sentiment analysis response: ${body}"
+              - script:
+                  id: parse sentiment
+                  expression:
+                    groovy: >
+                      import java.text.SimpleDateFormat
+
+                      def response = exchange.in.body
+
+                      def sentiment = "NEUTRAL"
+
+
+                      if (response.toLowerCase().contains("positive")) {
+                        sentiment = "POSITIVE"
+                      } else if (response.toLowerCase().contains("negative")) {
+                        sentiment = "NEGATIVE"
+                      }
+
+
+                      def dateFormat = new
+                      SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+
+                      def currentDate = new Date()
+
+                      def formattedDate = dateFormat.format(currentDate)
+
+
+                      exchange.setProperty("sentimentResult", [ "feedback":
+                      exchange.getProperty("originalFeedback"), "sentiment":
+                      sentiment, "timestamp": formattedDate ] )
+            doCatch:
+              - steps:
+                  - log:
+                      id: log-ml-error
+                      message: "Error calling ML API: ${exception.message}, Raw Response: ${body}"
+                  - setBody:
+                      id: default-sentiment
+                      expression:
+                        constant: |
+                          {
+                            "feedback": "${exchangeProperty.originalFeedback}",
+                            "sentiment": "NEUTRAL",
+                            "timestamp": "${date:now:yyyy-MM-dd'T'HH:mm:ss}"
+                          }
+                exception: java.lang.Exception
+        - log:
+            id: log-sentiment-result
+            message: "Sentiment analysis complete: ${exchangeProperty.sentimentResult}"
+        - to:
+            id: store-sentiment
+            uri: direct:store-sentiment
+            parameters: {}
+- route:
+    id: StoreSentiment
+    from:
+      id: sentiment-store
+      uri: direct:store-sentiment
+      parameters: {}
+      steps:
+        - setBody:
+            id: set Mongodb data
+            expression:
+              simple: ${exchangeProperty.sentimentResult}
+        - choice:
+            id: sentiment-choice
+            otherwise:
+              id: neutral-sentiment
+              steps:
+                - log:
+                    id: log neutral
+                    message: Storing neutral feedback
+                - setHeader:
+                    id: set neutral operation
+                    expression:
+                      constant:
+                        expression: insert
+                    name: CamelMongoDbOperation
+                - to:
+                    id: store neutral
+                    description: Write data to MongoDB
+                    uri: mongodb
+                    parameters:
+                      collection: Feedbacks
+                      connectionBean: myMongoClient
+                      database: local
+                      hosts: 192.168.31.142:27017
+                      operation: insert
+                - log:
+                    id: log neutral success
+                    message: Successfully inserted neutral feedback
+            when:
+              - id: positive-sentiment
+                steps:
+                  - log:
+                      id: log positive
+                      message: Storing positive feedback
+                  - setHeader:
+                      id: set positive operation
+                      expression:
+                        constant:
+                          expression: insert
+                      name: CamelMongoDbOperation
+                  - to:
+                      id: store positive
+                      description: Write data to MongoDB
+                      uri: mongodb
+                      parameters:
+                        collection: Feedbacks
+                        connectionBean: myMongoClient
+                        database: local
+                        hosts: 192.168.31.142:27017
+                        operation: insert
+                  - log:
+                      id: log Positive Success
+                      message: Successfully inserted positive feedback
+                expression:
+                  simple: ${body[sentiment]} == 'POSITIVE'
+              - id: negative-sentiment
+                steps:
+                  - log:
+                      id: log negative
+                      message: Storing negative feedback
+                  - setHeader:
+                      id: set negative operation
+                      expression:
+                        constant:
+                          expression: insert
+                      name: CamelMongoDbOperation
+                  - to:
+                      id: Store Negative
+                      description: Write data to MongoDB
+                      uri: mongodb
+                      parameters:
+                        collection: Feedbacks
+                        connectionBean: myMongoClient
+                        database: local
+                        hosts: 192.168.31.142:27017
+                        operation: insert
+                  - log:
+                      id: log negative success
+                      message: Successfully inserted negative feedback
+                expression:
+                  simple: ${body[sentiment]} == 'NEGATIVE'
+        - setBody:
+            id: prepare response
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Feedback processed successfully",
+                  "sentiment": "${body[sentiment]}"
+                }

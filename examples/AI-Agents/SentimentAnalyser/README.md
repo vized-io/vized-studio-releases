@@ -39,8 +39,9 @@ Set up the entry point for your integration flow:
 1. Add an HTTP endpoint to accept feedback via POST requests.
 2. Configure the endpoint to listen on `/feedback`.
 
+![source](./assets/source.gif)
 <!-- ![Source](https://raw.githubusercontent.com/vized-io/vized-studio-releases/refs/heads/examples/examples/AI-Agents/SentimentAnalyser/assets/analysis.mp4) -->
-<video src="./assets/source.mp4" controls></video>
+<!-- <video src="./assets/source.mp4" controls></video> -->
 
 
 ### 3. Implement Sentiment Analysis
@@ -50,8 +51,8 @@ Use an AI to analyze the feedback and determine its sentiment:
 1. Add a `direct:call-ml` route to call the AI service.
 2. Configure the AI to classify the feedback as positive, negative, or neutral.
 
-<!-- ![Analysis](./assets/analysis.gif) -->
-<video src="./assets/analysis.mp4" controls></video>
+![Analysis](./assets/analysis.gif)
+<!-- <video src="./assets/analysis.mp4" controls></video> -->
 
 ### 4. Store Sentiment Results
 
@@ -60,7 +61,8 @@ Store the analyzed sentiment data in MongoDB:
 1. Add a `direct:store-sentiment` route to handle database operations.
 2. Use a choice processor to store feedback in different collections based on sentiment.
 
-<video src="./assets/store.mp4" controls></video>
+![store](./assets/store.gif)
+<!-- <video src="./assets/store.mp4" controls></video> -->
 
 ## Running the Integration Project
 
@@ -68,7 +70,8 @@ Store the analyzed sentiment data in MongoDB:
 2. Right-click on the Camel file and select "Run" from the context menu.
 3. Monitor the logs to see feedback being processed and sentiment results being stored in MongoDB.
 
-<video src="./assets/executing.mp4" controls></video>
+![executing](./assets/executing.gif)
+<!-- <video src="./assets/executing.mp4" controls></video> -->
 
 ## External Dependencies Setup
 

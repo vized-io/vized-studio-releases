@@ -1,0 +1,91 @@
+- route:
+    id: EmailSummarizer
+    from:
+      id: Mail Fetch
+      uri: imaps://imap.gmail.com:993
+      parameters:
+        delay: "30000"
+        maxMessagesPerPoll: 1
+        password: 
+        unseen: "true"
+        username: 
+      steps:
+        - log:
+            id: LogEmailReceived
+            message: Received email....
+        - to:
+            id: call-ai-summarizer
+            uri: direct:call-ai-summarizer
+            parameters: {}
+        - log:
+            id: LogSummary
+            message: Summary generated - ${exchangeProperty.summary}
+- route:
+    id: CallAISummarizer
+    from:
+      id: from-ai-summarizer
+      uri: direct:call-ai-summarizer
+      parameters: {}
+      steps:
+        - log:
+            id: log-ai-summarizer
+            message: Analyzing email content using AI
+        - removeHeaders:
+            id: RemoveHttpHeaders
+            pattern: CamelHttp*
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            constant: Bearer {{TOKEN}}
+            name: Authorization
+        - convertBodyTo:
+            id: convertBody
+            type: java.lang.String
+        - setProperty:
+            id: API Data
+            expression:
+              simple:
+                expression: >-
+                  Summarize this email in a few sentences, highlighting the main
+                  points.
+
+                  Here is the email:
+
+                  Body: ${body}
+            name: apiData
+        - setBody:
+            id: SetAISummarizerBody
+            expression:
+              simple:
+                expression: >-
+                  {
+                    "model": "qwen/qwq-32b:free",
+                    "messages": [ { "role": "user", "content": "${exchangeProperty.apiData}" } ]
+                  }
+        - doTry:
+            id: TryAISummarizer
+            steps:
+              - to:
+                  id: ai_api_call
+                  uri: https://openrouter.ai/api/v1/chat/completions
+                  parameters:
+                    httpMethod: POST
+              - unmarshal:
+                  id: unmarshal
+                  json: {}
+              - setProperty:
+                  expression:
+                    simple: ${body[choices][0][message][content]}
+                  name: summary
+            doCatch:
+              - steps:
+                  - log:
+                      id: CatchLog
+                      message: "Error calling AI API: ${exception.message}"
+                  - setProperty:
+                      id: default_summary
+                      expression:
+                        simple: Summary could not be generated due to an error.
+                      name: summary
+                exception: java.lang.Exception

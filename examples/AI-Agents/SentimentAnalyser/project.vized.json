@@ -1,0 +1,85 @@
+{
+  "name": "SentimentAnalyser",
+  "version": "0.0.1",
+  "artifactId": "SentimentAnalyser",
+  "group": "com.vized.project",
+  "relativePath": "SentimentAnalyser",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "SentimentAnalyser.camel.yaml": {
+        "SentimentAnalysis": {
+          "id": "SentimentAnalysis",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "feedback-endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-ml",
+              "id": "call-ml-service"
+            }
+          ]
+        },
+        "CallLLM": {
+          "id": "CallLLM",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-ml",
+              "id": "ml-service-route"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https",
+              "id": "Llm api"
+            },
+            {
+              "uri": "direct:store-sentiment",
+              "id": "store-sentiment"
+            }
+          ]
+        },
+        "StoreSentiment": {
+          "id": "StoreSentiment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:store-sentiment",
+              "id": "sentiment-store"
+            }
+          ],
+          "to": [
+            {
+              "uri": "mongodb",
+              "id": "store neutral",
+              "description": "Write data to MongoDB"
+            },
+            {
+              "uri": "mongodb",
+              "id": "store positive",
+              "description": "Write data to MongoDB"
+            },
+            {
+              "uri": "mongodb",
+              "id": "Store Negative",
+              "description": "Write data to MongoDB"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "SentimentAnalyser.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

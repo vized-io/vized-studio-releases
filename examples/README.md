@@ -73,7 +73,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | **CircuitBreaker** | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Aggregator**](EIP/Aggregation/README.md) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
 
-## Ai Integration Examples
+## AI Integration Examples
 
 | Pattern | Description | Example Use Cases |
 |---------|-------------|-------------------|

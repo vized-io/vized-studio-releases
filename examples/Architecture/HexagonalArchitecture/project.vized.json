@@ -1,0 +1,143 @@
+{
+  "name": "HexagonalArchitecture",
+  "version": "0.0.1",
+  "artifactId": "HexagonalArchitecture",
+  "group": "com.vized.project",
+  "relativePath": "HexagonalArchitecture",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "HexagonalArchitecture.camel.yaml": {
+        "inbound-http-adapter": {
+          "id": "inbound-http-adapter",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "jetty:http://0.0.0.0:8080/api/customers"
+            }
+          ],
+          "to": []
+        },
+        "customer-application-service": {
+          "id": "customer-application-service",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "get-customer-use-case": {
+          "id": "get-customer-use-case",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "create-customer-use-case": {
+          "id": "create-customer-use-case",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "update-customer-use-case": {
+          "id": "update-customer-use-case",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "delete-customer-use-case": {
+          "id": "delete-customer-use-case",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "customer-repository-port": {
+          "id": "customer-repository-port",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "customer-memory-adapter": {
+          "id": "customer-memory-adapter",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "customer-file-adapter": {
+          "id": "customer-file-adapter",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "customer-database-adapter": {
+          "id": "customer-database-adapter",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "notification-port": {
+          "id": "notification-port",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "notification-log-adapter": {
+          "id": "notification-log-adapter",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "notification-email-adapter": {
+          "id": "notification-email-adapter",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        },
+        "health-check": {
+          "id": "health-check",
+          "breakpoints": [],
+          "from": [
+            {}
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "HexagonalArchitecture.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": [
+      "customer.repository.type",
+      "customer.file.location",
+      "notification.type",
+      "server.port",
+      "server.host",
+      "camel.main.logger-level"
+    ]
+  }
+}

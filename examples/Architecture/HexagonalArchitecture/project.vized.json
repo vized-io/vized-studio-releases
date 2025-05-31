@@ -18,53 +18,81 @@
               "uri": "jetty:http://0.0.0.0:8080/api/customers"
             }
           ],
-          "to": []
+          "to": [
+            {}
+          ]
         },
         "customer-application-service": {
           "id": "customer-application-service",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:customer-application-service",
+              "id": "customer-app-service"
+            }
           ],
-          "to": []
+          "to": [
+            {},
+            {},
+            {},
+            {}
+          ]
         },
         "get-customer-use-case": {
           "id": "get-customer-use-case",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:get-customer-use-case"
+            }
           ],
-          "to": []
+          "to": [
+            {}
+          ]
         },
         "create-customer-use-case": {
           "id": "create-customer-use-case",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:create-customer-use-case"
+            }
           ],
-          "to": []
+          "to": [
+            {}
+          ]
         },
         "update-customer-use-case": {
           "id": "update-customer-use-case",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:update-customer-use-case"
+            }
           ],
-          "to": []
+          "to": [
+            {}
+          ]
         },
         "delete-customer-use-case": {
           "id": "delete-customer-use-case",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:delete-customer-use-case"
+            }
           ],
-          "to": []
+          "to": [
+            {}
+          ]
         },
         "customer-repository-port": {
           "id": "customer-repository-port",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:customer-repository-port"
+            }
           ],
           "to": []
         },
@@ -72,7 +100,9 @@
           "id": "customer-memory-adapter",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:customer-memory-adapter"
+            }
           ],
           "to": []
         },
@@ -80,7 +110,9 @@
           "id": "customer-file-adapter",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:customer-file-adapter"
+            }
           ],
           "to": []
         },
@@ -88,7 +120,9 @@
           "id": "customer-database-adapter",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:customer-database-adapter"
+            }
           ],
           "to": []
         },
@@ -96,7 +130,9 @@
           "id": "notification-port",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:notification-port"
+            }
           ],
           "to": []
         },
@@ -104,7 +140,9 @@
           "id": "notification-log-adapter",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:notification-log-adapter"
+            }
           ],
           "to": []
         },
@@ -112,7 +150,9 @@
           "id": "notification-email-adapter",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "direct:notification-email-adapter"
+            }
           ],
           "to": []
         },
@@ -120,7 +160,9 @@
           "id": "health-check",
           "breakpoints": [],
           "from": [
-            {}
+            {
+              "uri": "jetty:http://0.0.0.0:8080/health"
+            }
           ],
           "to": []
         }
@@ -136,8 +178,7 @@
       "customer.file.location",
       "notification.type",
       "server.port",
-      "server.host",
-      "camel.main.logger-level"
+      "server.host"
     ]
   }
 }

@@ -72,6 +72,8 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**Message Filter**](EIP/MessageFilter/README.md) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
 | **CircuitBreaker** | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Aggregator**](EIP/Aggregation/README.md) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
+| [**Ports and Adapters**](EIP/PortsAndAdapters/README.md) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
+
 
 ## AI Integration Examples
 

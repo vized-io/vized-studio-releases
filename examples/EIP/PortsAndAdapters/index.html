@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Management - Hexagonal Architecture Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        }
+
+        .response-area {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            min-height: 150px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                margin: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+        }
+
+        .api-info {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .architecture-badge {
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="architecture-badge">🏗️ Hexagonal Architecture</div>
+            <h1>Customer Management System</h1>
+            <p>VIZED Studio - Apache Camel Integration Demo</p>
+            <p>Switchable Adapters: Memory | File | Database</p>
+        </div>
+
+        <div class="main-content">
+            <div class="api-info">
+                <strong>🔗 API Endpoint:</strong> <span id="apiEndpoint">http://localhost:8080/api/customers</span>
+                <button class="btn btn-info" onclick="checkHealth()" style="margin-left: 15px;">Check Health</button>
+            </div>
+
+            <div class="grid">
+                <!-- CREATE CUSTOMER -->
+                <div class="section">
+                    <h2>🆕 Create Customer</h2>
+                    <div class="form-group">
+                        <label for="createName">Customer Name:</label>
+                        <input type="text" id="createName" placeholder="Enter customer name" value="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="createEmail">Email Address:</label>
+                        <input type="email" id="createEmail" placeholder="Enter email address"
+                            value="john.doe@example.com">
+                    </div>
+                    <button class="btn btn-success" onclick="createCustomer()">Create Customer</button>
+                </div>
+
+                <!-- READ CUSTOMER -->
+                <div class="section">
+                    <h2>🔍 Get Customer</h2>
+                    <div class="form-group">
+                        <label for="customerId">Customer ID:</label>
+                        <input type="text" id="customerId" placeholder="Enter customer ID">
+                    </div>
+                    <button class="btn btn-info" onclick="getCustomer()">Get Customer</button>
+                </div>
+
+                <!-- UPDATE CUSTOMER -->
+                <div class="section">
+                    <h2>✏️ Update Customer</h2>
+                    <div class="form-group">
+                        <label for="updateId">Customer ID:</label>
+                        <input type="text" id="updateId" placeholder="Enter customer ID to update">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateName">New Name:</label>
+                        <input type="text" id="updateName" placeholder="Enter new name">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateEmail">New Email:</label>
+                        <input type="email" id="updateEmail" placeholder="Enter new email">
+                    </div>
+                    <button class="btn btn-warning" onclick="updateCustomer()">Update Customer</button>
+                </div>
+
+                <!-- DELETE CUSTOMER -->
+                <div class="section">
+                    <h2>🗑️ Delete Customer</h2>
+                    <div class="form-group">
+                        <label for="deleteId">Customer ID:</label>
+                        <input type="text" id="deleteId" placeholder="Enter customer ID to delete">
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteCustomer()">Delete Customer</button>
+                </div>
+            </div>
+
+            <!-- RESPONSE AREA -->
+            <div class="section">
+                <h2>📋 API Response <span id="statusIndicator"></span></h2>
+                <div id="responseArea" class="response-area">
+                    Ready to interact with the Hexagonal Architecture API...
+
+                    🏗️ Architecture Layers:
+                    • Primary Adapter: HTTP REST API (this page)
+                    • Application Service: Business use case orchestration
+                    • Domain Core: Business logic and validation
+                    • Repository Port: Storage abstraction
+                    • Secondary Adapters: Memory/File/Database (configurable)
+
+                    Try creating a customer to get started!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/customers';
+
+        function updateStatus(type, message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = `status-indicator status-${type}`;
+            indicator.textContent = message;
+        }
+
+        function logResponse(operation, response, correlationId, processingTime) {
+            const responseArea = document.getElementById('responseArea');
+            const timestamp = new Date().toLocaleString();
+
+            let logEntry = `\n[${timestamp}] ${operation}\n`;
+            logEntry += `Correlation ID: ${correlationId || 'N/A'}\n`;
+            logEntry += `Processing Time: ${processingTime || 'N/A'}ms\n`;
+            logEntry += `Response: ${JSON.stringify(response, null, 2)}\n`;
+            logEntry += '─'.repeat(80) + '\n';
+
+            responseArea.textContent = logEntry + responseArea.textContent;
+        }
+
+        async function makeRequest(method, url, data = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, options);
+                const correlationId = response.headers.get('X-Correlation-Id');
+                const processingTime = response.headers.get('X-Processing-Time');
+
+                let responseData;
+                const contentType = response.headers.get('content-type');
+
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    responseData = await response.text();
+                }
+
+                if (response.ok) {
+                    updateStatus('success', 'Success');
+                } else {
+                    updateStatus('error', `Error ${response.status}`);
+                }
+
+                return {
+                    data: responseData,
+                    correlationId,
+                    processingTime,
+                    status: response.status
+                };
+
+            } catch (error) {
+                updateStatus('error', 'Network Error');
+                return {
+                    data: { error: error.message },
+                    correlationId: null,
+                    processingTime: null,
+                    status: 'ERROR'
+                };
+            }
+        }
+
+        async function createCustomer() {
+            const name = document.getElementById('createName').value;
+            const email = document.getElementById('createEmail').value;
+
+            if (!name || !email) {
+                alert('Please fill in both name and email fields');
+                return;
+            }
+
+            const customerData = { name, email };
+            const result = await makeRequest('POST', API_BASE, customerData);
+
+            logResponse('CREATE CUSTOMER', result.data, result.correlationId, result.processingTime);
+
+            // If successful, store the customer ID for easy access
+            if (result.data.customer && result.data.customer.id) {
+                document.getElementById('customerId').value = result.data.customer.id;
+                document.getElementById('updateId').value = result.data.customer.id;
+                document.getElementById('deleteId').value = result.data.customer.id;
+            }
+        }
+
+        async function getCustomer() {
+            const id = document.getElementById('customerId').value;
+
+            if (!id) {
+                alert('Please enter a customer ID');
+                return;
+            }
+
+            const url = `${API_BASE}?id=${encodeURIComponent(id)}`;
+            const result = await makeRequest('GET', url);
+
+            logResponse('GET CUSTOMER', result.data, result.correlationId, result.processingTime);
+        }
+
+        async function updateCustomer() {
+            const id = document.getElementById('updateId').value;
+            const name = document.getElementById('updateName').value;
+            const email = document.getElementById('updateEmail').value;
+
+            if (!id) {
+                alert('Please enter a customer ID');
+                return;
+            }
+
+            if (!name && !email) {
+                alert('Please enter at least one field to update');
+                return;
+            }
+
+            const updateData = {};
+            if (name) updateData.name = name;
+            if (email) updateData.email = email;
+
+            const url = `${API_BASE}?id=${encodeURIComponent(id)}`;
+            const result = await makeRequest('PUT', url, updateData);
+
+            logResponse('UPDATE CUSTOMER', result.data, result.correlationId, result.processingTime);
+        }
+        async function deleteCustomer() {
+            const id = document.getElementById('deleteId').value;
+
+            if (!id) {
+                alert('Please enter a customer ID');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete customer ${id}?`)) {
+                return;
+            }
+
+            const url = `${API_BASE}?id=${encodeURIComponent(id)}`;
+            const result = await makeRequest('DELETE', url);
+            logResponse('DELETE CUSTOMER', result.data, result.correlationId, result.processingTime);
+        }
+
+        async function checkHealth() {
+            const healthUrl = 'http://localhost:8080/health';
+            const result = await makeRequest('GET', healthUrl);
+
+            logResponse('HEALTH CHECK', result.data, result.correlationId, result.processingTime);
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function () {
+            updateStatus('info', 'Ready');
+        });
+    </script>
+</body>
+
+</html>

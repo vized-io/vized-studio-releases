@@ -1,4 +1,4 @@
-# Hexagonal Architecture with Apache Camel YAML DSL
+# Ports and Adapters (Hexagonal Architecture) with Apache Camel YAML DSL
 
 ## What is Hexagonal Architecture?
 

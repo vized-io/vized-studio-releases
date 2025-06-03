@@ -1,0 +1,42 @@
+{
+  "name": "XsltMapper",
+  "version": "0.0.1",
+  "artifactId": "XsltMapper",
+  "group": "com.vized.project",
+  "relativePath": "XsltMapper",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "XsltMapper.camel.yaml": {
+        "route-3916": {
+          "id": "route-3916",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:input",
+              "id": "from-1367"
+            }
+          ],
+          "to": [
+            {
+              "uri": "xslt",
+              "id": "to-1910"
+            },
+            {
+              "uri": "log",
+              "id": "to-3282"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "XsltMapper.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

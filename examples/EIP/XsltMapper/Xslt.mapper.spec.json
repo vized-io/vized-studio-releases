@@ -1,0 +1,239 @@
+{
+  "mappingType": "xslt",
+  "sourceType": "xml",
+  "targetType": "xml",
+  "source": "source",
+  "target": "target",
+  "sourceSchema": {
+    "attribute": false,
+    "name": "order",
+    "path": "$",
+    "type": "object",
+    "children": [
+      {
+        "attribute": false,
+        "name": "order",
+        "path": "$.order",
+        "type": "object",
+        "children": [
+          {
+            "attribute": false,
+            "name": "buyer",
+            "path": "$.order.buyer",
+            "type": "object",
+            "children": [
+              {
+                "attribute": false,
+                "name": "name",
+                "path": "$.order.buyer.name",
+                "type": "string",
+                "defaultValue": "Jane Smith"
+              },
+              {
+                "attribute": false,
+                "name": "id",
+                "path": "$.order.buyer.id",
+                "type": "string",
+                "defaultValue": "cust-123"
+              }
+            ]
+          },
+          {
+            "attribute": false,
+            "name": "products",
+            "path": "$.order.products",
+            "type": "array",
+            "children": [
+              {
+                "attribute": false,
+                "name": "product",
+                "path": "$.order.products.product",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "sku",
+                    "path": "$.order.products.product.sku",
+                    "type": "string",
+                    "defaultValue": "ABC-001"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "price",
+                    "path": "$.order.products.product.price",
+                    "type": "string",
+                    "defaultValue": "29.99"
+                  }
+                ],
+                "repeated": true
+              },
+              {
+                "attribute": false,
+                "name": "product",
+                "path": "$.order.products.product",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "sku",
+                    "path": "$.order.products.product.sku",
+                    "type": "string",
+                    "defaultValue": "XYZ-002"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "price",
+                    "path": "$.order.products.product.price",
+                    "type": "string",
+                    "defaultValue": "49.99"
+                  }
+                ],
+                "repeated": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "targetSchema": {
+    "attribute": false,
+    "name": "invoice",
+    "path": "$",
+    "type": "object",
+    "children": [
+      {
+        "attribute": false,
+        "name": "invoice",
+        "path": "$.invoice",
+        "type": "object",
+        "children": [
+          {
+            "attribute": false,
+            "name": "customer",
+            "path": "$.invoice.customer",
+            "type": "object",
+            "children": [
+              {
+                "attribute": false,
+                "name": "name",
+                "path": "$.invoice.customer.name",
+                "type": "string",
+                "defaultValue": "Jane Smith"
+              }
+            ]
+          },
+          {
+            "attribute": false,
+            "name": "metadata",
+            "path": "$.invoice.metadata",
+            "type": "object",
+            "children": [
+              {
+                "attribute": false,
+                "name": "version",
+                "path": "$.invoice.metadata.version",
+                "type": "string",
+                "defaultValue": "2.0"
+              }
+            ]
+          },
+          {
+            "attribute": false,
+            "name": "items",
+            "path": "$.invoice.items",
+            "type": "array",
+            "children": [
+              {
+                "attribute": false,
+                "name": "item",
+                "path": "$.invoice.items.item",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "sku",
+                    "path": "$.invoice.items.item.sku",
+                    "type": "string",
+                    "defaultValue": "ABC-001"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "price",
+                    "path": "$.invoice.items.item.price",
+                    "type": "string",
+                    "defaultValue": "29.99"
+                  }
+                ],
+                "repeated": true
+              },
+              {
+                "attribute": false,
+                "name": "item",
+                "path": "$.invoice.items.item",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "sku",
+                    "path": "$.invoice.items.item.sku",
+                    "type": "string",
+                    "defaultValue": "XYZ-002"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "price",
+                    "path": "$.invoice.items.item.price",
+                    "type": "string",
+                    "defaultValue": "49.99"
+                  }
+                ],
+                "repeated": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "mappings": [
+    {
+      "targetPath": "$.invoice.customer.name",
+      "sourcePaths": [
+        "$.order.buyer.name"
+      ],
+      "expression": "",
+      "mappingType": "direct"
+    },
+    {
+      "sourcePaths": [],
+      "targetPath": "$.invoice.metadata.version",
+      "mappingType": "constant",
+      "expression": "2.0"
+    },
+    {
+      "targetPath": "$.invoice.items",
+      "sourcePaths": [
+        "$.order.products"
+      ],
+      "expression": "",
+      "mappingType": "foreach"
+    },
+    {
+      "targetPath": "$.invoice.items.item.sku",
+      "sourcePaths": [
+        "$.order.products.product.sku"
+      ],
+      "expression": "",
+      "mappingType": "direct"
+    },
+    {
+      "targetPath": "$.invoice.items.item.price",
+      "sourcePaths": [
+        "$.order.products.product.price"
+      ],
+      "expression": "",
+      "mappingType": "direct"
+    }
+  ]
+}

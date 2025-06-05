@@ -1,0 +1,19 @@
+
+- route:
+    id: langchain4j-http-api
+    from:
+      uri: platform-http:/chat
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log: "Received HTTP request Body: ${body}"
+        - bean: MessageConverter
+        - to:
+            id: Chat LLM
+            uri: langchain4j-chat
+            parameters:
+              chatId: httpChat
+              chatModel: "#bean:chatModel" # This refers to the bean defined in LangchainBean.java
+              # chatOperation: CHAT_MULTIPLE_MESSAGES
+              lazyStartProducer: "true"
+

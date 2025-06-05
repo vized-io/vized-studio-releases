@@ -1,0 +1,57 @@
+- route:
+    id: langchain4j-http-api
+    from:
+      uri: platform-http:/chat
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log: "Received HTTP request: ${body}"
+        - to:
+            id: Chat LLM
+            uri: langchain4j-chat
+            parameters:
+              chatId: httpChat
+              chatModel: "#bean:chatModel"
+              # chatOperation: CHAT_MULTIPLE_MESSAGES
+              lazyStartProducer: "true"
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+        - transform:
+            simple: '{"response": "${body}"}'
+        - log: "Sending response: ${body}"
+
+- beans:
+    - name: chatModel
+      scriptLanguage: java
+      type: dev.langchain4j.model.chat.ChatLanguageModel
+      script: |
+        // In inline Java scripts within Camel YAML,
+        // you typically don't include package or import statements at the top.
+        // Use fully qualified names for classes.
+
+        try {
+            // Use the fully qualified name to call the static builder() method
+            var builder = dev.langchain4j.ollama.OllamaChatModel.builder();
+
+            // Set properties on the builder using standard Java method calls
+            builder.baseUrl("http://192.168.31.142:11434/");
+            builder.model("qwen3:0.6b");
+            builder.temperature(0.7);
+            // Add any other necessary builder methods here, e.g., .timeout(), .logRequests() etc.
+
+            // Build the final instance and return it
+            var chatModel = builder.build();
+
+            // Optional: Log creation (using System.out or System.err)
+            System.out.println("Java script: OllamaChatModel bean created successfully");
+
+            // Return the created bean instance
+            return chatModel;
+
+        } catch (Exception e) {
+            // Optional: Log error
+            System.err.println("Java script: Error creating OllamaChatModel bean: " + e.getMessage());
+            // It's good practice to re-throw the exception so Camel bean creation fails
+            throw new RuntimeException("Failed to create chatModel bean from script", e);
+        }

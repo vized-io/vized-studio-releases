@@ -1,0 +1,52 @@
+{
+  "name": "WeatherAgent",
+  "version": "0.0.1",
+  "artifactId": "WeatherAgent",
+  "group": "com.vized.project",
+  "relativePath": "WeatherAgent",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "WeatherAgent.camel.yaml": {
+        "langchain4j-http-api": {
+          "id": "langchain4j-http-api",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/chat"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-chat",
+              "id": "Chat LLM"
+            }
+          ]
+        },
+        "health-check": {
+          "id": "health-check",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/health"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "WeatherAgent.camel.yaml": [
+        "chatModel"
+      ]
+    }
+  },
+  "environments": {
+    "default": []
+  },
+  "dependencies": "dev.langchain4j:langchain4j-ollama:0.33.0, dev.langchain4j:langchain4j:0.36.0",
+  "aggregators": [],
+  "processors": []
+}

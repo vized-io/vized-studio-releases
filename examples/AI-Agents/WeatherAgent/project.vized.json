@@ -10,27 +10,28 @@
   "camel": {
     "routes": {
       "WeatherAgent.camel.yaml": {
-        "langchain4j-http-api": {
-          "id": "langchain4j-http-api",
+        "WeatherAgent": {
+          "id": "WeatherAgent",
           "breakpoints": [],
           "from": [
             {
-              "uri": "platform-http:/chat"
+              "uri": "platform-http",
+              "id": "Http Endpoint"
             }
           ],
           "to": [
             {
-              "uri": "langchain4j-chat",
-              "id": "Chat LLM"
+              "uri": "langchain4j-tools:weatherQuery",
+              "id": "ToolProcessor"
             }
           ]
         },
-        "health-check": {
-          "id": "health-check",
+        "WeatherTool": {
+          "id": "WeatherTool",
           "breakpoints": [],
           "from": [
             {
-              "uri": "platform-http:/health"
+              "uri": "langchain4j-tools:getWeather"
             }
           ],
           "to": []
@@ -39,14 +40,15 @@
     },
     "beans": {
       "WeatherAgent.camel.yaml": [
-        "chatModel"
+        "ollamaChatModel",
+        "geminiChatModel"
       ]
     }
   },
   "environments": {
     "default": []
   },
-  "dependencies": "dev.langchain4j:langchain4j-ollama:0.33.0, dev.langchain4j:langchain4j:0.36.0",
+  "dependencies": "dev.langchain4j:langchain4j-ollama:0.33.0, dev.langchain4j:langchain4j:0.36.0, dev.langchain4j:langchain4j-google-ai-gemini:0.36.0 ",
   "aggregators": [],
   "processors": []
 }

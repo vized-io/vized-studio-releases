@@ -1,57 +1,129 @@
 - route:
-    id: langchain4j-http-api
+    id: WeatherAgent
     from:
-      uri: platform-http:/chat
+      id: Http Endpoint
+      uri: platform-http
       parameters:
         httpMethodRestrict: POST
+        path: /chat
       steps:
-        - log: "Received HTTP request: ${body}"
+        - convertBodyTo:
+            id: Convert Body
+            type: java.lang.String
+        
+        - script:
+            id: Script
+            expression:
+              groovy:
+                expression: |-
+                  import dev.langchain4j.data.message.UserMessage
+                  import dev.langchain4j.data.message.ChatMessage;
+                  import dev.langchain4j.data.message.SystemMessage;
+                  
+                  //def question = exchange.in.body?.toString()
+                  //def userMessage = UserMessage.from(question)
+                  //exchange.in.body = userMessage
+                  def payload = exchange.in.getBody(String.class);
+                  def messages = [];
+
+                  def systemPrompt = """
+                    You are the Vized AI Assistant. 
+                    You have access to a collection of tools.
+                    You can use multiple tools at the same time.
+                    Complete your answer using data obtained from the tools.
+                    """;
+                  
+                  messages.add( new SystemMessage(systemPrompt) );
+                  messages.add(new UserMessage(payload));
+
+                  exchange.in.body = messages;
+        
+        - log:
+            id: Log Request
+            message: "Chat request received..."
+        
         - to:
-            id: Chat LLM
-            uri: langchain4j-chat
+            id: ToolProcessor
+            uri: langchain4j-tools:weatherQuery
             parameters:
-              chatId: httpChat
-              chatModel: "#bean:chatModel"
-              # chatOperation: CHAT_MULTIPLE_MESSAGES
-              lazyStartProducer: "true"
+              tags: assistant-tools
+              chatModel: "#ollamaChatModel"
+        
+        - log:
+            id: Log Chat
+            message: "Chat completed: ${body}"
+        
         - setHeader:
-            constant: application/json
             name: Content-Type
-        - transform:
-            simple: '{"response": "${body}"}'
-        - log: "Sending response: ${body}"
+            constant: application/json
+
+# Weather Tool
+- route:
+    id: WeatherTool
+    from:
+      uri: langchain4j-tools:getWeather
+      parameters:
+        tags: assistant-tools
+        description: Get current weather information for a specific location
+        parameter.location: string
+      steps:
+        - log:
+            message: "Weather tool called for location: ${header.location}"
+        - setProperty:
+            name: location
+            simple:
+              expression: "${header.location}"
+
+        - removeHeaders:
+            pattern: '*'
+        - toD:
+            uri: "https://geocoding-api.open-meteo.com/v1/search"
+            parameters:
+              httpMethod: GET
+              name: ${exchangeProperty.location}
+              limit: 1
+        - unmarshal:
+            json:
+              library: Jackson
+        - removeHeaders:
+            pattern: '*'
+        - log: "Geocoding Response: ${body[results]}"
+        - toD:
+            uri: "https://api.open-meteo.com/v1/forecast"
+            parameters:
+              httpMethod: GET
+              latitude: ${body[results][0][latitude]}
+              longitude: ${body[results][0][longitude]}
+              current: temperature_2m,precipitation
+        - unmarshal:
+            json:
+              library: Jackson
+        - log:
+            message: "Weather tool response: ${body}"
 
 - beans:
-    - name: chatModel
-      scriptLanguage: java
-      type: dev.langchain4j.model.chat.ChatLanguageModel
+    - name: ollamaChatModel
       script: |
-        // In inline Java scripts within Camel YAML,
-        // you typically don't include package or import statements at the top.
-        // Use fully qualified names for classes.
+        import dev.langchain4j.model.ollama.OllamaChatModel
+        
+        return OllamaChatModel.builder()
+          .baseUrl("http://192.168.31.142:11434")
+          .modelName("qwen3:0.6b")
+          .temperature(0.7)
+          .build()
+      scriptLanguage: groovy
+      type: dev.langchain4j.model.ollama.OllamaChatModel
+    
+    - name: geminiChatModel
+      script: |
+        import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel
+        
+        return GoogleAiGeminiChatModel.builder()
+          .apiKey("samplekeyy")
+          .modelName("gemini-2.0-flash")
+          .temperature(0.7)
+          .maxOutputTokens(1024)
+          .build()
 
-        try {
-            // Use the fully qualified name to call the static builder() method
-            var builder = dev.langchain4j.ollama.OllamaChatModel.builder();
-
-            // Set properties on the builder using standard Java method calls
-            builder.baseUrl("http://192.168.31.142:11434/");
-            builder.model("qwen3:0.6b");
-            builder.temperature(0.7);
-            // Add any other necessary builder methods here, e.g., .timeout(), .logRequests() etc.
-
-            // Build the final instance and return it
-            var chatModel = builder.build();
-
-            // Optional: Log creation (using System.out or System.err)
-            System.out.println("Java script: OllamaChatModel bean created successfully");
-
-            // Return the created bean instance
-            return chatModel;
-
-        } catch (Exception e) {
-            // Optional: Log error
-            System.err.println("Java script: Error creating OllamaChatModel bean: " + e.getMessage());
-            // It's good practice to re-throw the exception so Camel bean creation fails
-            throw new RuntimeException("Failed to create chatModel bean from script", e);
-        }
+      scriptLanguage: groovy
+      type: dev.langchain4j.model.googleai.GoogleAiGeminiChatModel

@@ -24,16 +24,16 @@ The solution uses Apache Camel's integration framework with the following compon
 - **Open-Meteo API**: Weather data provider
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+┌─────────────────┐    ┌─────────────────┐     ┌─────────────────┐
 │   HTTP Client   │───▶│ Weather Agent   │───▶│ LLM with Tools  │
-│                 │    │ (Camel Route)   │    │ (LangChain4j)   │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │                        │
-                                ▼                        ▼
-                       ┌─────────────────┐    ┌─────────────────┐
-                       │ Weather Tool    │    │ Weather APIs    │
-                       │ Consumer        │───▶│ (Open-Meteo)    │
-                       └─────────────────┘    └─────────────────┘
+│                 │    │ (Camel Route)   │     │ (LangChain4j)   │
+└─────────────────┘    └─────────────────┘     └─────────────────┘
+                                                        │
+                                                        ▼
+                                             ┌─────────────────┐    ┌─────────────────┐
+                                             │ Weather Tool    │    │ Weather APIs    │
+                                             │ Consumer        │───▶│ (Open-Meteo)    │
+                                             └─────────────────┘    └─────────────────┘
 ```
 
 
@@ -46,7 +46,6 @@ Begin by setting up your project workspace in VIZED:
 1.  Navigate to the Workspace view.
 2.  Create a new Integration Project for your routing solution.
 
-
 ### 2. Configure Your Source Component
 
 Set up the entry point for your integration flow:
@@ -57,8 +56,7 @@ Set up the entry point for your integration flow:
 
 ![Vized - Add HTTP Component](./assets/AddHTTPComponent.gif)
 
-
-### 3. Implement AI-Powered Weather Analysis
+### 3. Integrate LLM with tools
 
 Use LangChain4j integration to process natural language queries:
 
@@ -75,27 +73,27 @@ Set up the weather tool that the AI can call:
 1. Add a `langchain4j-tools:getWeather` route to handle weather data fetching.
 2. Configure the tool with proper description and parameters for the AI to understand.
 3. Implement geocoding to convert location names to coordinates.
-4. Integrate with Open-Meteo API to fetch real-time weather data.
+4. Integrate with Weather API to fetch real-time weather data.
 
 ![Vized - Create Weather Tool](./assets/CreateWeatherTool.gif)
 
-
 ### 5. Configure LLM Models
 
-Set up both Ollama and Google Gemini models as beans:
+Set up both Ollama models as beans:
 
-1. Configure Ollama chat model with local server connection.
-2. Configure Google Gemini model with API key authentication.
+1. Configure Ollama chat model with local or cloud server connection.
+2. If Required Configure model with API key authentication.
 3. Set appropriate temperature and token limits for optimal responses.
+
+![Vized - Bean](./assets/bean.png)
 
 ## Running the Integration Project
 
-1.  Select your integration project in VIZED.
-2.  Right-click on the Camel file and select "Run" from the context menu.
-3. Monitor the logs to see weather queries being processed and responses being generated.
+1. Select your integration project in VIZED.
+2. Right-click on the Camel file and select "Run" from the context menu.
+3. Hit API using postman to test the responses being generated.
 
 ![Real-time Monitoring](./assets/Executing.gif)
-
 
 
 ## Testing the Weather Agent
@@ -117,26 +115,6 @@ curl -X POST http://localhost:8080/chat \
   -H "Content-Type: text/plain" \
   -d "Is it raining in New York right now?"
 ```
-
-## External Dependencies Setup
-
-### 1. Ollama Setup (Local LLM)
-
-To use Ollama for local AI processing:
-
-1. **Install Ollama**:
-   - Download and install Ollama from [https://ollama.ai](https://ollama.ai)
-   - Start the Ollama service
-
-2. **Pull Required Model**:
-   ```bash
-   ollama pull qwen3:0.6b
-   ```
-
-3. **Configure Base URL**:
-   - Update the `baseUrl` in the configuration to match your Ollama server
-   - Default: `http://localhost:11434`
-
 
 ## Need Help?
 

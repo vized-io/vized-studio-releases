@@ -31,7 +31,8 @@
           "breakpoints": [],
           "from": [
             {
-              "uri": "langchain4j-tools:getWeather"
+              "uri": "langchain4j-tools",
+              "id": "weather tool"
             }
           ],
           "to": []
@@ -48,7 +49,7 @@
   "environments": {
     "default": []
   },
-  "dependencies": "dev.langchain4j:langchain4j-ollama:0.33.0, dev.langchain4j:langchain4j:0.36.0, dev.langchain4j:langchain4j-google-ai-gemini:0.36.0 ",
+  "dependencies": "dev.langchain4j:langchain4j-ollama:0.36.0, dev.langchain4j:langchain4j:0.36.0, dev.langchain4j:langchain4j-google-ai-gemini:0.36.0 ",
   "aggregators": [],
   "processors": []
 }

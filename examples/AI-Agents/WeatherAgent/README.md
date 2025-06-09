@@ -91,27 +91,27 @@ Set up both Ollama models as beans:
 
 1. Select your integration project in VIZED.
 2. Right-click on the Camel file and select "Run" from the context menu.
-3. Hit API using postman to test the responses being generated.
+3. Go to localhost and test using the web interface.
 
-![Real-time Monitoring](./assets/Executing.gif)
+![Real-time Monitoring](./assets/executing1.gif)
 
 
 ## Testing the Weather Agent
 
 ### Sample Requests
 
-Send POST requests to `http://localhost:8080/chat` with weather queries:
+Send POST requests to `http://localhost:8000/chat` with weather queries:
 
 **Example 1: Basic Weather Query**
 ```bash
-curl -X POST http://localhost:8080/chat \
+curl -X POST http://localhost:8000/chat \
   -H "Content-Type: text/plain" \
   -d "What's the weather like in London?"
 ```
 
 **Example 2: Specific Weather Information**
 ```bash
-curl -X POST http://localhost:8080/chat \
+curl -X POST http://localhost:8000/chat \
   -H "Content-Type: text/plain" \
   -d "Is it raining in New York right now?"
 ```

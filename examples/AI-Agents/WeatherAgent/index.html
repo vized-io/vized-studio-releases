@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vized Weather AI Agent</title>
+    <!-- Add this in the <head> section -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
 
         :root {
@@ -218,7 +220,8 @@
 
                 const messageContentDiv = document.createElement('div');
                 messageContentDiv.classList.add('ai-message-content');
-                messageContentDiv.innerText = actualMessage;
+                // messageContentDiv.innerText = actualMessage;
+                messageContentDiv.innerHTML = marked.parse(actualMessage);
                 messageBubble.appendChild(messageContentDiv);
 
                 if (thoughts) {

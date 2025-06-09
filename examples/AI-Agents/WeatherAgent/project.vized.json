@@ -21,8 +21,8 @@
           ],
           "to": [
             {
-              "uri": "langchain4j-tools:weatherQuery",
-              "id": "ToolProcessor"
+              "uri": "langchain4j-tools",
+              "id": "Langchain Chat model"
             }
           ]
         },

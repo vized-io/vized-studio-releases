@@ -93,7 +93,7 @@ Set up both Ollama models as beans:
 2. Right-click on the Camel file and select "Run" from the context menu.
 3. Go to localhost and test using the web interface.
 
-![Real-time Monitoring](./assets/executing1.gif)
+![Real-time Monitoring](./assets/executing2.gif)
 
 
 ## Testing the Weather Agent

@@ -50,11 +50,12 @@
             id: Log Request
             message: Chat request received...
         - to:
-            id: ToolProcessor
-            uri: langchain4j-tools:weatherQuery
+            id: Langchain Chat model
+            uri: langchain4j-tools
             parameters:
               chatModel: "#ollamaChatModel"
               tags: assistant-tools
+              toolId: weatherQuery
         - log:
             id: Log Chat
             message: "Chat completed: ${body}"

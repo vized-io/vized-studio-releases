@@ -1,0 +1,74 @@
+{
+  "name": "ChangeDataCapture",
+  "version": "0.0.1",
+  "artifactId": "ChangeDataCapture",
+  "group": "com.vized.project",
+  "relativePath": "ChangeDataCapture",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "ChangeDataCapture.camel.yaml": {
+        "Change Data Capture": {
+          "id": "Change Data Capture",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "debezium-mysql",
+              "id": "Debezium Mysql"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct",
+              "id": "user route"
+            },
+            {
+              "uri": "direct",
+              "id": "order route"
+            }
+          ]
+        },
+        "User Change Route": {
+          "id": "User Change Route",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct",
+              "id": "Direct User"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file",
+              "id": "cdc output"
+            }
+          ]
+        },
+        "Order Change Route": {
+          "id": "Order Change Route",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct",
+              "id": "Direct Order "
+            }
+          ],
+          "to": [
+            {
+              "uri": "file",
+              "id": "cdc output 1"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "ChangeDataCapture.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

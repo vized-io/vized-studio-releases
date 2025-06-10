@@ -1,0 +1,229 @@
+- route:
+    id: Change Data Capture
+    from:
+      id: Debezium Mysql
+      uri: debezium-mysql
+      parameters:
+        databaseHostname: 192.168.31.142
+        databaseIncludeList: testdb
+        databasePassword: Beater@001
+        databasePort: 3306
+        databaseServerId: 1
+        databaseUser: debezium_user
+        name: mysql-connector
+        offsetStorageFileName: /tmp/offsets.dat
+        schemaHistoryInternal: io.debezium.storage.file.history.FileSchemaHistory
+        schemaHistoryInternalFileFilename: /tmp/dbhistory.dat
+        tableIncludeList: testdb.users,testdb.orders
+        topicPrefix: pr
+      steps:
+        - log:
+            id: Log Status
+            message: Received CDC event...
+        - filter:
+            id: Filter Body
+            steps:
+              - script:
+                  id: Process And Enrichment
+                  expression:
+                    groovy: >
+                      def body = exchange.in.body
+
+                      def headers = exchange.in.headers
+
+
+                      // Extract metadata from Camel headers
+
+                      def operation = headers.get("CamelDebeziumOperation") ?:
+                      "unknown"
+
+                      def sourceMetadata =
+                      headers.get("CamelDebeziumSourceMetadata") ?: [:]
+
+                      def database = sourceMetadata.db ?: "unknown"
+
+                      def table = sourceMetadata.table ?: "unknown"
+
+                      def timestamp = headers.get("CamelDebeziumTimestamp") ?:
+                      System.currentTimeMillis()
+
+
+                      // Convert Struct body to Map for easier processing
+
+                      def bodyMap = [:]
+
+                      if (body != null) {
+                          // Handle Struct object - convert to map
+                          def schema = body.schema()
+                          schema.fields().each { field ->
+                              def value = body.get(field.name())
+                              bodyMap[field.name()] = value
+                          }
+                      }
+
+
+                      // Create enriched message as Map
+
+                      def enrichedEvent = [
+                        metadata: [
+                          operation: operation,
+                          database: database,
+                          table: table,
+                          timestamp: new Date(timestamp as Long),
+                          processed_at: new Date(),
+                          source_info: [
+                            file: sourceMetadata.file,
+                            pos: sourceMetadata.pos,
+                            server_id: sourceMetadata.server_id,
+                            gtid: sourceMetadata.gtid
+                          ]
+                        ],
+                        data: bodyMap
+                      ]
+
+
+                      // Set the enriched event as body (keeping it as Map)
+
+                      exchange.in.body = enrichedEvent
+
+
+                      // Set headers for routing
+
+                      exchange.in.setHeader("CDC_OPERATION", operation)
+
+                      exchange.in.setHeader("CDC_TABLE", table)
+
+                      exchange.in.setHeader("CDC_DATABASE", database)
+              - choice:
+                  id: Choice
+                  otherwise:
+                    id: Otherwise
+                    steps:
+                      - log:
+                          id: Log Error
+                          message: "Unhandled table: ${header.CDC_TABLE}"
+                  when:
+                    - id: User
+                      steps:
+                        - to:
+                            id: user route
+                            uri: direct
+                            parameters:
+                              name: process-user-changes
+                      expression:
+                        simple: ${header.CDC_TABLE} == 'users'
+                    - id: Orders
+                      steps:
+                        - to:
+                            id: order route
+                            uri: direct
+                            parameters:
+                              name: process-order-changes
+                      expression:
+                        simple: ${header.CDC_TABLE} == 'orders'
+            expression:
+              simple:
+                expression: ${body} != null
+- route:
+    id: User Change Route
+    from:
+      id: Direct User
+      uri: direct
+      parameters:
+        name: process-user-changes
+      steps:
+        - log:
+            id: User Change Log
+            message: "Processing USER change - Operation: ${header.CDC_OPERATION}"
+        - script:
+            id: Log User Operation
+            expression:
+              groovy: >
+                def event = exchange.in.body
+
+                def operation = exchange.in.getHeader("CDC_OPERATION")
+
+
+                switch(operation) {
+                  case "c": // CREATE
+                    log.info("New user created: ${event.data.name} (${event.data.email}) with ID: ${event.data.id}")
+                    break
+                  case "u": // UPDATE  
+                    log.info("User updated: ID ${event.data.id} - Name: ${event.data.name}")
+                    break
+                  case "d": // DELETE
+                    log.info("User deleted: ID ${event.data.id}")
+                    break
+                  default:
+                    log.warn("Unknown operation: ${operation}")
+                }
+
+                // Log additional metadata
+
+                log.info("CDC Metadata - Database: ${event.metadata.database},
+                Table: ${event.metadata.table}, Timestamp:
+                ${event.metadata.timestamp}")
+        - marshal:
+            id: marshal user
+            json:
+              library: Jackson
+        - to:
+            id: cdc output
+            uri: file
+            parameters:
+              directoryName: /tmp/cdc-output
+              fileExist: Append
+              fileName: user-changes-${date:now:yyyyMMdd}.json
+- route:
+    id: Order Change Route
+    from:
+      id: "Direct Order "
+      uri: direct
+      parameters:
+        name: process-order-changes
+      steps:
+        - log:
+            id: Order Log
+            message: "Processing ORDER change - Operation: ${header.CDC_OPERATION}"
+        - script:
+            id: Log Order Operation
+            expression:
+              groovy: >
+                def event = exchange.in.body
+
+                def operation = exchange.in.getHeader("CDC_OPERATION")
+
+
+                switch(operation) {
+                  case "c": // CREATE
+                    log.info("New order created: Order ID ${event.data.id} for user ${event.data.user_id}")
+                    // Could trigger order fulfillment process
+                    break
+                  case "u": // UPDATE
+                    log.info("Order updated: Order ID ${event.data.id} - Status: ${event.data.status}")
+                    // Could trigger notifications
+                    break  
+                  case "d": // DELETE
+                    log.info("Order cancelled: Order ID ${event.data.id}")
+                    break
+                  default:
+                    log.warn("Unknown operation: ${operation}")
+                }
+
+
+                // Log additional metadata
+
+                log.info("CDC Metadata - Database: ${event.metadata.database},
+                Table: ${event.metadata.table}, Timestamp:
+                ${event.metadata.timestamp}")
+        - marshal:
+            id: marshal order
+            json:
+              library: Jackson
+        - to:
+            id: cdc output 1
+            uri: file
+            parameters:
+              directoryName: /tmp/cdc-output
+              fileExist: Append
+              fileName: order-changes-${date:now:yyyyMMdd}.json

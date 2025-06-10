@@ -1,0 +1,789 @@
+# Order Processing System with Control Bus Management
+# Real-world scenario: E-commerce order processing with dynamic route control
+
+- route:
+    id: orderIngestionRoute
+    description: "Ingests orders from multiple sources (files, HTTP). Can be controlled via Control Bus."
+    autoStartup: false
+    from:
+      uri: file:orders/incoming
+      parameters:
+        noop: false
+        move: orders/processed
+        moveFailed: orders/failed
+        initialDelay: 2000
+        delay: 10000
+      steps:
+        - log:
+            message: "Order ingestion processing file: ${header.CamelFileName}"
+        - unmarshal:
+            json: {}
+        - setHeader:
+            name: orderId
+            simple: "${body[orderId]}"
+        - setHeader:
+            name: orderStatus
+            constant: "RECEIVED"
+        - to:
+            uri: direct:validateOrder
+
+- route:
+    id: orderValidationRoute
+    description: "Validates incoming orders. Can be enabled/disabled for maintenance."
+    autoStartup: false
+    from:
+      uri: direct:validateOrder
+      steps:
+        - log:
+            message: "Validating order: ${header.orderId}"
+        - script:
+            language: js
+            expression: >
+              var order = exchange.in.body;
+              var isValid = order.customerId && order.items && order.items.length > 0 && order.totalAmount > 0;
+              exchange.in.headers.orderValid = isValid;
+              if (!isValid) {
+                exchange.in.headers.validationError = "Missing required fields: customerId, items, or totalAmount";
+              }
+        - choice:
+            when:
+              - simple: "${header.orderValid} == true"
+                steps:
+                  - log:
+                      message: "Order ${header.orderId} is valid, proceeding to inventory check"
+                  - to:
+                      uri: direct:checkInventory
+            otherwise:
+              steps:
+                - log:
+                    message: "Order ${header.orderId} validation failed: ${header.validationError}"
+                - to:
+                    uri: direct:handleInvalidOrder
+
+- route:
+    id: inventoryCheckRoute
+    description: "Checks inventory availability. Can be paused during inventory updates."
+    autoStartup: false
+    from:
+      uri: direct:checkInventory
+      steps:
+        - log:
+            message: "Checking inventory for order: ${header.orderId}"
+        - script:
+            language: js
+            expression: >
+              var order = exchange.in.body;
+              var allItemsAvailable = true;
+              var unavailableItems = [];
+              
+              // Simulate inventory check
+              for (var i = 0; i < order.items.length; i++) {
+                var item = order.items[i];
+                // Simulate random availability (80% chance available)
+                if (Math.random() < 0.2) {
+                  allItemsAvailable = false;
+                  unavailableItems.push(item.productId);
+                }
+              }
+              
+              exchange.in.headers.inventoryAvailable = allItemsAvailable;
+              exchange.in.headers.unavailableItems = unavailableItems.join(", ");
+        - choice:
+            when:
+              - simple: "${header.inventoryAvailable} == true"
+                steps:
+                  - log:
+                      message: "Inventory available for order: ${header.orderId}"
+                  - setHeader:
+                      name: orderStatus
+                      constant: "INVENTORY_CONFIRMED"
+                  - to:
+                      uri: direct:processPayment
+            otherwise:
+              steps:
+                - log:
+                    message: "Inventory unavailable for order: ${header.orderId}. Items: ${header.unavailableItems}"
+                - setHeader:
+                    name: orderStatus
+                    constant: "INVENTORY_UNAVAILABLE"
+                - to:
+                    uri: direct:handleInventoryUnavailable
+
+- route:
+    id: paymentProcessingRoute
+    description: "Processes payments. Can be stopped during payment gateway maintenance."
+    autoStartup: false
+    from:
+      uri: direct:processPayment
+      steps:
+        - log:
+            message: "Processing payment for order: ${header.orderId}"
+        - script:
+            language: js
+            expression: >
+              var order = exchange.in.body;
+              // Simulate payment processing (90% success rate)
+              var paymentSuccess = Math.random() < 0.9;
+              exchange.in.headers.paymentSuccess = paymentSuccess;
+              exchange.in.headers.transactionId = "TXN-" + Math.floor(Math.random() * 1000000);
+        - choice:
+            when:
+              - simple: "${header.paymentSuccess} == true"
+                steps:
+                  - log:
+                      message: "Payment successful for order: ${header.orderId}, Transaction: ${header.transactionId}"
+                  - setHeader:
+                      name: orderStatus
+                      constant: "PAYMENT_CONFIRMED"
+                  - to:
+                      uri: direct:fulfillOrder
+            otherwise:
+              steps:
+                - log:
+                    message: "Payment failed for order: ${header.orderId}"
+                - setHeader:
+                    name: orderStatus
+                    constant: "PAYMENT_FAILED"
+                - to:
+                    uri: direct:handlePaymentFailure
+
+- route:
+    id: orderFulfillmentRoute
+    description: "Handles order fulfillment and shipping. Can be controlled during warehouse operations."
+    autoStartup: false
+    from:
+      uri: direct:fulfillOrder
+      steps:
+        - log:
+            message: "Fulfilling order: ${header.orderId}"
+        - script:
+            language: js
+            expression: >
+              var order = exchange.in.body;
+              exchange.in.headers.trackingNumber = "TRACK-" + Math.floor(Math.random() * 1000000);
+              exchange.in.headers.estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+        - setHeader:
+            name: orderStatus
+            constant: "SHIPPED"
+        - log:
+            message: "Order ${header.orderId} shipped with tracking: ${header.trackingNumber}"
+        - to:
+            uri: direct:sendNotification
+
+- route:
+    id: notificationRoute
+    description: "Sends customer notifications. Can be disabled during maintenance."
+    autoStartup: false
+    from:
+      uri: direct:sendNotification
+      steps:
+        - log:
+            message: "Sending notification for order: ${header.orderId}, Status: ${header.orderStatus}"
+        - script:
+            language: js
+            expression: >
+              var order = exchange.in.body;
+              var notification = {
+                orderId: exchange.in.headers.orderId,
+                customerId: order.customerId,
+                status: exchange.in.headers.orderStatus,
+                message: "Your order " + exchange.in.headers.orderId + " has been " + exchange.in.headers.orderStatus.toLowerCase(),
+                trackingNumber: exchange.in.headers.trackingNumber,
+                estimatedDelivery: exchange.in.headers.estimatedDelivery
+              };
+              exchange.in.body = notification;
+        - to:
+            uri: file:notifications/outgoing
+            parameters:
+              fileName: "notification-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
+
+# Error handling routes
+- route:
+    id: handleInvalidOrderRoute
+    from:
+      uri: direct:handleInvalidOrder
+      steps:
+        - log:
+            message: "Handling invalid order: ${header.orderId}"
+        - to:
+            uri: file:orders/invalid
+            parameters:
+              fileName: "invalid-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
+
+- route:
+    id: handleInventoryUnavailableRoute
+    from:
+      uri: direct:handleInventoryUnavailable
+      steps:
+        - log:
+            message: "Handling inventory unavailable for order: ${header.orderId}"
+        - to:
+            uri: file:orders/backorder
+            parameters:
+              fileName: "backorder-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
+
+- route:
+    id: handlePaymentFailureRoute
+    from:
+      uri: direct:handlePaymentFailure
+      steps:
+        - log:
+            message: "Handling payment failure for order: ${header.orderId}"
+        - to:
+            uri: file:orders/payment-failed
+            parameters:
+              fileName: "payment-failed-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
+
+# HTTP Control Interface
+- route:
+    id: httpControlInterface
+    from:
+      uri: platform-http:/admin/control
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            message: "Control request received: ${body}"
+        - unmarshal:
+            json: {}
+        - setHeader:
+            name: action
+            simple: "${body[action]}"
+        - setHeader:
+            name: routeId
+            simple: "${body[routeId]}"
+        - setHeader:
+            name: component
+            simple: "${body[component]}"
+        - to:
+            uri: direct:processControlCommand
+        - setBody:
+            simple: '{"status": "success", "message": "Command ${header.action} executed for ${header.routeId}", "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"}'
+
+# Advanced Control Bus with multiple operations
+- route:
+    id: controlBusManager
+    from:
+      uri: direct:processControlCommand
+      steps:
+        - log:
+            message: "Processing control command - Action: ${header.action}, Route: ${header.routeId}"
+        - choice:
+            when:
+              # Start individual route
+              - simple: "${header.action} == 'start' && ${header.routeId} != null"
+                steps:
+                  - log:
+                      message: "Starting route: ${header.routeId}"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: ${header.routeId}
+              
+              # Stop individual route
+              - simple: "${header.action} == 'stop' && ${header.routeId} != null"
+                steps:
+                  - log:
+                      message: "Stopping route: ${header.routeId}"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: ${header.routeId}
+              
+              # Start entire order processing pipeline
+              - simple: "${header.action} == 'start-pipeline'"
+                steps:
+                  - log:
+                      message: "Starting entire order processing pipeline"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: orderIngestionRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: orderValidationRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: inventoryCheckRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: paymentProcessingRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: orderFulfillmentRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: notificationRoute
+              
+              # Stop entire pipeline
+              - simple: "${header.action} == 'stop-pipeline'"
+                steps:
+                  - log:
+                      message: "Stopping entire order processing pipeline"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: orderIngestionRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: orderValidationRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: inventoryCheckRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: paymentProcessingRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: orderFulfillmentRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: notificationRoute
+              
+              # Maintenance mode - stop processing but keep monitoring
+              - simple: "${header.action} == 'maintenance-mode'"
+                steps:
+                  - log:
+                      message: "Entering maintenance mode - stopping processing routes"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: paymentProcessingRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: inventoryCheckRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: orderFulfillmentRoute
+              
+              # Resume from maintenance
+              - simple: "${header.action} == 'resume-from-maintenance'"
+                steps:
+                  - log:
+                      message: "Resuming from maintenance mode"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: paymentProcessingRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: inventoryCheckRoute
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: orderFulfillmentRoute
+              
+              # Get route status
+              - simple: "${header.action} == 'status'"
+                steps:
+                  - log:
+                      message: "Getting status for route: ${header.routeId}"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: status
+                        routeId: ${header.routeId}
+            
+            otherwise:
+              steps:
+                - log:
+                    message: "Unknown control command: ${header.action}. Valid commands: start, stop, start-pipeline, stop-pipeline, maintenance-mode, resume-from-maintenance, status"
+
+# Monitoring and Health Check Route
+- route:
+    id: healthCheckRoute
+    from:
+      uri: platform-http:/admin/health
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - script:
+            language: js
+            expression: >
+              var healthStatus = {
+                timestamp: new Date().toISOString(),
+                system: "Order Processing System",
+                routes: {
+                  orderIngestion: "unknown",
+                  orderValidation: "unknown", 
+                  inventoryCheck: "unknown",
+                  paymentProcessing: "unknown",
+                  orderFulfillment: "unknown",
+                  notification: "unknown"
+                },
+                overallStatus: "healthy"
+              };
+              exchange.in.body = healthStatus;
+        - marshal:
+            json: {}
+
+# Scheduled Control Bus Operations
+- route:
+    id: scheduledMaintenanceRoute
+    from:
+      uri: timer:scheduledMaintenance
+      parameters:
+        period: 3600000 # Every hour
+        delay: 10000 # Start after 10 seconds
+      steps:
+        - script:
+            language: js
+            expression: >
+              var currentHour = new Date().getHours();
+              // Schedule maintenance between 2 AM and 4 AM
+              var isMaintenanceWindow = currentHour >= 2 && currentHour < 4;
+              exchange.in.headers.isMaintenanceWindow = isMaintenanceWindow;
+        - choice:
+            when:
+              - simple: "${header.isMaintenanceWindow} == true"
+                steps:
+                  - log:
+                      message: "Maintenance window detected - entering maintenance mode"
+                  - setHeader:
+                      name: action
+                      constant: "maintenance-mode"
+                  - to:
+                      uri: direct:processControlCommand
+            otherwise:
+              steps:
+                - log:
+                    message: "Outside maintenance window - ensuring services are running"
+                - setHeader:
+                    name: action
+                    constant: "resume-from-maintenance"
+                - to:
+                    uri: direct:processControlCommand
+
+# Circuit Breaker Pattern with Control Bus
+- route:
+    id: circuitBreakerMonitorRoute
+    from:
+      uri: timer:circuitBreakerMonitor
+      parameters:
+        period: 30000 # Every 30 seconds
+        delay: 5000
+      steps:
+        - script:
+            language: js
+            expression: >
+              // Simulate monitoring external service health
+              var paymentGatewayHealth = Math.random() > 0.1; // 90% uptime
+              var inventoryServiceHealth = Math.random() > 0.05; // 95% uptime
+              
+              exchange.in.headers.paymentGatewayHealthy = paymentGatewayHealth;
+              exchange.in.headers.inventoryServiceHealthy = inventoryServiceHealth;
+        - choice:
+            when:
+              - simple: "${header.paymentGatewayHealthy} == false"
+                steps:
+                  - log:
+                      message: "Payment gateway unhealthy - stopping payment processing route"
+                  - setHeader:
+                      name: action
+                      constant: "stop"
+                  - setHeader:
+                      name: routeId
+                      constant: "paymentProcessingRoute"
+                  - to:
+                      uri: direct:processControlCommand
+              - simple: "${header.inventoryServiceHealthy} == false"
+                steps:
+                  - log:
+                      message: "Inventory service unhealthy - stopping inventory check route"
+                  - setHeader:
+                      name: action
+                      constant: "stop"
+                  - setHeader:
+                      name: routeId
+                      constant: "inventoryCheckRoute"
+                  - to:
+                      uri: direct:processControlCommand
+            otherwise:
+              steps:
+                - log:
+                    message: "All external services healthy - ensuring routes are running"
+
+# Load-based Control Bus Operations
+- route:
+    id: loadBasedControlRoute
+    from:
+      uri: timer:loadMonitor
+      parameters:
+        period: 60000 # Every minute
+        delay: 15000
+      steps:
+        - script:
+            language: js
+            expression: >
+              // Simulate system load monitoring
+              var cpuUsage = Math.random() * 100;
+              var memoryUsage = Math.random() * 100;
+              var queueSize = Math.floor(Math.random() * 1000);
+              
+              exchange.in.headers.cpuUsage = cpuUsage;
+              exchange.in.headers.memoryUsage = memoryUsage;
+              exchange.in.headers.queueSize = queueSize;
+              
+              // Determine if system is under high load
+              var highLoad = cpuUsage > 80 || memoryUsage > 85 || queueSize > 500;
+              exchange.in.headers.highLoad = highLoad;
+        - log:
+            message: "System metrics - CPU: ${header.cpuUsage}%, Memory: ${header.memoryUsage}%, Queue: ${header.queueSize}"
+        - choice:
+            when:
+              - simple: "${header.highLoad} == true"
+                steps:
+                  - log:
+                      message: "High system load detected - throttling non-critical routes"
+                  - setHeader:
+                      name: action
+                      constant: "stop"
+                  - setHeader:
+                      name: routeId
+                      constant: "notificationRoute"
+                  - to:
+                      uri: direct:processControlCommand
+                  # Reduce polling frequency for order ingestion
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: orderIngestionRoute
+                  - delay:
+                      constant: 2000
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: orderIngestionRoute
+            otherwise:
+              steps:
+                - log:
+                    message: "System load normal - ensuring all routes are active"
+                - setHeader:
+                    name: action
+                    constant: "start"
+                - setHeader:
+                    name: routeId
+                    constant: "notificationRoute"
+                - to:
+                    uri: direct:processControlCommand
+
+# Business Hours Control
+- route:
+    id: businessHoursControlRoute
+    from:
+      uri: timer:businessHours
+      parameters:
+        period: 300000 # Every 5 minutes
+        delay: 20000
+      steps:
+        - script:
+            language: js
+            expression: >
+              var now = new Date();
+              var hour = now.getHours();
+              var dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+              
+              // Business hours: Monday-Friday, 9 AM - 6 PM
+              var isBusinessHours = (dayOfWeek >= 1 && dayOfWeek <= 5) && (hour >= 9 && hour < 18);
+              exchange.in.headers.isBusinessHours = isBusinessHours;
+        - choice:
+            when:
+              - simple: "${header.isBusinessHours} == true"
+                steps:
+                  - log:
+                      message: "Business hours - enabling full order processing"
+                  - setHeader:
+                      name: action
+                      constant: "start-pipeline"
+                  - to:
+                      uri: direct:processControlCommand
+            otherwise:
+              steps:
+                - log:
+                    message: "Outside business hours - limited processing mode"
+                # Keep order ingestion running but stop fulfillment
+                - setHeader:
+                    name: action
+                    constant: "start"
+                - setHeader:
+                    name: routeId
+                    constant: "orderIngestionRoute"
+                - to:
+                    uri: direct:processControlCommand
+                - setHeader:
+                    name: action
+                    constant: "stop"
+                - setHeader:
+                    name: routeId
+                    constant: "orderFulfillmentRoute"
+                - to:
+                    uri: direct:processControlCommand
+
+# Emergency Shutdown Route
+- route:
+    id: emergencyShutdownRoute
+    from:
+      uri: platform-http:/admin/emergency-shutdown
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            message: "EMERGENCY SHUTDOWN INITIATED"
+            loggingLevel: ERROR
+        - setHeader:
+            name: action
+            constant: "stop-pipeline"
+        - to:
+            uri: direct:processControlCommand
+        - log:
+            message: "All order processing routes have been stopped"
+            loggingLevel: WARN
+        - setBody:
+            simple: '{"status": "emergency_shutdown_complete", "message": "All order processing routes stopped", "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"}'
+
+# Route Statistics and Metrics
+- route:
+    id: routeMetricsRoute
+    from:
+      uri: platform-http:/admin/metrics
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - script:
+            language: js
+            expression: >
+              var metrics = {
+                timestamp: new Date().toISOString(),
+                system: "Order Processing System",
+                routes: {
+                  orderIngestion: {
+                    id: "orderIngestionRoute",
+                    status: "unknown",
+                    description: "Processes incoming order files"
+                  },
+                  orderValidation: {
+                    id: "orderValidationRoute", 
+                    status: "unknown",
+                    description: "Validates order data integrity"
+                  },
+                  inventoryCheck: {
+                    id: "inventoryCheckRoute",
+                    status: "unknown", 
+                    description: "Verifies product availability"
+                  },
+                  paymentProcessing: {
+                    id: "paymentProcessingRoute",
+                    status: "unknown",
+                    description: "Handles payment transactions"
+                  },
+                  orderFulfillment: {
+                    id: "orderFulfillmentRoute",
+                    status: "unknown",
+                    description: "Manages shipping and tracking"
+                  },
+                  notification: {
+                    id: "notificationRoute",
+                    status: "unknown",
+                    description: "Sends customer notifications"
+                  }
+                },
+                controlCommands: [
+                  "start - Start specific route",
+                  "stop - Stop specific route", 
+                  "start-pipeline - Start all processing routes",
+                  "stop-pipeline - Stop all processing routes",
+                  "maintenance-mode - Enter maintenance mode",
+                  "resume-from-maintenance - Resume from maintenance",
+                  "status - Get route status"
+                ]
+              };
+              exchange.in.body = metrics;
+        - marshal:
+            json: {}
+
+# Configuration Management Route
+- route:
+    id: configurationManagementRoute
+    from:
+      uri: platform-http:/admin/config
+      parameters:
+        httpMethodRestrict: PUT
+      steps:
+        - log:
+            message: "Configuration update request received"
+        - unmarshal:
+            json: {}
+        - script:
+            language: js
+            expression: >
+              var config = exchange.in.body;
+              var response = {
+                status: "success",
+                message: "Configuration updated",
+                timestamp: new Date().toISOString(),
+                updatedSettings: config
+              };
+              
+              // Apply configuration changes via Control Bus
+              if (config.maintenanceMode) {
+                exchange.in.headers.triggerMaintenance = true;
+              }
+              if (config.emergencyStop) {
+                exchange.in.headers.triggerEmergencyStop = true;
+              }
+              
+              exchange.in.body = response;
+        - choice:
+            when:
+              - simple: "${header.triggerMaintenance} == true"
+                steps:
+                  - setHeader:
+                      name: action
+                      constant: "maintenance-mode"
+                  - to:
+                      uri: direct:processControlCommand
+              - simple: "${header.triggerEmergencyStop} == true"
+                steps:
+                  - setHeader:
+                      name: action
+                      constant: "stop-pipeline"
+                  - to:
+                      uri: direct:processControlCommand
+        - marshal:
+            json: {}
+

@@ -4,3 +4,14 @@ test.md
 examples/EIP/Aggregation/.camel-jbang/camel-jbang-run.properties
 examples/TicketAgent/.camel-jbang/camel-jbang-run.properties
 .camel-jbang
+.vscode/settings.json
+Components/*
+examples/Components/Mongodb/mongodb.camel.yaml
+Ai/*
+
+test/*
+prompts.md
+examples/Components/EmailTrigger/application.properties
+examples/Components/EmailTrigger/EmailTrigger.camel.yaml
+examples/Components/EmailTrigger/project.vized.json
+examples/Components/EmailTrigger/README.md

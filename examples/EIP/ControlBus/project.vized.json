@@ -1,0 +1,82 @@
+{
+  "name": "ControlBus",
+  "version": "0.0.1",
+  "artifactId": "ControlBus",
+  "group": "com.vized.project",
+  "relativePath": "ControlBus",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "ControlBus.camel.yaml": {
+        "fileProcessingRoute": {
+          "id": "fileProcessingRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:data/input",
+              "id": "ReadInputFolder"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:data/output",
+              "id": "WriteToOutput"
+            }
+          ]
+        },
+        "controlBusRoute": {
+          "id": "controlBusRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:control",
+              "id": "ReceiveControlCommand"
+            }
+          ],
+          "to": [
+            {
+              "uri": "controlbus:route?routeId=fileProcessingRoute&action=start",
+              "id": "StartRoute"
+            },
+            {
+              "uri": "controlbus:route?routeId=fileProcessingRoute&action=stop",
+              "id": "StopRoute"
+            },
+            {
+              "uri": "controlbus:route?routeId=fileProcessingRoute&action=status",
+              "id": "StatusRoute"
+            },
+            {
+              "uri": "stream:out",
+              "id": "PrintToConsole"
+            }
+          ]
+        },
+        "commandSender": {
+          "id": "commandSender",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:commandTimer",
+              "id": "TimerTrigger"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:control",
+              "id": "SendToControlRoute"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "ControlBus.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

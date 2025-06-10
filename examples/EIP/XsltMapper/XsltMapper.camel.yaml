@@ -1,0 +1,17 @@
+- route:
+    id: route-3916
+    from:
+      id: from-1367
+      uri: file:input
+      parameters: {}
+      steps:
+        - to:
+            id: to-1910
+            uri: xslt
+            parameters:
+              resourceUri: classpath:Xslt.xslt
+        - to:
+            id: to-3282
+            uri: log
+            parameters:
+              loggerName: logger-xslt

@@ -1,0 +1,55 @@
+{
+  "name": "WeatherAgent",
+  "version": "0.0.1",
+  "artifactId": "WeatherAgent",
+  "group": "com.vized.project",
+  "relativePath": "WeatherAgent",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "WeatherAgent.camel.yaml": {
+        "WeatherAgent": {
+          "id": "WeatherAgent",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "Http Endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-tools",
+              "id": "Langchain Chat model"
+            }
+          ]
+        },
+        "WeatherTool": {
+          "id": "WeatherTool",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "langchain4j-tools",
+              "id": "weather tool"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "WeatherAgent.camel.yaml": [
+        "ollamaChatModel",
+        "geminiChatModel"
+      ]
+    }
+  },
+  "environments": {
+    "default": []
+  },
+  "dependencies": "dev.langchain4j:langchain4j-ollama:0.36.0, dev.langchain4j:langchain4j:0.36.0, dev.langchain4j:langchain4j-google-ai-gemini:0.36.0 ",
+  "aggregators": [],
+  "processors": []
+}

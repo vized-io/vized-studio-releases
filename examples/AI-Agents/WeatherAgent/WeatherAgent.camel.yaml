@@ -1,0 +1,145 @@
+- route:
+    id: WeatherAgent
+    from:
+      id: Http Endpoint
+      uri: platform-http
+      parameters:
+        httpMethodRestrict: POST
+        path: /chat
+      steps:
+        - convertBodyTo:
+            id: Convert Body
+            type: java.lang.String
+        - script:
+            id: System Prompt
+            expression:
+              groovy:
+                expression: >-
+                  import dev.langchain4j.data.message.UserMessage
+
+                  import dev.langchain4j.data.message.ChatMessage;
+
+                  import dev.langchain4j.data.message.SystemMessage;
+
+
+                  //def question = exchange.in.body?.toString()
+
+                  //def userMessage = UserMessage.from(question)
+
+                  //exchange.in.body = userMessage
+
+                  def payload = exchange.in.getBody(String.class);
+
+                  def messages = [];
+
+
+                  def systemPrompt = """
+                    You are the Vized AI Assistant. Introduce youself as Vized AI Assistant. 
+                    You are general agent along with access to a collection of tools.
+                    You can use multiple tools at the same time.
+                    
+                    """;
+
+                  messages.add( new SystemMessage(systemPrompt) );
+
+                  messages.add(new UserMessage(payload));
+
+
+                  exchange.in.body = messages;
+        - log:
+            id: Log Request
+            message: Chat request received...
+        - to:
+            id: Langchain Chat model
+            uri: langchain4j-tools
+            parameters:
+              chatModel: "#ollamaChatModel"
+              tags: assistant-tools
+              toolId: weatherQuery
+        - log:
+            id: Log Chat
+            message: "Chat completed: ${body}"
+        - setHeader:
+            constant: application/json
+            name: Content-Type
+- route:
+    id: WeatherTool
+    from:
+      id: weather tool
+      uri: langchain4j-tools
+      parameters:
+        description: Get current weather information for a specific location
+        parameter.location: string
+        tags: assistant-tools
+        toolId: getWeather
+      steps:
+        - log:
+            id: Log location
+            message: "Weather tool called for location: ${header.location}"
+        - setProperty:
+            id: set Location Prop
+            expression:
+              simple:
+                expression: ${header.location}
+            name: location
+        - removeHeaders:
+            id: Remove All Headers
+            pattern: "*"
+        - toD:
+            id: Geo Code API
+            uri: https
+            parameters:
+              httpMethod: GET
+              httpUri: geocoding-api.open-meteo.com/v1/search
+              limit: 1
+              name: ${exchangeProperty.location}
+        - unmarshal:
+            id: unmarshal
+            json:
+              library: Jackson
+        - removeHeaders:
+            id: remove all header 1
+            pattern: "*"
+        - log:
+            id: Log gecode res
+            message: "Geocoding Response: ${body[results]}"
+        - toD:
+            id: weather api
+            uri: https
+            parameters:
+              current: temperature_2m,precipitation
+              httpMethod: GET
+              httpUri: api.open-meteo.com/v1/forecast
+              latitude: ${body[results][0][latitude]}
+              longitude: ${body[results][0][longitude]}
+        - unmarshal:
+            id: unmarshal
+            json:
+              library: Jackson
+        - log:
+            id: Log weather res
+            message: "Weather tool response: ${body}"
+- beans:
+    - name: ollamaChatModel
+      script: |
+        import dev.langchain4j.model.ollama.OllamaChatModel
+
+        return OllamaChatModel.builder()
+          .baseUrl("http://192.168.31.142:11434")
+          .modelName("qwen3:0.6b")
+          .temperature(0.7)
+          .build()
+      scriptLanguage: groovy
+      type: dev.langchain4j.model.ollama.OllamaChatModel
+    - name: geminiChatModel
+      script: |
+        import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel
+
+        return GoogleAiGeminiChatModel.builder()
+          .apiKey("samplekeyy")
+          .modelName("gemini-2.0-flash")
+          .temperature(0.7)
+          .maxOutputTokens(1024)
+          .build()
+      scriptLanguage: groovy
+      type: dev.langchain4j.model.googleai.GoogleAiGeminiChatModel

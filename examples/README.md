@@ -73,7 +73,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**CircuitBreaker**](EIP/CircuitBreaker/README.md) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Aggregator**](EIP/Aggregation/README.md) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
 | [**Ports and Adapters**](EIP/PortsAndAdapters/README.md) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
-
+| [**XSLT Mapper**](EIP/XsltMapper) | Transform XML documents using XSLT  | • Transform XML data structures • Modify XML data |
 
 <!-- | **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 
 | **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 

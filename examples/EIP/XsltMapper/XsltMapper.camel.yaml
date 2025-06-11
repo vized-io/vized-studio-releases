@@ -1,17 +1,26 @@
 - route:
-    id: route-3916
+    id: Xslt
     from:
-      id: from-1367
-      uri: file:input
-      parameters: {}
+      id: Read Files
+      uri: file
+      parameters:
+        directoryName: input
+        move: done
       steps:
+        - setHeader:
+            id: set Header Xslt File Name
+            expression:
+              simple:
+                expression: output.xml
+            name: CamelXsltFileName
         - to:
-            id: to-1910
+            id: xslt template
             uri: xslt
             parameters:
+              output: file
               resourceUri: classpath:Xslt.xslt
         - to:
-            id: to-3282
+            id: Log
             uri: log
             parameters:
               loggerName: logger-xslt

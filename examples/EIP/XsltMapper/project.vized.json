@@ -10,23 +10,23 @@
   "camel": {
     "routes": {
       "XsltMapper.camel.yaml": {
-        "route-3916": {
-          "id": "route-3916",
+        "Xslt": {
+          "id": "Xslt",
           "breakpoints": [],
           "from": [
             {
-              "uri": "file:input",
-              "id": "from-1367"
+              "uri": "file",
+              "id": "Read Files"
             }
           ],
           "to": [
             {
               "uri": "xslt",
-              "id": "to-1910"
+              "id": "xslt template"
             },
             {
               "uri": "log",
-              "id": "to-3282"
+              "id": "Log"
             }
           ]
         }

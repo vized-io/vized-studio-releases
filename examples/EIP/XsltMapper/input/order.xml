@@ -1,0 +1,15 @@
+<order>
+    <buyer>
+        <name>John Doe</name>
+    </buyer>
+    <products>
+        <product>
+            <sku>123</sku>
+            <price>10.00</price>
+        </product>
+        <product>
+            <sku>456</sku>
+            <price>20.00</price>
+        </product>
+    </products>
+</order>

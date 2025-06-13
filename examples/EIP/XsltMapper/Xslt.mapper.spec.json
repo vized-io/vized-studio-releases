@@ -27,14 +27,7 @@
                 "name": "name",
                 "path": "$.order.buyer.name",
                 "type": "string",
-                "defaultValue": "Jane Smith"
-              },
-              {
-                "attribute": false,
-                "name": "id",
-                "path": "$.order.buyer.id",
-                "type": "string",
-                "defaultValue": "cust-123"
+                "defaultValue": "John Doe"
               }
             ]
           },
@@ -55,37 +48,14 @@
                     "name": "sku",
                     "path": "$.order.products.product.sku",
                     "type": "string",
-                    "defaultValue": "ABC-001"
+                    "defaultValue": "456"
                   },
                   {
                     "attribute": false,
                     "name": "price",
                     "path": "$.order.products.product.price",
                     "type": "string",
-                    "defaultValue": "29.99"
-                  }
-                ],
-                "repeated": true
-              },
-              {
-                "attribute": false,
-                "name": "product",
-                "path": "$.order.products.product",
-                "type": "object",
-                "children": [
-                  {
-                    "attribute": false,
-                    "name": "sku",
-                    "path": "$.order.products.product.sku",
-                    "type": "string",
-                    "defaultValue": "XYZ-002"
-                  },
-                  {
-                    "attribute": false,
-                    "name": "price",
-                    "path": "$.order.products.product.price",
-                    "type": "string",
-                    "defaultValue": "49.99"
+                    "defaultValue": "20.00"
                   }
                 ],
                 "repeated": true
@@ -119,7 +89,7 @@
                 "name": "name",
                 "path": "$.invoice.customer.name",
                 "type": "string",
-                "defaultValue": "Jane Smith"
+                "defaultValue": "John Doe"
               }
             ]
           },
@@ -142,7 +112,7 @@
             "attribute": false,
             "name": "items",
             "path": "$.invoice.items",
-            "type": "array",
+            "type": "object",
             "children": [
               {
                 "attribute": false,
@@ -155,40 +125,16 @@
                     "name": "sku",
                     "path": "$.invoice.items.item.sku",
                     "type": "string",
-                    "defaultValue": "ABC-001"
+                    "defaultValue": "123"
                   },
                   {
                     "attribute": false,
                     "name": "price",
                     "path": "$.invoice.items.item.price",
                     "type": "string",
-                    "defaultValue": "29.99"
+                    "defaultValue": "10.00"
                   }
-                ],
-                "repeated": true
-              },
-              {
-                "attribute": false,
-                "name": "item",
-                "path": "$.invoice.items.item",
-                "type": "object",
-                "children": [
-                  {
-                    "attribute": false,
-                    "name": "sku",
-                    "path": "$.invoice.items.item.sku",
-                    "type": "string",
-                    "defaultValue": "XYZ-002"
-                  },
-                  {
-                    "attribute": false,
-                    "name": "price",
-                    "path": "$.invoice.items.item.price",
-                    "type": "string",
-                    "defaultValue": "49.99"
-                  }
-                ],
-                "repeated": true
+                ]
               }
             ]
           }
@@ -198,40 +144,26 @@
   },
   "mappings": [
     {
-      "targetPath": "$.invoice.customer.name",
       "sourcePaths": [
         "$.order.buyer.name"
       ],
+      "targetPath": "$.invoice.customer.name",
       "expression": "",
       "mappingType": "direct"
     },
     {
-      "sourcePaths": [],
-      "targetPath": "$.invoice.metadata.version",
-      "mappingType": "constant",
-      "expression": "2.0"
-    },
-    {
-      "targetPath": "$.invoice.items",
-      "sourcePaths": [
-        "$.order.products"
-      ],
-      "expression": "",
-      "mappingType": "foreach"
-    },
-    {
-      "targetPath": "$.invoice.items.item.sku",
       "sourcePaths": [
         "$.order.products.product.sku"
       ],
+      "targetPath": "$.invoice.items.item.sku",
       "expression": "",
       "mappingType": "direct"
     },
     {
-      "targetPath": "$.invoice.items.item.price",
       "sourcePaths": [
         "$.order.products.product.price"
       ],
+      "targetPath": "$.invoice.items.item.price",
       "expression": "",
       "mappingType": "direct"
     }

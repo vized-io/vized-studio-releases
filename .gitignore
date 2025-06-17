@@ -8,7 +8,8 @@ examples/TicketAgent/.camel-jbang/camel-jbang-run.properties
 Components/*
 examples/Components/Mongodb/mongodb.camel.yaml
 Ai/*
-
+.export/*
+.camel/*
 test/*
 prompts.md
 examples/Components/EmailTrigger/application.properties

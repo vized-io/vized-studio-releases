@@ -1,0 +1,33 @@
+{
+  "mappingType": "jsonata",
+  "sourceType": "json",
+  "targetType": "json",
+  "mappings": [
+    {
+      "mappingType": "constant",
+      "targetPath": "$.metadata.version",
+      "expression": "1.0"
+    },
+    {
+      "mappingType": "direct",
+      "targetPath": "$.customer.name",
+      "sourcePaths": [
+        "$.person.fullName"
+      ]
+    },
+    {
+      "mappingType": "direct",
+      "targetPath": "$.customer.email",
+      "sourcePaths": [
+        "$.person.contact.email"
+      ]
+    },
+    {
+      "mappingType": "foreach",
+      "targetPath": "$.customer.orders",
+      "sourcePaths": [
+        "$.person.purchases"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "orderSummary": {
+    "referenceId": "ORD-2024-00789",
+    "placedOn": "2024-03-15",
+    "customer": "Jane Rivera (Gold)",
+    "contactEmail": "jane.rivera@example.com",
+    "shippingTo": "Metropolis, NY",
+    "itemCount": 3,
+    "subTotal": 198.99,
+    "finalTotal": 188.99,
+    "status": "Processing"
+  },
+  "lineItems": [
+    {
+      "sku": "ELEC-001",
+      "name": "Smart Speaker X200",
+      "qty": 1,
+      "price": 129.99
+    },
+    {
+      "sku": "BOOK-005",
+      "name": "The Art of Data Science",
+      "qty": 2,
+      "price": 34.5
+    }
+  ]
+}

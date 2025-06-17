@@ -1,0 +1,208 @@
+{
+  "mappingType": "jsonata",
+  "sourceType": "json",
+  "targetType": "json",
+  "source": "order",
+  "target": "customer",
+  "sourceSchema": {
+    "attribute": false,
+    "name": "root",
+    "path": "$",
+    "type": "object",
+    "children": [
+      {
+        "attribute": false,
+        "name": "person",
+        "path": "$.person",
+        "type": "object",
+        "children": [
+          {
+            "attribute": false,
+            "name": "fullName",
+            "path": "$.person.fullName",
+            "type": "string",
+            "defaultValue": "Albert"
+          },
+          {
+            "attribute": false,
+            "name": "age",
+            "path": "$.person.age",
+            "type": "number",
+            "defaultValue": 30
+          },
+          {
+            "attribute": false,
+            "name": "contact",
+            "path": "$.person.contact",
+            "type": "object",
+            "children": [
+              {
+                "attribute": false,
+                "name": "email",
+                "path": "$.person.contact.email",
+                "type": "string",
+                "defaultValue": "albert@example.com"
+              },
+              {
+                "attribute": false,
+                "name": "phone",
+                "path": "$.person.contact.phone",
+                "type": "string",
+                "defaultValue": "123-456-7890"
+              }
+            ]
+          },
+          {
+            "attribute": false,
+            "name": "purchases",
+            "path": "$.person.purchases",
+            "type": "array",
+            "children": [
+              {
+                "attribute": false,
+                "name": "item",
+                "path": "$.person.purchases[]",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "id",
+                    "path": "$.person.purchases[].id",
+                    "type": "string",
+                    "defaultValue": "order-001"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "amount",
+                    "path": "$.person.purchases[].amount",
+                    "type": "number",
+                    "defaultValue": 99.99
+                  }
+                ],
+                "repeated": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "targetSchema": {
+    "attribute": false,
+    "name": "root",
+    "path": "$",
+    "type": "object",
+    "children": [
+      {
+        "attribute": false,
+        "name": "metadata",
+        "path": "$.metadata",
+        "type": "object",
+        "children": [
+          {
+            "attribute": false,
+            "name": "version",
+            "path": "$.metadata.version",
+            "type": "string",
+            "defaultValue": "1.0"
+          }
+        ]
+      },
+      {
+        "attribute": false,
+        "name": "customer",
+        "path": "$.customer",
+        "type": "object",
+        "children": [
+          {
+            "attribute": false,
+            "name": "name",
+            "path": "$.customer.name",
+            "type": "string",
+            "defaultValue": "albert"
+          },
+          {
+            "attribute": false,
+            "name": "email",
+            "path": "$.customer.email",
+            "type": "string",
+            "defaultValue": "albert@example.com"
+          },
+          {
+            "attribute": false,
+            "name": "orders",
+            "path": "$.customer.orders",
+            "type": "array",
+            "children": [
+              {
+                "attribute": false,
+                "name": "item",
+                "path": "$.customer.orders[]",
+                "type": "object",
+                "children": [
+                  {
+                    "attribute": false,
+                    "name": "id",
+                    "path": "$.customer.orders[].id",
+                    "type": "string",
+                    "defaultValue": "order-001"
+                  },
+                  {
+                    "attribute": false,
+                    "name": "amount",
+                    "path": "$.customer.orders[].amount",
+                    "type": "number",
+                    "defaultValue": 99.99
+                  }
+                ],
+                "repeated": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "mappings": [
+    {
+      "sourcePaths": [
+        "$.person.fullName"
+      ],
+      "targetPath": "$.customer.name",
+      "expression": "",
+      "mappingType": "direct"
+    },
+    {
+      "sourcePaths": [
+        "$.person.contact.email"
+      ],
+      "targetPath": "$.customer.email",
+      "expression": "",
+      "mappingType": "direct"
+    },
+    {
+      "sourcePaths": [
+        "$.person.purchases"
+      ],
+      "targetPath": "$.customer.orders",
+      "expression": "",
+      "mappingType": "foreach",
+      "children": [
+        {
+          "targetPath": "$.id",
+          "sourcePaths": [
+            "$.id"
+          ],
+          "mappingType": "direct"
+        },
+        {
+          "targetPath": "$.amount",
+          "sourcePaths": [
+            "$.amount"
+          ],
+          "mappingType": "direct"
+        }
+      ]
+    }
+  ]
+}

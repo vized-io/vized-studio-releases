@@ -1,0 +1,20 @@
+{
+  "person": {
+    "fullName": "Albert",
+    "age": 30,
+    "contact": {
+      "email": "albert@example.com",
+      "phone": "123-456-7890"
+    },
+    "purchases": [
+      {
+        "id": "order-001",
+        "amount": 99.99
+      },
+      {
+        "id": "order-002",
+        "amount": 149.99
+      }
+    ]
+  }
+}

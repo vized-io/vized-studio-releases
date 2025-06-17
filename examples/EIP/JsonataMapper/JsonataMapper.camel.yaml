@@ -1,19 +1,33 @@
 - route:
-    id: route-3916
+    id: Jsonata
     from:
-      id: from-1367
-      uri: file:input
-      parameters: {}
+      id: Read File
+      uri: file
+      parameters:
+        directoryName: ./input
+        # move: ./done
       steps:
         - unmarshal:
-            id: unmarshal-1287
+            id: unmarshal
             json:
-              library: jackson
+              library: Jackson
         - to:
-            id: to-3722
-            uri: jsonata:classpath:jsonata.json
-            parameters: {}
+            id: Jsonata Mapper
+            uri: jsonata
+            parameters:
+              resourceUri: classpath:order.json
+        - marshal:
+            id: marshal-to-json
+            json:
+              library: Jackson
         - to:
-            id: to-5610
-            uri: log:logger-1
-            parameters: {}
+            id: Write File
+            uri: file
+            parameters:
+              directoryName: ./output
+              fileName: transformed-${date:now:yyyyMMdd-HHmmss}.json
+        - to:
+            id: Log
+            uri: log
+            parameters:
+              loggerName: logger-1

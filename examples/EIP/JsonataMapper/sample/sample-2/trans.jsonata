@@ -1,0 +1,21 @@
+{
+  "orderSummary": {
+    "referenceId": orderId,
+    "placedOn": $moment(orderDate).format('YYYY-MM-DD'),
+    "customer": customerInfo.firstName & " " & customerInfo.lastName & " (" & customerInfo.loyaltyStatus & ")",
+    "contactEmail": customerInfo.email,
+    "shippingTo": customerInfo.shippingAddress.city & ", " & customerInfo.shippingAddress.state,
+    "itemCount": $sum(items.quantity),
+    "subTotal": $round($sum(items.(quantity * unitPrice)), 2),
+    "finalTotal": $round($sum(items.(quantity * unitPrice)) - $number(discountApplied ? discountApplied : 0), 2),
+    "status": orderStatus
+  },
+  "lineItems": items.{
+    "sku": productId,
+    "name": productName,
+    "qty": quantity,
+    "price": unitPrice,
+    "lineTotal": $round(quantity * unitPrice, 2)
+  },
+  "payment": "Paid with " & paymentDetails.method & " ending in " & paymentDetails.lastFourDigits
+}

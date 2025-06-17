@@ -1,0 +1,40 @@
+{
+  "orderId": "ORD-2024-00789",
+  "orderDate": "2024-03-15T14:35:10Z",
+  "customerInfo": {
+    "customerId": "CUST-ABX-101",
+    "firstName": "Jane",
+    "lastName": "Rivera",
+    "email": "jane.rivera@example.com",
+    "phone": "555-0102",
+    "loyaltyStatus": "Gold",
+    "shippingAddress": {
+      "recipientName": "Jane Rivera",
+      "street": "789 Pine Ln",
+      "city": "Metropolis",
+      "state": "NY",
+      "zipCode": "10001",
+      "country": "USA",
+      "deliveryInstructions": "Leave at front door."
+    }
+  },
+  "items": [
+    {
+      "productId": "ELEC-001",
+      "productName": "Smart Speaker X200",
+      "quantity": 1,
+      "unitPrice": 129.99,
+      "category": "Electronics",
+      "options": { "color": "Charcoal" }
+    },
+    {
+      "productId": "BOOK-005",
+      "productName": "The Art of Data Science",
+      "quantity": 2,
+      "unitPrice": 34.50,
+      "category": "Books"
+    }
+  ],
+  "orderStatus": "Processing",
+  "discountApplied": 10.00
+}

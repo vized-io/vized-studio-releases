@@ -15,6 +15,19 @@ This tutorial demonstrates how to implement **JSONata Mapping** using **VIZED** 
 - **Integration with Apache Camel**: Seamlessly integrate JSONata transformations into Camel routes.
 - **Logging**: Monitor the transformation process for debugging and auditing.
 
+
+## How to use Vized Jsonata Mapper
+
+1. Open Context Menu of your desired project
+2. Click New mapper file
+3. Fill all the fields in the modal. For mapping type select jsonata.
+4. Select source file, target file and create the document. 
+5. Jsonata Mapper will open.
+6. Map your desired source fields to target fields.
+
+![ mapper ](./assets/mapper.gif)
+
+
 ## Step-by-Step Implementation Guide
 
 ### 1. Create a New Integration Project
@@ -32,27 +45,26 @@ Set up the entry point for your integration flow:
 2. Search for the File Component in the Component tab.
 3. Configure it to read a JSON file named `input.json` from the root directory.
 
+![source ](./assets/source.gif)
+
 ### 3. Apply JSONata Transformation
 
 Use JSONata to transform the incoming JSON data:
 
-1. Add a `direct:apply-jsonata` route to your canvas.
-2. Configure the route to apply JSONata expressions for data transformation.
+1. Add Jsonata component.
+2. Configure the resource uri to your preferred jsonata file
 
-### 4. Route Transformed Data
+![jsonata](./assets/jsonata.gif)
 
-Send the transformed data to the desired destination:
-
-1. Add a File Component to write the transformed JSON to `output.json`.
-2. Configure logging to monitor the transformation process.
 
 ## Running the Integration Project
 
 1. Select your integration project in VIZED.
 2. Right-click on the Camel file and select "Run" from the context menu.
-3. Monitor the logs to see JSON data being transformed and routed.
+3. Send file using `Send Message` in vized terminal.
+4. Go to project workspace and open `output.json` to view the transformed data.
 
-![Executing](./assets/Executing.gif)
+![Executing](./assets/executing.gif)
 
 ## Need Help?
 

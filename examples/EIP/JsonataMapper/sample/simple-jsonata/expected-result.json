@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "version": "1.0"
+  },
+  "customer": {
+    "name": "albert",
+    "email": "albert@example.com",
+    "orders": [
+      {
+        "id": "order-001",
+        "amount": 99.99
+      },
+      {
+        "id": "order-002",
+        "amount": 149.99
+      }
+    ]
+  }
+}

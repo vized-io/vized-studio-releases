@@ -67,13 +67,16 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 
 | Pattern | Description | Example Use Cases |
 |---------|-------------|-------------------|
-| [**Content-Based Router**](EIP/ContentBasedRouter/README.md) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
-| [**Recipient List**](EIP/RecipientList/README.md) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
-| [**Message Filter**](EIP/MessageFilter/README.md) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
-| [**CircuitBreaker**](EIP/CircuitBreaker/README.md) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Aggregator**](EIP/Aggregation/README.md) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
-| [**Ports and Adapters**](EIP/PortsAndAdapters/README.md) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
+| [**Change Data Capture**](EIP/ChangeDataCapture) | Capture changes in data sources and propagate them | • Monitor database changes<br>• Sync data between systems |
+| [**Circuit Breaker**](EIP/CircuitBreaker) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
+| [**Content-Based Router**](EIP/ContentBasedRouter) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
+| [**Jsonata Mapper**](EIP/JsonataMapper) | Transform JSON data using JSONata expressions | • Convert JSON structures<br>• Map fields between different JSON formats |
+| [**Message Filter**](EIP/MessageFilter) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
+| [**Ports and Adapters**](EIP/PortsAndAdapters) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
+| [**Recipient List**](EIP/RecipientList) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
 | [**XSLT Mapper**](EIP/XsltMapper) | Transform XML documents using XSLT  | • Transform XML data structures • Modify XML data |
+
 
 <!-- | **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 
 | **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 

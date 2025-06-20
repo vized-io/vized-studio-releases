@@ -10,23 +10,27 @@
   "camel": {
     "routes": {
       "JsonataMapper.camel.yaml": {
-        "route-3916": {
-          "id": "route-3916",
+        "Jsonata": {
+          "id": "Jsonata",
           "breakpoints": [],
           "from": [
             {
-              "uri": "file:input",
-              "id": "from-1367"
+              "uri": "file",
+              "id": "Read File"
             }
           ],
           "to": [
             {
-              "uri": "jsonata:classpath:jsonata.json",
-              "id": "to-3722"
+              "uri": "jsonata",
+              "id": "Jsonata Mapper"
             },
             {
-              "uri": "log:logger-1",
-              "id": "to-5610"
+              "uri": "file",
+              "id": "Write File"
+            },
+            {
+              "uri": "log",
+              "id": "Log"
             }
           ]
         }
@@ -35,8 +39,5 @@
     "beans": {
       "JsonataMapper.camel.yaml": []
     }
-  },
-  "environments": {
-    "default": []
   }
 }

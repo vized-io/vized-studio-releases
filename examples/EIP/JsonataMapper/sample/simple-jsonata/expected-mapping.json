@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "version": 1.0
+  },
+  "customer": {
+    "name": person.fullName,
+    "email": person.contact.email,
+    "orders": $.person.purchases
+  }
+}

@@ -1,789 +1,993 @@
-# Order Processing System with Control Bus Management
-# Real-world scenario: E-commerce order processing with dynamic route control
-
 - route:
-    id: orderIngestionRoute
-    description: "Ingests orders from multiple sources (files, HTTP). Can be controlled via Control Bus."
-    autoStartup: false
+    id: HttpControlInterface
     from:
-      uri: file:orders/incoming
-      parameters:
-        noop: false
-        move: orders/processed
-        moveFailed: orders/failed
-        initialDelay: 2000
-        delay: 10000
-      steps:
-        - log:
-            message: "Order ingestion processing file: ${header.CamelFileName}"
-        - unmarshal:
-            json: {}
-        - setHeader:
-            name: orderId
-            simple: "${body[orderId]}"
-        - setHeader:
-            name: orderStatus
-            constant: "RECEIVED"
-        - to:
-            uri: direct:validateOrder
-
-- route:
-    id: orderValidationRoute
-    description: "Validates incoming orders. Can be enabled/disabled for maintenance."
-    autoStartup: false
-    from:
-      uri: direct:validateOrder
-      steps:
-        - log:
-            message: "Validating order: ${header.orderId}"
-        - script:
-            language: js
-            expression: >
-              var order = exchange.in.body;
-              var isValid = order.customerId && order.items && order.items.length > 0 && order.totalAmount > 0;
-              exchange.in.headers.orderValid = isValid;
-              if (!isValid) {
-                exchange.in.headers.validationError = "Missing required fields: customerId, items, or totalAmount";
-              }
-        - choice:
-            when:
-              - simple: "${header.orderValid} == true"
-                steps:
-                  - log:
-                      message: "Order ${header.orderId} is valid, proceeding to inventory check"
-                  - to:
-                      uri: direct:checkInventory
-            otherwise:
-              steps:
-                - log:
-                    message: "Order ${header.orderId} validation failed: ${header.validationError}"
-                - to:
-                    uri: direct:handleInvalidOrder
-
-- route:
-    id: inventoryCheckRoute
-    description: "Checks inventory availability. Can be paused during inventory updates."
-    autoStartup: false
-    from:
-      uri: direct:checkInventory
-      steps:
-        - log:
-            message: "Checking inventory for order: ${header.orderId}"
-        - script:
-            language: js
-            expression: >
-              var order = exchange.in.body;
-              var allItemsAvailable = true;
-              var unavailableItems = [];
-              
-              // Simulate inventory check
-              for (var i = 0; i < order.items.length; i++) {
-                var item = order.items[i];
-                // Simulate random availability (80% chance available)
-                if (Math.random() < 0.2) {
-                  allItemsAvailable = false;
-                  unavailableItems.push(item.productId);
-                }
-              }
-              
-              exchange.in.headers.inventoryAvailable = allItemsAvailable;
-              exchange.in.headers.unavailableItems = unavailableItems.join(", ");
-        - choice:
-            when:
-              - simple: "${header.inventoryAvailable} == true"
-                steps:
-                  - log:
-                      message: "Inventory available for order: ${header.orderId}"
-                  - setHeader:
-                      name: orderStatus
-                      constant: "INVENTORY_CONFIRMED"
-                  - to:
-                      uri: direct:processPayment
-            otherwise:
-              steps:
-                - log:
-                    message: "Inventory unavailable for order: ${header.orderId}. Items: ${header.unavailableItems}"
-                - setHeader:
-                    name: orderStatus
-                    constant: "INVENTORY_UNAVAILABLE"
-                - to:
-                    uri: direct:handleInventoryUnavailable
-
-- route:
-    id: paymentProcessingRoute
-    description: "Processes payments. Can be stopped during payment gateway maintenance."
-    autoStartup: false
-    from:
-      uri: direct:processPayment
-      steps:
-        - log:
-            message: "Processing payment for order: ${header.orderId}"
-        - script:
-            language: js
-            expression: >
-              var order = exchange.in.body;
-              // Simulate payment processing (90% success rate)
-              var paymentSuccess = Math.random() < 0.9;
-              exchange.in.headers.paymentSuccess = paymentSuccess;
-              exchange.in.headers.transactionId = "TXN-" + Math.floor(Math.random() * 1000000);
-        - choice:
-            when:
-              - simple: "${header.paymentSuccess} == true"
-                steps:
-                  - log:
-                      message: "Payment successful for order: ${header.orderId}, Transaction: ${header.transactionId}"
-                  - setHeader:
-                      name: orderStatus
-                      constant: "PAYMENT_CONFIRMED"
-                  - to:
-                      uri: direct:fulfillOrder
-            otherwise:
-              steps:
-                - log:
-                    message: "Payment failed for order: ${header.orderId}"
-                - setHeader:
-                    name: orderStatus
-                    constant: "PAYMENT_FAILED"
-                - to:
-                    uri: direct:handlePaymentFailure
-
-- route:
-    id: orderFulfillmentRoute
-    description: "Handles order fulfillment and shipping. Can be controlled during warehouse operations."
-    autoStartup: false
-    from:
-      uri: direct:fulfillOrder
-      steps:
-        - log:
-            message: "Fulfilling order: ${header.orderId}"
-        - script:
-            language: js
-            expression: >
-              var order = exchange.in.body;
-              exchange.in.headers.trackingNumber = "TRACK-" + Math.floor(Math.random() * 1000000);
-              exchange.in.headers.estimatedDelivery = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-        - setHeader:
-            name: orderStatus
-            constant: "SHIPPED"
-        - log:
-            message: "Order ${header.orderId} shipped with tracking: ${header.trackingNumber}"
-        - to:
-            uri: direct:sendNotification
-
-- route:
-    id: notificationRoute
-    description: "Sends customer notifications. Can be disabled during maintenance."
-    autoStartup: false
-    from:
-      uri: direct:sendNotification
-      steps:
-        - log:
-            message: "Sending notification for order: ${header.orderId}, Status: ${header.orderStatus}"
-        - script:
-            language: js
-            expression: >
-              var order = exchange.in.body;
-              var notification = {
-                orderId: exchange.in.headers.orderId,
-                customerId: order.customerId,
-                status: exchange.in.headers.orderStatus,
-                message: "Your order " + exchange.in.headers.orderId + " has been " + exchange.in.headers.orderStatus.toLowerCase(),
-                trackingNumber: exchange.in.headers.trackingNumber,
-                estimatedDelivery: exchange.in.headers.estimatedDelivery
-              };
-              exchange.in.body = notification;
-        - to:
-            uri: file:notifications/outgoing
-            parameters:
-              fileName: "notification-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
-
-# Error handling routes
-- route:
-    id: handleInvalidOrderRoute
-    from:
-      uri: direct:handleInvalidOrder
-      steps:
-        - log:
-            message: "Handling invalid order: ${header.orderId}"
-        - to:
-            uri: file:orders/invalid
-            parameters:
-              fileName: "invalid-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
-
-- route:
-    id: handleInventoryUnavailableRoute
-    from:
-      uri: direct:handleInventoryUnavailable
-      steps:
-        - log:
-            message: "Handling inventory unavailable for order: ${header.orderId}"
-        - to:
-            uri: file:orders/backorder
-            parameters:
-              fileName: "backorder-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
-
-- route:
-    id: handlePaymentFailureRoute
-    from:
-      uri: direct:handlePaymentFailure
-      steps:
-        - log:
-            message: "Handling payment failure for order: ${header.orderId}"
-        - to:
-            uri: file:orders/payment-failed
-            parameters:
-              fileName: "payment-failed-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json"
-
-# HTTP Control Interface
-- route:
-    id: httpControlInterface
-    from:
+      id: HttpControl
       uri: platform-http:/admin/control
       parameters:
         httpMethodRestrict: POST
       steps:
         - log:
+            id: Log Http Body
             message: "Control request received: ${body}"
         - unmarshal:
+            id: Unmarshal Http Body
             json: {}
         - setHeader:
+            id: Set Control Action
             name: action
-            simple: "${body[action]}"
+            expression:
+              simple: 
+                expression: ${body[action]}
         - setHeader:
+            id: Set Control RouteId
             name: routeId
-            simple: "${body[routeId]}"
+            expression:
+              simple: 
+                expression: ${body[routeId]}
         - setHeader:
+            id: Set Component
             name: component
-            simple: "${body[component]}"
+            expression:
+              simple: 
+                expression: ${body[component]}
         - to:
+            id: DirectControlManager
             uri: direct:processControlCommand
         - setBody:
-            simple: '{"status": "success", "message": "Command ${header.action} executed for ${header.routeId}", "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"}'
+            id: SetControlManagerBody
+            expression:
+              simple: "{\"status\": \"success\", \"message\": \"Command ${header.action} executed for ${header.routeId == null ? 'all' : header.routeId}\", \"timestamp\": \"${date:now:yyyy-MM-dd HH:mm:ss}\"}"
 
-# Advanced Control Bus with multiple operations
 - route:
-    id: controlBusManager
+    id: OrderIngestionRoute
+    description: Ingests orders from multiple sources (files, HTTP). Can be
+      controlled via Control Bus.
+    autoStartup: false
     from:
+      id: Read Incoming
+      uri: file
+      parameters:
+        delay: 10000
+        directoryName: orders/incoming
+        initialDelay: 2000
+        move: orders/processed
+        moveFailed: orders/failed
+        noop: false
+      steps:
+        - log:
+            id: Log Incoming
+            message: "Order ingestion processing file: ${header.CamelFileName}"
+        - unmarshal:
+            id: Unmarshal Incoming
+            json: {}
+        - setHeader:
+            id: Set Incoming OrderId
+            name: orderId
+            expression:
+              simple: 
+                expression: ${body[orderId]}
+        - setHeader:
+            id: Set Incoming Status
+            expression:
+              constant: 
+                expression: RECEIVED
+            name: orderStatus
+        - to:
+            id: Validate Order
+            uri: direct:validateOrder
+
+- route:
+    id: OrderValidationRoute
+    description: Validates incoming orders. Can be enabled/disabled for maintenance.
+    autoStartup: false
+    from:
+      id: Route Validate Order
+      uri: direct:validateOrder
+      steps:
+        - log:
+            id: Log Validate Order
+            message: "Validating order: ${header.orderId}"
+        - script:
+            id: Validation Script
+            expression:
+              groovy:
+                expression: >
+                  def order = request.body;
+
+                  def isValid = order.customerId && order.items &&
+                  !order.items.isEmpty() && order.totalAmount > 0;
+
+                  request.headers.orderValid = isValid;
+
+                  if (!isValid) {
+                    request.headers.validationError = "Missing required fields: customerId, items, or totalAmount";
+                  }
+        - choice:
+            id: Choice Validation
+            otherwise:
+              id: InValid Order
+              steps:
+                - log:
+                    id: Log InValid Order
+                    message: "Order ${header.orderId} validation failed: ${header.validationError}"
+                - to:
+                    id: Direct InValid Order
+                    uri: direct:handleInvalidOrder
+            when:
+              - id: Valid Order
+                steps:
+                  - log:
+                      id: Log Valid Order
+                      message: Order ${header.orderId} is valid, proceeding to inventory check
+                  - to:
+                      id: CheckInventory
+                      uri: direct:checkInventory
+                expression:
+                  simple: ${header.orderValid} == true
+- route:
+    id: InventoryCheckRoute
+    description: Checks inventory availability. Can be paused during inventory updates.
+    autoStartup: false
+    from:
+      id: Check Inventory
+      uri: direct:checkInventory
+      steps:
+        - log:
+            id: Log Check Inventory
+            message: "Checking inventory for order: ${header.orderId}"
+        - script:
+            id: Check Inventory Script
+            expression:
+              groovy:
+                expression: >
+                  log.info("Inventory Check Routee...")
+
+                  def order = exchange.in.body;
+
+                  def allItemsAvailable = true;
+
+                  def unavailableItems = [];
+
+
+                  // Simulate inventory check
+
+                  order.items.each { item ->
+                    // Simulate random availability (80% chance available)
+                    if (Math.random() < 0.2) {
+                      allItemsAvailable = false;
+                      unavailableItems.add(item.productId);
+                    }
+                  }
+
+
+                  exchange.in.setHeader('inventoryAvailable',
+                  allItemsAvailable);
+
+                  exchange.in.setHeader('unavailableItems',
+                  unavailableItems.join(", "));
+        - choice:
+            id: Inventory Validation
+            otherwise:
+              id: Inventory Not Available
+              steps:
+                - log:
+                    id: Log Not Available
+                    message: "Inventory unavailable for order: ${header.orderId}. Items:
+                      ${header.unavailableItems}"
+                - setHeader:
+                    id: Set Inventory Status Header
+                    constant: INVENTORY_UNAVAILABLE
+                    name: orderStatus
+                - to:
+                    id: Handle Inventory Unavailable
+                    uri: direct:handleInventoryUnavailable
+            when:
+              - id: Inventory Available
+                steps:
+                  - log:
+                      id: Log Inventory Available
+                      message: "Inventory available for order: ${header.orderId}"
+                  - setHeader:
+                      id: Set Inventory Present Header
+                      constant: INVENTORY_CONFIRMED
+                      name: orderStatus
+                  - to:
+                      id: Process Payment
+                      uri: direct:processPayment
+                simple: ${header.inventoryAvailable} == true
+- route:
+    id: PaymentProcessingRoute
+    description: Processes payments. Can be stopped during payment gateway maintenance.
+    autoStartup: false
+    from:
+      id: Process Payment
+      uri: direct:processPayment
+      steps:
+        - log:
+            id: Log Process Payment
+            message: "Processing payment for order: ${header.orderId}"
+        - script:
+            id: Payment Processing Script
+            expression:
+              groovy:
+                expression: >
+                  // Simulate payment processing (90% success rate)
+
+                  def paymentSuccess = Math.random() < 0.9;
+
+
+                  exchange.in.setHeader('paymentSuccess', paymentSuccess);
+
+                  exchange.in.setHeader('transactionId', "TXN-" + new
+                  Random().nextInt(1000000) );
+        - choice:
+            id: Payment Choice
+            otherwise:
+              id: Payment Failed
+              steps:
+                - log:
+                    id: Log Payment Failed
+                    message: "Payment failed for order: ${header.orderId}"
+                - setHeader:
+                    id: Set Payment Failed Status
+                    constant: PAYMENT_FAILED
+                    name: orderStatus
+                - to:
+                    id: Handle Payment Failure
+                    uri: direct:handlePaymentFailure
+            when:
+              - id: Payment Successful
+                steps:
+                  - log:
+                      id: Log Payment Successful
+                      message: "Payment successful for order: ${header.orderId}, Transaction:
+                        ${header.transactionId}"
+                  - setHeader:
+                      id: Set Payment Confirmed Status
+                      constant: PAYMENT_CONFIRMED
+                      name: orderStatus
+                  - to:
+                      id: Fulfill Order
+                      uri: direct:fulfillOrder
+                simple: ${header.paymentSuccess} == true
+- route:
+    id: OrderFulfillmentRoute
+    description: Handles order fulfillment and shipping. Can be controlled during
+      warehouse operations.
+    autoStartup: false
+    from:
+      id: Fulfill Order
+      uri: direct:fulfillOrder
+      steps:
+        - log:
+            id: Log Fulfill Order
+            message: "Fulfilling order: ${header.orderId}"
+        - script:
+            id: Fulfillment Script
+            expression:
+              groovy:
+                expression: >
+                  import java.time.ZonedDateTime;
+
+                  import java.time.format.DateTimeFormatter;
+
+
+                  request.headers.trackingNumber = "TRACK-" + new
+                  Random().nextInt(1000000);
+
+                  def estimatedDelivery = ZonedDateTime.now().plusDays(3);
+
+                  request.headers.estimatedDelivery =
+                  estimatedDelivery.format(DateTimeFormatter.ISO_INSTANT);
+        - setHeader:
+            id: Set Shipped Status
+            constant: SHIPPED
+            name: orderStatus
+        - log:
+            id: Log Order Shipped
+            message: "Order ${header.orderId} shipped with tracking:
+              ${header.trackingNumber}"
+        - to:
+            id: Send Notification
+            uri: direct:sendNotification
+- route:
+    id: NotificationRoute
+    description: Sends customer notifications. Can be disabled during maintenance.
+    autoStartup: false
+    from:
+      id: Send Notification Route
+      uri: direct:sendNotification
+      steps:
+        - log:
+            id: Log Send Notification
+            message: "Sending notification for order: ${header.orderId}, Status:
+              ${header.orderStatus}"
+        - script:
+            id: Notification Script
+            expression:
+              groovy:
+                expression: >
+                  def inBody = exchange.in.body
+
+                  def inHeaders = exchange.in.headers
+
+
+                  def notification = [
+                    orderId:           inHeaders.orderId,
+                    customerId:        inBody.customerId,
+                    status:            inHeaders.orderStatus,
+                    message:           "Your order ${inHeaders.orderId} has been ${inHeaders.orderStatus.toLowerCase()}",
+                    trackingNumber:    inHeaders.trackingNumber,
+                    estimatedDelivery: inHeaders.estimatedDelivery
+                  ]
+
+
+                  exchange.in.body = notification
+        - marshal:
+            id: Marshal Notification
+            json: {}
+        - to:
+            id: Write Notification File
+            uri: file:notifications/outgoing
+            parameters:
+              fileName: notification-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json
+- route:
+    id: HandleInvalidOrderRoute
+    from:
+      uri: direct:handleInvalidOrder
+      steps:
+        - log:
+            id: Log Invalid Order
+            message: "Handling invalid order: ${header.orderId}"
+        - marshal:
+            json: {}
+        - to:
+            uri: file:orders/invalid
+            parameters:
+              fileName: invalid-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json
+- route:
+    id: HandleInventoryUnavailableRoute
+    from:
+      uri: direct:handleInventoryUnavailable
+      steps:
+        - log:
+            message: "Handling inventory unavailable for order: ${header.orderId}"
+        - marshal:
+            json: {}
+        - to:
+            uri: file:orders/backorder
+            parameters:
+              fileName: backorder-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json
+- route:
+    id: HandlePaymentFailureRoute
+    from:
+      uri: direct:handlePaymentFailure
+      steps:
+        - log:
+            message: "Handling payment failure for order: ${header.orderId}"
+        - marshal:
+            json: {}
+        - to:
+            uri: file:orders/payment-failed
+            parameters:
+              fileName: payment-failed-${header.orderId}-${date:now:yyyyMMdd-HHmmss}.json
+
+- route:
+    id: ControlBusManager
+    from:
+      id: Process Control Command
       uri: direct:processControlCommand
       steps:
         - log:
-            message: "Processing control command - Action: ${header.action}, Route: ${header.routeId}"
+            id: Log Control Command
+            message: "Processing control command - Action: ${header.action}, Route:
+              ${header.routeId == null ? ''all'' : header.routeId}"
         - choice:
+            id: Control Command Choice
+            otherwise:
+              id: Unknown Command
+              steps:
+                - log:
+                    id: Log Unknown Command
+                    message: "Unknown control command: ${header.action}. Valid commands: start,
+                      stop, start-pipeline, stop-pipeline, maintenance-mode,
+                      resume-from-maintenance, status"
             when:
-              # Start individual route
-              - simple: "${header.action} == 'start' && ${header.routeId} != null"
+              - id: Start Route Command
                 steps:
                   - log:
+                      id: Log Start Route
                       message: "Starting route: ${header.routeId}"
-                  - to:
+                  - toD:
+                      id: Control Bus Start Route
                       uri: controlbus:route
                       parameters:
                         action: start
                         routeId: ${header.routeId}
-              
-              # Stop individual route
-              - simple: "${header.action} == 'stop' && ${header.routeId} != null"
+                simple: ${header.action} == 'start' && ${header.routeId} != null
+              - id: Stop Route Command
                 steps:
                   - log:
+                      id: Log Stop Route
                       message: "Stopping route: ${header.routeId}"
-                  - to:
+                  - toD:
+                      id: Control Bus Stop Route
                       uri: controlbus:route
                       parameters:
                         action: stop
                         routeId: ${header.routeId}
-              
-              # Start entire order processing pipeline
-              - simple: "${header.action} == 'start-pipeline'"
+                simple: ${header.action} == 'stop' && ${header.routeId} != null
+              - id: Start Pipeline Command
                 steps:
                   - log:
-                      message: "Starting entire order processing pipeline"
+                      id: Log Start Pipeline
+                      message: Starting entire order processing pipeline
                   - to:
+                      id: Control Bus Start Order Ingestion
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: orderIngestionRoute
+                        routeId: OrderIngestionRoute
                   - to:
+                      id: Control Bus Start Order Validation
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: orderValidationRoute
+                        routeId: OrderValidationRoute
                   - to:
+                      id: Control Bus Start Inventory Check
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: inventoryCheckRoute
+                        routeId: InventoryCheckRoute
                   - to:
+                      id: Control Bus Start Payment Processing
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: paymentProcessingRoute
+                        routeId: PaymentProcessingRoute
                   - to:
+                      id: Control Bus Start Order Fulfillment
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: orderFulfillmentRoute
+                        routeId: OrderFulfillmentRoute
                   - to:
+                      id: Control Bus Start Notification
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: notificationRoute
-              
-              # Stop entire pipeline
-              - simple: "${header.action} == 'stop-pipeline'"
+                        routeId: NotificationRoute
+                simple: ${header.action} == 'start-pipeline'
+              - id: Stop Pipeline Command
                 steps:
                   - log:
-                      message: "Stopping entire order processing pipeline"
+                      id: Log Stop Pipeline
+                      message: Stopping entire order processing pipeline
                   - to:
+                      id: Control Bus Stop Order Ingestion
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: orderIngestionRoute
+                        routeId: OrderIngestionRoute
                   - to:
+                      id: Control Bus Stop Order Validation
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: orderValidationRoute
+                        routeId: OrderValidationRoute
                   - to:
+                      id: Control Bus Stop Inventory Check
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: inventoryCheckRoute
+                        routeId: InventoryCheckRoute
                   - to:
+                      id: Control Bus Stop Payment Processing
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: paymentProcessingRoute
+                        routeId: PaymentProcessingRoute
                   - to:
+                      id: Control Bus Stop Order Fulfillment
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: orderFulfillmentRoute
+                        routeId: OrderFulfillmentRoute
                   - to:
+                      id: Control Bus Stop Notification
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: notificationRoute
-              
-              # Maintenance mode - stop processing but keep monitoring
-              - simple: "${header.action} == 'maintenance-mode'"
+                        routeId: NotificationRoute
+                simple: ${header.action} == 'stop-pipeline'
+              - id: Maintenance Mode Command
                 steps:
                   - log:
-                      message: "Entering maintenance mode - stopping processing routes"
+                      id: Log Maintenance Mode
+                      message: Entering maintenance mode - stopping processing routes
                   - to:
+                      id: Control Bus Stop Payment For Maintenance
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: paymentProcessingRoute
+                        routeId: PaymentProcessingRoute
                   - to:
+                      id: Control Bus Stop Inventory For Maintenance
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: inventoryCheckRoute
+                        routeId: InventoryCheckRoute
                   - to:
+                      id: Control Bus Stop Fulfillment For Maintenance
                       uri: controlbus:route
                       parameters:
                         action: stop
-                        routeId: orderFulfillmentRoute
-              
-              # Resume from maintenance
-              - simple: "${header.action} == 'resume-from-maintenance'"
+                        routeId: OrderFulfillmentRoute
+                simple: ${header.action} == 'maintenance-mode'
+              - id: Resume From Maintenance Command
                 steps:
                   - log:
-                      message: "Resuming from maintenance mode"
+                      id: Log Resume From Maintenance
+                      message: Resuming from maintenance mode
                   - to:
+                      id: Control Bus Resume Payment From Maintenance
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: paymentProcessingRoute
+                        routeId: PaymentProcessingRoute
                   - to:
+                      id: Control Bus Resume Inventory From Maintenance
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: inventoryCheckRoute
+                        routeId: InventoryCheckRoute
                   - to:
+                      id: Control Bus Resume Fulfillment From Maintenance
                       uri: controlbus:route
                       parameters:
                         action: start
-                        routeId: orderFulfillmentRoute
-              
-              # Get route status
-              - simple: "${header.action} == 'status'"
+                        routeId: OrderFulfillmentRoute
+                simple: ${header.action} == 'resume-from-maintenance'
+              - id: Status Command
                 steps:
                   - log:
+                      id: Log Get Status
                       message: "Getting status for route: ${header.routeId}"
                   - to:
+                      id: Control Bus Get Status
                       uri: controlbus:route
                       parameters:
                         action: status
                         routeId: ${header.routeId}
-            
-            otherwise:
-              steps:
-                - log:
-                    message: "Unknown control command: ${header.action}. Valid commands: start, stop, start-pipeline, stop-pipeline, maintenance-mode, resume-from-maintenance, status"
-
-# Monitoring and Health Check Route
+                simple: ${header.action} == 'status'
 - route:
-    id: healthCheckRoute
+    id: HealthCheckRoute
     from:
       uri: platform-http:/admin/health
       parameters:
         httpMethodRestrict: GET
       steps:
         - script:
-            language: js
-            expression: >
-              var healthStatus = {
-                timestamp: new Date().toISOString(),
-                system: "Order Processing System",
-                routes: {
-                  orderIngestion: "unknown",
-                  orderValidation: "unknown", 
-                  inventoryCheck: "unknown",
-                  paymentProcessing: "unknown",
-                  orderFulfillment: "unknown",
-                  notification: "unknown"
-                },
-                overallStatus: "healthy"
-              };
-              exchange.in.body = healthStatus;
+            expression:
+              groovy:
+                expression: >
+                  // Define the list of routes to check
+
+                  def routesToCheck = [
+                    'OrderIngestionRoute',
+                    'OrderValidationRoute',
+                    'InventoryCheckRoute',
+                    'PaymentProcessingRoute',
+                    'OrderFulfillmentRoute',
+                    'NotificationRoute'
+                  ];
+
+
+                  exchange.setProperty('routesToCheck', routesToCheck);
+
+
+                  // Initialize the health status map
+
+                  def healthStatus = [
+                    timestamp: new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").format(new Date()),
+                    system: "Order Processing System",
+                    routes: [:],
+                    overallStatus: "HEALTHY"
+                  ];
+
+                  exchange.setProperty('healthDetails', healthStatus);
+        - log:
+            message: "Performing dynamic health check for routes:
+              ${exchange.getProperty('routesToCheck')}"
+        - loop:
+            steps:
+              - setHeader:
+                  expression:
+                    groovy: exchange.getProperty('routesToCheck')[exchange.getProperty('CamelLoopIndex')]
+                  name: CamelControlBusRouteId
+              - setExchangePattern: InOut
+              - toD:
+                  uri: controlbus
+                  parameters:
+                    action: status
+                    command: route
+                    routeId: ${header.CamelControlBusRouteId}
+              - script:
+                  expression:
+                    groovy:
+                      expression: >
+                        def healthMap = exchange.getProperty('healthDetails');
+
+                        def routeId =
+                        exchange.getProperty('routesToCheck')[exchange.getProperty('CamelLoopIndex')];
+
+                        def status = request.body != null ? request.body : 'Not
+                        Running'; // The body now contains the route's
+                        status             
+
+
+                        healthMap.routes[routeId] = [ status: status ];
+
+
+                        // If any route is not 'Started', the overall system is
+                        considered unhealthy
+
+                        if (status != 'Started') {
+                          healthMap.overallStatus = 'UNHEALTHY';
+                        }
+            expression:
+              simple: ${exchange.getProperty('routesToCheck').size()}
+        - setBody:
+            expression:
+              groovy: exchange.getProperty('healthDetails')
         - marshal:
             json: {}
-
-# Scheduled Control Bus Operations
 - route:
-    id: scheduledMaintenanceRoute
-    from:
-      uri: timer:scheduledMaintenance
-      parameters:
-        period: 3600000 # Every hour
-        delay: 10000 # Start after 10 seconds
-      steps:
-        - script:
-            language: js
-            expression: >
-              var currentHour = new Date().getHours();
-              // Schedule maintenance between 2 AM and 4 AM
-              var isMaintenanceWindow = currentHour >= 2 && currentHour < 4;
-              exchange.in.headers.isMaintenanceWindow = isMaintenanceWindow;
-        - choice:
-            when:
-              - simple: "${header.isMaintenanceWindow} == true"
-                steps:
-                  - log:
-                      message: "Maintenance window detected - entering maintenance mode"
-                  - setHeader:
-                      name: action
-                      constant: "maintenance-mode"
-                  - to:
-                      uri: direct:processControlCommand
-            otherwise:
-              steps:
-                - log:
-                    message: "Outside maintenance window - ensuring services are running"
-                - setHeader:
-                    name: action
-                    constant: "resume-from-maintenance"
-                - to:
-                    uri: direct:processControlCommand
-
-# Circuit Breaker Pattern with Control Bus
-- route:
-    id: circuitBreakerMonitorRoute
-    from:
-      uri: timer:circuitBreakerMonitor
-      parameters:
-        period: 30000 # Every 30 seconds
-        delay: 5000
-      steps:
-        - script:
-            language: js
-            expression: >
-              // Simulate monitoring external service health
-              var paymentGatewayHealth = Math.random() > 0.1; // 90% uptime
-              var inventoryServiceHealth = Math.random() > 0.05; // 95% uptime
-              
-              exchange.in.headers.paymentGatewayHealthy = paymentGatewayHealth;
-              exchange.in.headers.inventoryServiceHealthy = inventoryServiceHealth;
-        - choice:
-            when:
-              - simple: "${header.paymentGatewayHealthy} == false"
-                steps:
-                  - log:
-                      message: "Payment gateway unhealthy - stopping payment processing route"
-                  - setHeader:
-                      name: action
-                      constant: "stop"
-                  - setHeader:
-                      name: routeId
-                      constant: "paymentProcessingRoute"
-                  - to:
-                      uri: direct:processControlCommand
-              - simple: "${header.inventoryServiceHealthy} == false"
-                steps:
-                  - log:
-                      message: "Inventory service unhealthy - stopping inventory check route"
-                  - setHeader:
-                      name: action
-                      constant: "stop"
-                  - setHeader:
-                      name: routeId
-                      constant: "inventoryCheckRoute"
-                  - to:
-                      uri: direct:processControlCommand
-            otherwise:
-              steps:
-                - log:
-                    message: "All external services healthy - ensuring routes are running"
-
-# Load-based Control Bus Operations
-- route:
-    id: loadBasedControlRoute
-    from:
-      uri: timer:loadMonitor
-      parameters:
-        period: 60000 # Every minute
-        delay: 15000
-      steps:
-        - script:
-            language: js
-            expression: >
-              // Simulate system load monitoring
-              var cpuUsage = Math.random() * 100;
-              var memoryUsage = Math.random() * 100;
-              var queueSize = Math.floor(Math.random() * 1000);
-              
-              exchange.in.headers.cpuUsage = cpuUsage;
-              exchange.in.headers.memoryUsage = memoryUsage;
-              exchange.in.headers.queueSize = queueSize;
-              
-              // Determine if system is under high load
-              var highLoad = cpuUsage > 80 || memoryUsage > 85 || queueSize > 500;
-              exchange.in.headers.highLoad = highLoad;
-        - log:
-            message: "System metrics - CPU: ${header.cpuUsage}%, Memory: ${header.memoryUsage}%, Queue: ${header.queueSize}"
-        - choice:
-            when:
-              - simple: "${header.highLoad} == true"
-                steps:
-                  - log:
-                      message: "High system load detected - throttling non-critical routes"
-                  - setHeader:
-                      name: action
-                      constant: "stop"
-                  - setHeader:
-                      name: routeId
-                      constant: "notificationRoute"
-                  - to:
-                      uri: direct:processControlCommand
-                  # Reduce polling frequency for order ingestion
-                  - to:
-                      uri: controlbus:route
-                      parameters:
-                        action: stop
-                        routeId: orderIngestionRoute
-                  - delay:
-                      constant: 2000
-                  - to:
-                      uri: controlbus:route
-                      parameters:
-                        action: start
-                        routeId: orderIngestionRoute
-            otherwise:
-              steps:
-                - log:
-                    message: "System load normal - ensuring all routes are active"
-                - setHeader:
-                    name: action
-                    constant: "start"
-                - setHeader:
-                    name: routeId
-                    constant: "notificationRoute"
-                - to:
-                    uri: direct:processControlCommand
-
-# Business Hours Control
-- route:
-    id: businessHoursControlRoute
-    from:
-      uri: timer:businessHours
-      parameters:
-        period: 300000 # Every 5 minutes
-        delay: 20000
-      steps:
-        - script:
-            language: js
-            expression: >
-              var now = new Date();
-              var hour = now.getHours();
-              var dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-              
-              // Business hours: Monday-Friday, 9 AM - 6 PM
-              var isBusinessHours = (dayOfWeek >= 1 && dayOfWeek <= 5) && (hour >= 9 && hour < 18);
-              exchange.in.headers.isBusinessHours = isBusinessHours;
-        - choice:
-            when:
-              - simple: "${header.isBusinessHours} == true"
-                steps:
-                  - log:
-                      message: "Business hours - enabling full order processing"
-                  - setHeader:
-                      name: action
-                      constant: "start-pipeline"
-                  - to:
-                      uri: direct:processControlCommand
-            otherwise:
-              steps:
-                - log:
-                    message: "Outside business hours - limited processing mode"
-                # Keep order ingestion running but stop fulfillment
-                - setHeader:
-                    name: action
-                    constant: "start"
-                - setHeader:
-                    name: routeId
-                    constant: "orderIngestionRoute"
-                - to:
-                    uri: direct:processControlCommand
-                - setHeader:
-                    name: action
-                    constant: "stop"
-                - setHeader:
-                    name: routeId
-                    constant: "orderFulfillmentRoute"
-                - to:
-                    uri: direct:processControlCommand
-
-# Emergency Shutdown Route
-- route:
-    id: emergencyShutdownRoute
-    from:
-      uri: platform-http:/admin/emergency-shutdown
-      parameters:
-        httpMethodRestrict: POST
-      steps:
-        - log:
-            message: "EMERGENCY SHUTDOWN INITIATED"
-            loggingLevel: ERROR
-        - setHeader:
-            name: action
-            constant: "stop-pipeline"
-        - to:
-            uri: direct:processControlCommand
-        - log:
-            message: "All order processing routes have been stopped"
-            loggingLevel: WARN
-        - setBody:
-            simple: '{"status": "emergency_shutdown_complete", "message": "All order processing routes stopped", "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"}'
-
-# Route Statistics and Metrics
-- route:
-    id: routeMetricsRoute
+    id: RouteMetricsRoute
     from:
       uri: platform-http:/admin/metrics
       parameters:
         httpMethodRestrict: GET
       steps:
         - script:
-            language: js
-            expression: >
-              var metrics = {
-                timestamp: new Date().toISOString(),
-                system: "Order Processing System",
-                routes: {
-                  orderIngestion: {
-                    id: "orderIngestionRoute",
-                    status: "unknown",
-                    description: "Processes incoming order files"
-                  },
-                  orderValidation: {
-                    id: "orderValidationRoute", 
-                    status: "unknown",
-                    description: "Validates order data integrity"
-                  },
-                  inventoryCheck: {
-                    id: "inventoryCheckRoute",
-                    status: "unknown", 
-                    description: "Verifies product availability"
-                  },
-                  paymentProcessing: {
-                    id: "paymentProcessingRoute",
-                    status: "unknown",
-                    description: "Handles payment transactions"
-                  },
-                  orderFulfillment: {
-                    id: "orderFulfillmentRoute",
-                    status: "unknown",
-                    description: "Manages shipping and tracking"
-                  },
-                  notification: {
-                    id: "notificationRoute",
-                    status: "unknown",
-                    description: "Sends customer notifications"
-                  }
-                },
-                controlCommands: [
-                  "start - Start specific route",
-                  "stop - Stop specific route", 
-                  "start-pipeline - Start all processing routes",
-                  "stop-pipeline - Stop all processing routes",
-                  "maintenance-mode - Enter maintenance mode",
-                  "resume-from-maintenance - Resume from maintenance",
-                  "status - Get route status"
-                ]
-              };
-              exchange.in.body = metrics;
+            expression:
+              groovy:
+                expression: |
+                  import java.time.ZonedDateTime;
+                  def metrics = [
+                    timestamp: ZonedDateTime.now().toString(),
+                    system: "Order Processing System",
+                    routes: [
+                      orderIngestion: [
+                        id: "OrderIngestionRoute",
+                        status: "unknown",
+                        description: "Processes incoming order files"
+                      ],
+                      orderValidation: [
+                        id: "OrderValidationRoute", 
+                        status: "unknown",
+                        description: "Validates order data integrity"
+                      ],
+                      inventoryCheck: [
+                        id: "InventoryCheckRoute",
+                        status: "unknown", 
+                        description: "Verifies product availability"
+                      ],
+                      paymentProcessing: [
+                        id: "PaymentProcessingRoute",
+                        status: "unknown",
+                        description: "Handles payment transactions"
+                      ],
+                      orderFulfillment: [
+                        id: "OrderFulfillmentRoute",
+                        status: "unknown",
+                        description: "Manages shipping and tracking"
+                      ],
+                      notification: [
+                        id: "NotificationRoute",
+                        status: "unknown",
+                        description: "Sends customer notifications"
+                      ]
+                    ],
+                    controlCommands: [
+                      "start - Start specific route",
+                      "stop - Stop specific route", 
+                      "start-pipeline - Start all processing routes",
+                      "stop-pipeline - Stop all processing routes",
+                      "maintenance-mode - Enter maintenance mode",
+                      "resume-from-maintenance - Resume from maintenance",
+                      "status - Get route status"
+                    ]
+                  ]; request.body = metrics;
         - marshal:
             json: {}
-
-# Configuration Management Route
 - route:
-    id: configurationManagementRoute
+    id: ConfigurationManagementRoute
     from:
       uri: platform-http:/admin/config
       parameters:
         httpMethodRestrict: PUT
       steps:
         - log:
-            message: "Configuration update request received"
+            message: Configuration update request received
         - unmarshal:
             json: {}
         - script:
-            language: js
-            expression: >
-              var config = exchange.in.body;
-              var response = {
-                status: "success",
-                message: "Configuration updated",
-                timestamp: new Date().toISOString(),
-                updatedSettings: config
-              };
-              
-              // Apply configuration changes via Control Bus
-              if (config.maintenanceMode) {
-                exchange.in.headers.triggerMaintenance = true;
-              }
-              if (config.emergencyStop) {
-                exchange.in.headers.triggerEmergencyStop = true;
-              }
-              
-              exchange.in.body = response;
+            expression:
+              groovy:
+                expression: >
+                  import java.time.ZonedDateTime;
+
+                  def config = request.body;  def response = [
+                    status: "success",
+                    message: "Configuration updated",
+                    timestamp: ZonedDateTime.now().toString(),
+                    updatedSettings: config
+                  ];
+
+                  // Apply configuration changes via Control Bus if
+                  (config.maintenanceMode) {
+                    request.headers.triggerMaintenance = true;
+                  } if (config.emergencyStop) {
+                    request.headers.triggerEmergencyStop = true;
+                  }
+
+                  request.body = response;
         - choice:
             when:
-              - simple: "${header.triggerMaintenance} == true"
-                steps:
+              - steps:
                   - setHeader:
+                      constant: maintenance-mode
                       name: action
-                      constant: "maintenance-mode"
                   - to:
                       uri: direct:processControlCommand
-              - simple: "${header.triggerEmergencyStop} == true"
-                steps:
+                simple: ${header.triggerMaintenance} == true
+              - steps:
                   - setHeader:
+                      constant: stop-pipeline
                       name: action
-                      constant: "stop-pipeline"
                   - to:
                       uri: direct:processControlCommand
+                simple: ${header.triggerEmergencyStop} == true
         - marshal:
             json: {}
+- route:
+    id: ScheduledMaintenanceRoute
+    from:
+      uri: timer:scheduledMaintenance
+      parameters:
+        delay: 10000
+        period: 3600000
+      steps:
+        - script:
+            expression:
+              js:
+                expression: var currentHour = new Date().getHours(); // Schedule maintenance
+                  between 2 AM and 4 AM var isMaintenanceWindow = currentHour >=
+                  2 && currentHour < 4;
+                  //exchange.in.headers.isMaintenanceWindow =
+                  isMaintenanceWindow;
+                  exchange.in.setHeader('isMaintenanceWindow',
+                  isMaintenanceWindow);
+        - choice:
+            otherwise:
+              steps:
+                - log:
+                    message: Outside maintenance window - ensuring services are running
+                - setHeader:
+                    constant: resume-from-maintenance
+                    name: action
+                - to:
+                    uri: direct:processControlCommand
+            when:
+              - steps:
+                  - log:
+                      message: Maintenance window detected - entering maintenance mode
+                  - setHeader:
+                      constant: maintenance-mode
+                      name: action
+                  - to:
+                      uri: direct:processControlCommand
+                simple: ${header.isMaintenanceWindow} == true
+- route:
+    id: CircuitBreakerMonitorRoute
+    autoStartup: false
+    from:
+      uri: timer:circuitBreakerMonitor
+      parameters:
+        delay: 5000
+        period: 30000
+      steps:
+        - script:
+            expression:
+              groovy:
+                expression: >
+                  // Simulate monitoring external service health 
 
+                  // Log the start of the script execution println "Starting
+                  circuit breaker monitoring script"
+
+                  def paymentGatewayHealth = Math.random() > 0.1 def
+                  inventoryServiceHealth = Math.random() > 0.05 // 95% uptime
+
+                  exchange.in.setHeader('paymentGatewayHealthy',
+                  paymentGatewayHealth);
+                  exchange.in.setHeader('inventoryServiceHealthy',
+                  inventoryServiceHealth);
+
+                  //log.info("Payment Gateway Healthy: " + paymentGatewayHealth)
+                  log.info("Inventory Service Healthy: " +
+                  inventoryServiceHealth)
+        - choice:
+            otherwise:
+              steps:
+                - log:
+                    message: All external services healthy - ensuring routes are running
+                      ${header.paymentGatewayHealthy}
+                      ${header.inventoryServiceHealthy}
+            when:
+              - steps:
+                  - log:
+                      message: Payment gateway unhealthy - stopping payment processing route
+                  - setHeader:
+                      constant: stop
+                      name: action
+                  - setHeader:
+                      constant: PaymentProcessingRoute
+                      name: routeId
+                  - to:
+                      uri: direct:processControlCommand
+                simple: ${header.paymentGatewayHealthy} == false
+              - steps:
+                  - log:
+                      message: Inventory service unhealthy - stopping inventory check route
+                  - setHeader:
+                      constant: stop
+                      name: action
+                  - setHeader:
+                      constant: InventoryCheckRoute
+                      name: routeId
+                  - to:
+                      uri: direct:processControlCommand
+                simple: ${header.inventoryServiceHealthy} == false
+- route:
+    id: LoadBasedControlRoute
+    autoStartup: false
+    from:
+      uri: timer:loadMonitor
+      parameters:
+        delay: 15000
+        period: 60000
+      steps:
+        - script:
+            expression:
+              groovy:
+                expression: >
+                  // Simulate system load monitoring  def cpuUsage =
+                  Math.random() * 100; def memoryUsage = Math.random() *
+                  100;  def queueSize = Math.floor(Math.random() * 1000);
+
+                  exchange.in.setHeader('cpuUsage', cpuUsage);
+                  exchange.in.setHeader('memoryUsage', memoryUsage);
+                  exchange.in.setHeader('queueSize', queueSize);
+
+                  // Determine if system is under high load  def highLoad =
+                  cpuUsage > 80 || memoryUsage > 85 || queueSize > 500;
+
+                  exchange.in.setHeader('highLoad', highLoad);
+        - log:
+            message: "System metrics - CPU: ${header.cpuUsage}%, Memory:
+              ${header.memoryUsage}%, Queue: ${header.queueSize}"
+        - choice:
+            otherwise:
+              steps:
+                - log:
+                    message: System load normal - ensuring all routes are active
+                - setHeader:
+                    constant: start
+                    name: action
+                - setHeader:
+                    constant: NotificationRoute
+                    name: routeId
+                - to:
+                    uri: direct:processControlCommand
+            when:
+              - steps:
+                  - log:
+                      message: High system load detected - throttling non-critical routes
+                  - setHeader:
+                      constant: stop
+                      name: action
+                  - setHeader:
+                      constant: NotificationRoute
+                      name: routeId
+                  - to:
+                      uri: direct:processControlCommand
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: stop
+                        routeId: OrderIngestionRoute
+                  - delay:
+                      constant: "2000"
+                  - to:
+                      uri: controlbus:route
+                      parameters:
+                        action: start
+                        routeId: OrderIngestionRoute
+                simple: ${header.highLoad} == true
+- route:
+    id: BusinessHoursControlRoute
+    autoStartup: false
+    from:
+      uri: timer:businessHours
+      parameters:
+        delay: 20000
+        period: 300000
+      steps:
+        - script:
+            expression:
+              groovy:
+                expression: >
+                  def now = new Date();  def hour = now.getHours();  def
+                  dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+                  // Business hours: Monday-Friday, 9 AM - 6 PM  def
+                  isBusinessHours = (dayOfWeek >= 1 && dayOfWeek <= 5) && (hour
+                  >= 9 && hour < 18);
+
+                  exchange.in.setHeader('isBusinessHours', isBusinessHours);
+        - choice:
+            otherwise:
+              steps:
+                - log:
+                    message: Outside business hours - limited processing mode
+                - setHeader:
+                    constant: start
+                    name: action
+                - setHeader:
+                    constant: OrderIngestionRoute
+                    name: routeId
+                - to:
+                    uri: direct:processControlCommand
+                - setHeader:
+                    constant: stop
+                    name: action
+                - setHeader:
+                    constant: OrderFulfillmentRoute
+                    name: routeId
+                - to:
+                    uri: direct:processControlCommand
+            when:
+              - steps:
+                  - log:
+                      message: Business hours - enabling full order processing
+                  - setHeader:
+                      constant: start-pipeline
+                      name: action
+                  - to:
+                      uri: direct:processControlCommand
+                simple: ${header.isBusinessHours} == true
+- route:
+    id: EmergencyShutdownRoute
+    from:
+      uri: platform-http:/admin/emergency-shutdown
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            loggingLevel: ERROR
+            message: EMERGENCY SHUTDOWN INITIATED
+        - setHeader:
+            constant: stop-pipeline
+            name: action
+        - to:
+            uri: direct:processControlCommand
+        - log:
+            loggingLevel: WARN
+            message: All order processing routes have been stopped
+        - setBody:
+            simple: '{"status": "emergency_shutdown_complete", "message": "All order
+              processing routes stopped", "timestamp": "${date:now:yyyy-MM-dd
+              HH:mm:ss}"}'

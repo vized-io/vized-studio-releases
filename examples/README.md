@@ -71,6 +71,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**Change Data Capture**](EIP/ChangeDataCapture) | Capture changes in data sources and propagate them | • Monitor database changes<br>• Sync data between systems |
 | [**Circuit Breaker**](EIP/CircuitBreaker) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Content-Based Router**](EIP/ContentBasedRouter) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
+| [**Control Bus**](EIP/ControlBus) | Manage and monitor integration components at runtime | • Dynamically start/stop routes<br>• Monitor system health and metrics |
 | [**Jsonata Mapper**](EIP/JsonataMapper) | Transform JSON data using JSONata expressions | • Convert JSON structures<br>• Map fields between different JSON formats |
 | [**Message Filter**](EIP/MessageFilter) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
 | [**Ports and Adapters**](EIP/PortsAndAdapters) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |

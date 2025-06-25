@@ -10,63 +10,385 @@
   "camel": {
     "routes": {
       "ControlBus.camel.yaml": {
-        "fileProcessingRoute": {
-          "id": "fileProcessingRoute",
+        "HttpControlInterface": {
+          "id": "HttpControlInterface",
           "breakpoints": [],
           "from": [
             {
-              "uri": "file:data/input",
-              "id": "ReadInputFolder"
+              "uri": "platform-http:/admin/control",
+              "id": "HttpControl"
             }
           ],
           "to": [
             {
-              "uri": "file:data/output",
-              "id": "WriteToOutput"
+              "uri": "direct:processControlCommand",
+              "id": "DirectControlManager"
             }
           ]
         },
-        "controlBusRoute": {
-          "id": "controlBusRoute",
+        "OrderIngestionRoute": {
+          "id": "OrderIngestionRoute",
           "breakpoints": [],
           "from": [
             {
-              "uri": "direct:control",
-              "id": "ReceiveControlCommand"
+              "uri": "file",
+              "id": "Read Incoming"
             }
           ],
           "to": [
             {
-              "uri": "controlbus:route?routeId=fileProcessingRoute&action=start",
-              "id": "StartRoute"
-            },
-            {
-              "uri": "controlbus:route?routeId=fileProcessingRoute&action=stop",
-              "id": "StopRoute"
-            },
-            {
-              "uri": "controlbus:route?routeId=fileProcessingRoute&action=status",
-              "id": "StatusRoute"
-            },
-            {
-              "uri": "stream:out",
-              "id": "PrintToConsole"
+              "uri": "direct:validateOrder",
+              "id": "Validate Order"
             }
           ]
         },
-        "commandSender": {
-          "id": "commandSender",
+        "OrderValidationRoute": {
+          "id": "OrderValidationRoute",
           "breakpoints": [],
           "from": [
             {
-              "uri": "timer:commandTimer",
-              "id": "TimerTrigger"
+              "uri": "direct:validateOrder",
+              "id": "Route Validate Order"
             }
           ],
           "to": [
             {
-              "uri": "direct:control",
-              "id": "SendToControlRoute"
+              "uri": "direct:handleInvalidOrder",
+              "id": "Direct InValid Order"
+            },
+            {
+              "uri": "direct:checkInventory",
+              "id": "CheckInventory"
+            }
+          ]
+        },
+        "InventoryCheckRoute": {
+          "id": "InventoryCheckRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:checkInventory",
+              "id": "Check Inventory"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:handleInventoryUnavailable",
+              "id": "Handle Inventory Unavailable"
+            },
+            {
+              "uri": "direct:processPayment",
+              "id": "Process Payment"
+            }
+          ]
+        },
+        "PaymentProcessingRoute": {
+          "id": "PaymentProcessingRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:processPayment",
+              "id": "Process Payment"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:handlePaymentFailure",
+              "id": "Handle Payment Failure"
+            },
+            {
+              "uri": "direct:fulfillOrder",
+              "id": "Fulfill Order"
+            }
+          ]
+        },
+        "OrderFulfillmentRoute": {
+          "id": "OrderFulfillmentRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:fulfillOrder",
+              "id": "Fulfill Order"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:sendNotification",
+              "id": "Send Notification"
+            }
+          ]
+        },
+        "NotificationRoute": {
+          "id": "NotificationRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:sendNotification",
+              "id": "Send Notification Route"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:notifications/outgoing",
+              "id": "Write Notification File"
+            }
+          ]
+        },
+        "HandleInvalidOrderRoute": {
+          "id": "HandleInvalidOrderRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:handleInvalidOrder"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:orders/invalid"
+            }
+          ]
+        },
+        "HandleInventoryUnavailableRoute": {
+          "id": "HandleInventoryUnavailableRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:handleInventoryUnavailable"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:orders/backorder"
+            }
+          ]
+        },
+        "HandlePaymentFailureRoute": {
+          "id": "HandlePaymentFailureRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:handlePaymentFailure"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:orders/payment-failed"
+            }
+          ]
+        },
+        "ControlBusManager": {
+          "id": "ControlBusManager",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:processControlCommand",
+              "id": "Process Control Command"
+            }
+          ],
+          "to": [
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Order Ingestion"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Order Validation"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Inventory Check"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Payment Processing"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Order Fulfillment"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Start Notification"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Order Ingestion"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Order Validation"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Inventory Check"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Payment Processing"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Order Fulfillment"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Notification"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Payment For Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Inventory For Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Stop Fulfillment For Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Resume Payment From Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Resume Inventory From Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Resume Fulfillment From Maintenance"
+            },
+            {
+              "uri": "controlbus:route",
+              "id": "Control Bus Get Status"
+            }
+          ]
+        },
+        "HealthCheckRoute": {
+          "id": "HealthCheckRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/admin/health"
+            }
+          ],
+          "to": []
+        },
+        "RouteMetricsRoute": {
+          "id": "RouteMetricsRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/admin/metrics"
+            }
+          ],
+          "to": []
+        },
+        "ConfigurationManagementRoute": {
+          "id": "ConfigurationManagementRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/admin/config"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            }
+          ]
+        },
+        "ScheduledMaintenanceRoute": {
+          "id": "ScheduledMaintenanceRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:scheduledMaintenance"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            }
+          ]
+        },
+        "CircuitBreakerMonitorRoute": {
+          "id": "CircuitBreakerMonitorRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:circuitBreakerMonitor"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            }
+          ]
+        },
+        "LoadBasedControlRoute": {
+          "id": "LoadBasedControlRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:loadMonitor"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "controlbus:route"
+            },
+            {
+              "uri": "controlbus:route"
+            }
+          ]
+        },
+        "BusinessHoursControlRoute": {
+          "id": "BusinessHoursControlRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:businessHours"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            },
+            {
+              "uri": "direct:processControlCommand"
+            }
+          ]
+        },
+        "EmergencyShutdownRoute": {
+          "id": "EmergencyShutdownRoute",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/admin/emergency-shutdown"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:processControlCommand"
             }
           ]
         }
@@ -77,6 +399,10 @@
     }
   },
   "environments": {
-    "default": []
+    "default": [
+      "camel.server.enabled",
+      "camel.server.staticEnabled",
+      "logging.level.org.apache.camel.component.controlbus.ControlBusProducer"
+    ]
   }
 }

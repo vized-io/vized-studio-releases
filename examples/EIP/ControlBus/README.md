@@ -63,6 +63,9 @@ Set up the entry point for your integration flow:
 2. Search for the File Component in the Component tab.
 3. Configure it to monitor the `orders/incoming/` directory for new order files.
 
+![source](./assets/source.gif)
+
+
 ### 3. Implement Order Processing Pipeline
 
 Create the complete order processing workflow:
@@ -73,29 +76,34 @@ Create the complete order processing workflow:
 4. Add route for **Order Fulfillment** to manage shipping.
 5. Add route for **Customer Notification** to send status updates.
 
+![pipeline](./assets/pipeline.gif)
+
 ### 4. Add Control Bus Management
 
 Implement the Control Bus pattern for route management:
-
+ 
 1. Add REST endpoints for route control operations.
 2. Configure health check endpoints for system monitoring.
 3. Implement maintenance mode controls.
 4. Add emergency shutdown capabilities.
 
-### 5. Configure Monitoring and Metrics
+![control-bus](./assets/control_bus.gif)
+
+<!-- ### 5. Configure Monitoring and Metrics
 
 Set up comprehensive system monitoring:
 
 1. Add health check routes for each processing stage.
-2. Configure metrics collection for performance monitoring.
-3. Implement circuit breaker patterns for external services.
-4. Add load-based control mechanisms.
+2. Implement circuit breaker patterns for external services.
+3. Add load-based control mechanisms. -->
 
 ## Running the Integration Project
 
 1. Select your integration project in VIZED.
 2. Right-click on the Camel file and select "Run" from the context menu.
 3. Monitor the logs to see the order processing pipeline and control operations.
+
+![executing](./assets/executing.gif)
 
 ## External Dependencies Setup
 
@@ -148,7 +156,7 @@ curl -X POST http://localhost:8080/admin/control \
 ```bash
 curl -X POST http://localhost:8080/admin/control \
   -H "Content-Type: application/json" \
-  -d '{"action": "stop", "routeId": "paymentProcessingRoute"}'
+  -d '{"action": "stop", "routeId": "PaymentProcessingRoute"}'
 ```
 
 ### Enter Maintenance Mode

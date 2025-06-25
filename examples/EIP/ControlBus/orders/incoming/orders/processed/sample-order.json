@@ -1,0 +1,20 @@
+{
+  "orderId": "ORD-12345",
+  "customerId": "CUST-67890",
+  "customerEmail": "customer@example.com",
+  "totalAmount": 99.99,
+  "items": [
+    {
+      "productId": "PROD-001",
+      "name": "Wireless Headphones",
+      "quantity": 1,
+      "price": 99.99
+    }
+  ],
+  "shippingAddress": {
+    "street": "123 Main St",
+    "city": "Anytown",
+    "state": "CA",
+    "zipCode": "12345"
+  }
+}

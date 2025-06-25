@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camel Control Panel</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9;
+            --panel-bg: #ffffff;
+            --header-bg: #2c3e50;
+            --text-color: #34495e;
+            --border-color: #e0e5ea;
+            --shadow: 0 4px 8px rgba(0,0,0,0.05);
+            --status-running: #2ecc71;
+            --status-stopped: #e74c3c;
+            --status-unknown: #95a5a6;
+            --button-primary-bg: #3498db;
+            --button-primary-hover: #2980b9;
+            --button-secondary-bg: #95a5a6;
+            --button-secondary-hover: #7f8c8d;
+            --button-danger-bg: #e74c3c;
+            --button-danger-hover: #c0392b;
+            --log-bg: #2c3e50;
+            --log-text: #ecf0f1;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+        .control-panel {
+            background-color: var(--panel-bg);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        .panel-header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 15px 20px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        .panel-body {
+            padding: 20px;
+        }
+        /* Dashboard */
+        #dashboard .status-display {
+            font-size: 1.5em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--status-unknown);
+        }
+        /* Global Controls */
+        #global-controls .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        .btn {
+            border: none;
+            color: white;
+            padding: 12px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            text-align: center;
+        }
+        .btn-primary { background-color: var(--button-primary-bg); }
+        .btn-primary:hover { background-color: var(--button-primary-hover); }
+        .btn-secondary { background-color: var(--button-secondary-bg); }
+        .btn-secondary:hover { background-color: var(--button-secondary-hover); }
+        .btn-danger { background-color: var(--button-danger-bg); }
+        .btn-danger:hover { background-color: var(--button-danger-hover); }
+        /* Route Table */
+        #route-table-container {
+            overflow-x: auto;
+        }
+        #route-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        #route-table th, #route-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        #route-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+        #route-table tr:last-child td {
+            border-bottom: none;
+        }
+        .status-cell {
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-running { color: var(--status-running); }
+        .status-stopped { color: var(--status-stopped); }
+        .status-unknown { color: var(--status-unknown); }
+        .dot-running { background-color: var(--status-running); }
+        .dot-stopped { background-color: var(--status-stopped); }
+        .dot-unknown { background-color: var(--status-unknown); }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .action-buttons .btn {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+        /* Log Console */
+        #log-console {
+            background-color: var(--log-bg);
+            color: var(--log-text);
+            padding: 15px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header style="text-align: center; margin-bottom: 10px;">
+            <h1>Camel Order Processing Control Panel</h1>
+        </header>
+
+        <!-- Dashboard Module -->
+        <div id="dashboard" class="control-panel">
+            <div class="panel-header">System Status</div>
+            <div class="panel-body">
+                <div id="overall-status" class="status-display">
+                    <span id="overall-status-indicator" class="status-indicator"></span>
+                    <span id="overall-status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Controls Module -->
+        <div id="global-controls" class="control-panel">
+            <div class="panel-header">Global Pipeline Controls</div>
+            <div class="panel-body">
+                <div class="controls-grid">
+                    <button class="btn btn-primary" data-action="start-pipeline">Start All Routes</button>
+                    <button class="btn btn-secondary" data-action="stop-pipeline">Stop All Routes</button>
+                    <button class="btn btn-primary" data-action="resume-from-maintenance">Resume from Maintenance</button>
+                    <button class="btn btn-secondary" data-action="maintenance-mode">Enter Maintenance Mode</button>
+                    <button class="btn btn-danger" id="emergency-shutdown-btn">Emergency Shutdown</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Route Details Module -->
+        <div class="control-panel">
+            <div class="panel-header">Route-Level Controls</div>
+            <div class="panel-body">
+                <div id="route-table-container">
+                    <table id="route-table">
+                        <thead>
+                            <tr>
+                                <th>Route</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="route-table-body">
+                            <!-- JS will populate this -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Console Module -->
+        <div class="control-panel">
+            <div class="panel-header">Action Log</div>
+            <div class="panel-body">
+                <div id="log-console"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURATION ---
+            // IMPORTANT: Change this URL to match your Camel application's address
+            const API_BASE_URL = window.location.origin;
+
+            // --- DOM ELEMENTS ---
+            const overallStatusIndicator = document.getElementById('overall-status-indicator');
+            const overallStatusText = document.getElementById('overall-status-text');
+            const routeTableBody = document.getElementById('route-table-body');
+            const logConsole = document.getElementById('log-console');
+            const globalControlsContainer = document.getElementById('global-controls');
+            const emergencyShutdownBtn = document.getElementById('emergency-shutdown-btn');
+
+            // --- APP STATE ---
+            const routes = {
+                'OrderIngestionRoute': { name: 'Order Ingestion', description: 'Ingests orders from files' },
+                'OrderValidationRoute': { name: 'Order Validation', description: 'Validates incoming orders' },
+                'InventoryCheckRoute': { name: 'Inventory Check', description: 'Checks inventory availability' },
+                'PaymentProcessingRoute': { name: 'Payment Processing', description: 'Processes order payments' },
+                'OrderFulfillmentRoute': { name: 'Order Fulfillment', description: 'Handles order shipping' },
+                'NotificationRoute': { name: 'Notifications', description: 'Sends customer notifications' }
+            };
+
+            // --- LOGGING ---
+            const log = (message, type = 'info') => {
+                const timestamp = new Date().toLocaleTimeString();
+                const entry = document.createElement('div');
+                entry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+                if (type === 'error') entry.style.color = 'var(--status-stopped)';
+                if (type === 'success') entry.style.color = 'var(--status-running)';
+                logConsole.prepend(entry);
+            };
+
+            // --- API CALLS ---
+            const apiCall = async (endpoint, options = {}) => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+                    }
+                    const text = await response.text();
+                    return text ? JSON.parse(text) : { success: true };
+                } catch (error) {
+                    log(`API Error on ${endpoint}: ${error.message}`, 'error');
+                    console.error('API Call Failed:', error);
+                    return null;
+                }
+            };
+
+            const sendControlCommand = async (action, routeId = null) => {
+                log(`Sending command: '${action}'${routeId ? ` for route '${routeId}'` : ''}`);
+                const body = { action };
+                if (routeId) {
+                    body.routeId = routeId;
+                }
+                const result = await apiCall('/admin/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (result) {
+                    log(result.message || `Successfully sent '${action}' command.`, 'success');
+                }
+                setTimeout(fetchHealthStatus, 500);
+            };
+
+            // --- UI UPDATES ---
+            const updateDashboard = (healthData) => {
+                if (!healthData) return;
+                const isHealthy = healthData.overallStatus === 'HEALTHY';
+                overallStatusText.textContent = healthData.overallStatus || 'UNKNOWN';
+                overallStatusText.className = isHealthy ? 'status-running' : 'status-stopped';
+                overallStatusIndicator.style.backgroundColor = isHealthy ? 'var(--status-running)' : 'var(--status-stopped)';
+            };
+
+            const updateRouteTable = (healthData) => {
+                if (!healthData || !healthData.routes) return;
+                for (const routeId in routes) {
+                    const statusData = healthData.routes[routeId];
+                    const status = statusData ? statusData.status : 'Unknown';
+                    const isRunning = status === 'Started';
+
+                    const row = document.getElementById(`route-${routeId}`);
+                    if (!row) continue;
+
+                    const statusCell = row.querySelector('.status-cell');
+                    const statusDot = statusCell.querySelector('.status-dot');
+                    const statusText = statusCell.querySelector('span');
+
+                    statusDot.className = `status-dot ${isRunning ? 'dot-running' : 'dot-stopped'}`;
+                    statusText.textContent = isRunning ? 'Running' : 'Stopped';
+                    statusText.className = isRunning ? 'status-running' : 'status-stopped';
+                }
+            };
+
+            const populateInitialTable = () => {
+                routeTableBody.innerHTML = ''; // Clear existing
+                for (const routeId in routes) {
+                    const routeInfo = routes[routeId];
+                    const row = document.createElement('tr');
+                    row.id = `route-${routeId}`;
+                    row.innerHTML = `
+                        <td>${routeInfo.name}</td>
+                        <td>${routeInfo.description}</td>
+                        <td>
+                            <div class="status-cell status-unknown">
+                                <div class="status-dot dot-unknown"></div>
+                                <span>Unknown</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" data-action="start" data-route-id="${routeId}">Start</button>
+                                <button class="btn btn-secondary" data-action="stop" data-route-id="${routeId}">Stop</button>
+                            </div>
+                        </td>
+                    `;
+                    routeTableBody.appendChild(row);
+                }
+            };
+
+            // --- DATA FETCHING ---
+            const fetchHealthStatus = async () => {
+                const healthData = await apiCall('/admin/health');
+                if (healthData) {
+                    updateDashboard(healthData);
+                    updateRouteTable(healthData);
+                } else {
+                    updateDashboard({ overallStatus: 'DISCONNECTED' });
+                }
+            };
+
+            // --- EVENT LISTENERS ---
+            const setupEventListeners = () => {
+                document.getElementById('app').addEventListener('click', (e) => {
+                    if (e.target.matches('button[data-action]')) {
+                        const action = e.target.dataset.action;
+                        const routeId = e.target.dataset.routeId || null;
+                        sendControlCommand(action, routeId);
+                    }
+                });
+
+                emergencyShutdownBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to perform an EMERGENCY SHUTDOWN? This will stop all processing routes immediately.')) {
+                        log('EMERGENCY SHUTDOWN initiated!', 'error');
+                        apiCall('/admin/emergency-shutdown', { method: 'POST' }).then(result => {
+                            if (result) {
+                                log('Emergency shutdown command sent successfully.', 'success');
+                            }
+                            setTimeout(fetchHealthStatus, 500);
+                        });
+                    }
+                });
+            };
+
+            // --- INITIALIZATION ---
+            const init = () => {
+                log('Control Panel Initialized. Connecting to backend...');
+                populateInitialTable();
+                setupEventListeners();
+                fetchHealthStatus();
+                setInterval(fetchHealthStatus, 5000); // Poll every 5 seconds
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>

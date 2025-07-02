@@ -1,0 +1,21 @@
+{
+  "name": "SAGA",
+  "version": "0.0.1",
+  "artifactId": "SAGA",
+  "group": "com.vized.project",
+  "relativePath": "SAGA",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "SAGA.camel.yaml": {}
+    },
+    "beans": {
+      "SAGA.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+}

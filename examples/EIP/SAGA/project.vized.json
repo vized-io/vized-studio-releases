@@ -9,13 +9,168 @@
   "runtime": "camel-main",
   "camel": {
     "routes": {
-      "SAGA.camel.yaml": {}
+      "SAGA.camel.yaml": {
+        "saga-orchestrator": {
+          "id": "saga-orchestrator",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer",
+              "id": "order-generator-timer"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:reserve-inventory",
+              "id": "call-reserve-inventory"
+            },
+            {
+              "uri": "direct:process-payment",
+              "id": "call-process-payment"
+            },
+            {
+              "uri": "direct:create-shipping",
+              "id": "call-create-shipping"
+            },
+            {
+              "uri": "direct:send-confirmation",
+              "id": "call-send-confirmation"
+            }
+          ]
+        },
+        "reserve-inventory": {
+          "id": "reserve-inventory",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:reserve-inventory",
+              "id": "reserve-inventory-direct"
+            }
+          ],
+          "to": []
+        },
+        "release-inventory": {
+          "id": "release-inventory",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:release-inventory",
+              "id": "release-inventory-direct"
+            }
+          ],
+          "to": []
+        },
+        "process-payment": {
+          "id": "process-payment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:process-payment",
+              "id": "process-payment-direct"
+            }
+          ],
+          "to": []
+        },
+        "refund-payment": {
+          "id": "refund-payment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:refund-payment",
+              "id": "refund-payment-direct"
+            }
+          ],
+          "to": []
+        },
+        "create-shipping": {
+          "id": "create-shipping",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:create-shipping",
+              "id": "create-shipping-direct"
+            }
+          ],
+          "to": []
+        },
+        "cancel-shipping": {
+          "id": "cancel-shipping",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:cancel-shipping",
+              "id": "cancel-shipping-direct"
+            }
+          ],
+          "to": []
+        },
+        "send-confirmation": {
+          "id": "send-confirmation",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:send-confirmation",
+              "id": "send-confirmation-direct"
+            }
+          ],
+          "to": []
+        },
+        "saga-completion": {
+          "id": "saga-completion",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:saga-complete",
+              "id": "saga-complete-direct"
+            }
+          ],
+          "to": []
+        },
+        "saga-compensation": {
+          "id": "saga-compensation",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:saga-compensate",
+              "id": "saga-compensate-direct"
+            }
+          ],
+          "to": []
+        },
+        "health-check": {
+          "id": "health-check",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "jetty:http://0.0.0.0:8001/health",
+              "id": "health-check-jetty"
+            }
+          ],
+          "to": []
+        },
+        "order-status": {
+          "id": "order-status",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "jetty:http://0.0.0.0:8001/orders",
+              "id": "order-status-jetty"
+            }
+          ],
+          "to": []
+        }
+      }
     },
     "beans": {
-      "SAGA.camel.yaml": []
+      "SAGA.camel.yaml": [
+        "orderState"
+      ]
     }
   },
   "environments": {
-    "default": []
+    "default": [
+      "camel.server.enabled",
+      "camel.server.staticEnabled"
+    ]
   }
 }

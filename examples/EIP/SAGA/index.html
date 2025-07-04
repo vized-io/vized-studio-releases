@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camel Saga Monitoring UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        .details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Camel Saga Orchestrator</h1>
+            <p class="text-lg text-gray-600">Live monitoring of order processing sagas.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div id="health-status-card" class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Application Health</h2>
+                <div id="health-status" class="flex items-center">
+                    <div class="w-4 h-4 rounded-full bg-gray-400 mr-3"></div>
+                    <span class="text-gray-600">Checking...</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Total Orders</h2>
+                <p id="total-orders" class="text-4xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Last Updated</h2>
+                <p id="last-updated" class="text-xl text-gray-600">Never</p>
+            </div>
+        </div>
+
+        <div>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-3xl font-semibold text-gray-700">Order Status</h2>
+                <div id="loading-spinner" class="spinner w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+            </div>
+            <div id="orders-container" class="space-y-4">
+                <!-- Orders will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const camelApiBaseUrl = 'http://localhost:8001';
+
+        function createOrderCard(orderId, orderData) {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-5 rounded-lg shadow-md transition-all duration-300';
+
+            const status = orderData.status || 'IN_PROGRESS';
+            const statusColor = {
+                'COMPLETED': 'bg-green-500',
+                'COMPENSATED': 'bg-red-500',
+                'IN_PROGRESS': 'bg-yellow-500'
+            }[status];
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center cursor-pointer" onclick="toggleDetails(this)">
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full ${statusColor} mr-4"></div>
+                        <div>
+                            <p class="font-mono text-lg text-gray-800">${orderId}</p>
+                            <p class="text-sm font-semibold ${status === 'COMPLETED' ? 'text-green-700' : (status === 'COMPENSATED' ? 'text-red-700' : 'text-yellow-700')}">${status.replace('_', ' ')}</p>
+                        </div>
+                    </div>
+                    <div class="details-arrow text-2xl text-gray-500 transform transition-transform">▶</div>
+                </div>
+                <div class="details-content mt-4 pt-4 border-t border-gray-200">
+                    <pre class="bg-gray-50 p-3 rounded text-sm text-gray-700 overflow-x-auto"><code>${JSON.stringify(orderData, null, 2)}</code></pre>
+                </div>
+            `;
+            return card;
+        }
+
+        function toggleDetails(element) {
+            const content = element.nextElementSibling;
+            const arrow = element.querySelector('.details-arrow');
+            if (content.style.maxHeight) {
+                content.style.maxHeight = null;
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                arrow.style.transform = 'rotate(90deg)';
+            }
+        }
+
+        async function fetchHealth() {
+            const healthStatusDiv = document.getElementById('health-status');
+            const indicator = healthStatusDiv.querySelector('div');
+            const text = healthStatusDiv.querySelector('span');
+            try {
+                const response = await fetch(`${camelApiBaseUrl}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    indicator.className = 'w-4 h-4 rounded-full bg-green-500 mr-3';
+                    text.textContent = `Status: ${data.status}`;
+                } else {
+                    throw new Error('Health check failed');
+                }
+            } catch (error) {
+                indicator.className = 'w-4 h-4 rounded-full bg-red-500 mr-3';
+                text.textContent = 'Status: Unreachable';
+                console.error('Health Check Error:', error);
+            }
+        }
+
+        async function fetchOrders() {
+            const spinner = document.getElementById('loading-spinner');
+            spinner.style.display = 'block';
+
+            try {
+                const response = await fetch(`${camelApiBaseUrl}/orders`);
+                const data = await response.json();
+                
+                const ordersContainer = document.getElementById('orders-container');
+                ordersContainer.innerHTML = ''; // Clear previous orders
+
+                // Filter out sagaContext from orders
+                const allOrders = data.orders || {};
+                const orders = Object.keys(allOrders)
+                    .filter(key => key !== 'sagaContext')
+                    .reduce((filtered, key) => {
+                        filtered[key] = allOrders[key];
+                        return filtered;
+                    }, {});
+                    
+                const orderIds = Object.keys(orders);
+
+                document.getElementById('total-orders').textContent = orderIds.length;
+
+                if (orderIds.length === 0) {
+                    ordersContainer.innerHTML = '<p class="text-gray-500">No orders processed yet. Waiting for the timer to trigger...</p>';
+                } else {
+                    orderIds.sort().reverse().forEach(orderId => {
+                        const card = createOrderCard(orderId, orders[orderId]);
+                        ordersContainer.appendChild(card);
+                    });
+                }
+
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+            } catch (error) {
+                document.getElementById('orders-container').innerHTML = '<p class="text-red-500">Error fetching order data. Is the Camel application running?</p>';
+                console.error('Fetch Orders Error:', error);
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+        
+        function startPolling() {
+            fetchHealth();
+            fetchOrders();
+            setInterval(fetchHealth, 10000); // Poll health every 10 seconds
+            setInterval(fetchOrders, 5000);  // Poll orders every 5 seconds
+        }
+
+        document.addEventListener('DOMContentLoaded', startPolling);
+    </script>
+</body>
+</html>

@@ -1,59 +1,279 @@
-
 - beans:
     - name: orderState
       type: "#class:java.util.concurrent.ConcurrentHashMap"
+    - name: inventoryState
+      type: "#class:java.util.concurrent.ConcurrentHashMap"
+- route:
+    id: inventory-initializer
+    from:
+      uri: timer:init
+      parameters:
+        repeatCount: 1
+      steps:
+        - script:
+            id: initialize-inventory
+            groovy:
+              expression: >
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+                                
+                // Initialize inventory with real-world products
+
+                inventoryState.put("ITM1_name", "iPhone 15 Pro")
+
+                inventoryState.put("ITM1_stock", 100)
+
+                inventoryState.put("ITM1_reserved", 0)
+
+
+                inventoryState.put("ITM2_name", "MacBook Pro M3")
+
+                inventoryState.put("ITM2_stock", 100)
+
+                inventoryState.put("ITM2_reserved", 0)
+
+
+                inventoryState.put("ITM3_name", "AirPods Pro")
+
+                inventoryState.put("ITM3_stock", 100)
+
+                inventoryState.put("ITM3_reserved", 0)
+
+
+                println "=== INVENTORY INITIALIZED ==="
+
+                inventoryState.findAll { k, v -> k.endsWith("_name") ||
+                k.endsWith("_stock") }.each { k, v ->
+                  println "${k}: ${v}"
+                }
+
+                println "============================="
+
+
+                return "Inventory initialized"
 - route:
     id: saga-orchestrator
     from:
-      id: order-generator-timer
-      uri: timer
+      id: order-input
+      uri: platform-http
       parameters:
-        delay: "5000"
-        period: 10000
-        repeatCount: 3
-        timerName: order-generator
+        httpMethodRestrict: POST, GET, OPTIONS
+        path: /orders
       steps:
         - setHeader:
-            id: set-order-id
+            id: set-cors-headers
             expression:
-              groovy:
-                expression: UUID.randomUUID().toString().substring(0,8)
-            name: orderId
+              constant: "*"
+            name: Access-Control-Allow-Origin
         - setHeader:
-            id: set-customer-id
+            id: set-cors-methods
             expression:
-              constant: CUST-001
-            name: customerId
+              constant: POST, GET, OPTIONS
+            name: Access-Control-Allow-Methods
         - setHeader:
-            id: set-amount
+            id: set-cors-headers-allowed
             expression:
-              groovy:
-                expression: Math.round(Math.random() * 1000 + 100)
-            name: amount
-        - setHeader:
-            id: set-payment-failure-flag
-            expression:
-              groovy:
-                expression: Math.random() < 0.3
-            name: shouldFailPayment
-        - script:
-            id: store-order-context
-            groovy:
-              expression: >
-                def appContext =
-                exchange.context.registry.lookupByName('orderState')
+              constant: Content-Type
+            name: Access-Control-Allow-Headers
+        - choice:
+            id: handle-cors-preflight
+            otherwise:
+              steps:
+                - choice:
+                    id: validate-http-method
+                    otherwise:
+                      steps:
+                        - to:
+                            id: call-status-route
+                            uri: direct:order-status
+                    when:
+                      - steps:
+                          - unmarshal:
+                              id: unmarshal-json-order
+                              json:
+                                library: Jackson
+                                unmarshalType: java.util.Map
+                          - script:
+                              id: validate-and-process-order
+                              groovy:
+                                expression: >
+                                  
+                                  def orderData = request.body
 
-                def orderId = request.headers['orderId']
+                                  def orderState =
+                                  exchange.context.registry.lookupByName('orderState')
 
-                appContext.put("currentOrderId", orderId)
+                                  def inventoryState =
+                                  exchange.context.registry.lookupByName('inventoryState')
 
-                appContext.put("sagaContext_" + Thread.currentThread().id,
-                orderId)
 
-                return orderId
-        - log:
-            id: log-saga-start
-            message: "Starting SAGA for Order: ${header.orderId}, Amount: ${header.amount}"
+                                  // Validate order structure
+
+                                  if (!orderData.orderId ||
+                                  !orderData.orderItems || !orderData.address) {
+                                    throw new RuntimeException("Invalid order format. Required fields: orderId, orderItems, address")
+                                  }
+
+
+                                  def orderId = orderData.orderId
+
+                                  def orderItems = orderData.orderItems
+
+                                  def address = orderData.address
+
+
+                                  // Validate inventory availability
+
+                                  def totalAmount = 0
+
+                                  def reservationList = []
+
+
+                                  for (item in orderItems) {
+                                    def productId = item.productId
+                                    def quantity = item.quantity
+                                    
+                                    def availableStock = inventoryState.get(productId + "_stock") ?: 0
+                                    def reservedStock = inventoryState.get(productId + "_reserved") ?: 0
+                                    def actualAvailable = availableStock - reservedStock
+                                    
+                                    if (quantity > actualAvailable) {
+                                      def productName = inventoryState.get(productId + "_name") ?: productId
+                                      throw new RuntimeException("Insufficient inventory for ${productName}. Requested: ${quantity}, Available: ${actualAvailable}")
+                                    }
+                                    
+                                    // Calculate amount (simplified pricing)
+                                    def itemPrice = productId == "ITM1" ? 999 : (productId == "ITM2" ? 1999 : 199)
+                                    totalAmount += itemPrice * quantity
+                                    
+                                    reservationList.add([productId: productId, quantity: quantity])
+                                  }
+
+
+                                  // Store order context
+
+                                  orderState.put(orderId + "_orderItems",
+                                  orderItems)
+
+                                  orderState.put(orderId + "_address", address)
+
+                                  orderState.put(orderId + "_amount",
+                                  totalAmount)
+
+                                  orderState.put(orderId + "_reservationList",
+                                  reservationList)
+
+                                  orderState.put("currentOrderId", orderId)
+
+                                  orderState.put("sagaContext_" +
+                                  Thread.currentThread().id, orderId)
+
+                                  orderState.put(orderId + "_timestamp", new
+                                  Date().toString())
+
+                                  orderState.put(orderId + "_threadId",
+                                  Thread.currentThread().id)
+
+
+                                  // Set headers for downstream processing
+
+                                  request.headers['orderId'] = orderId
+
+                                  request.headers['amount'] = totalAmount
+
+                                  request.headers['shouldFailPayment'] =
+                                  Math.random() < 0.3
+
+
+                                  return orderId
+                          - marshal:
+                              id: marshal-order-id
+                              json:
+                                library: Jackson
+                          - log:
+                              id: log-saga-start
+                              message: "Starting SAGA for Order: ${header.orderId}, Amount: ${header.amount}"
+                          - doTry:
+                              id: try-saga-processing
+                              steps:
+                                - to:
+                                    id: call-process-order-saga
+                                    uri: direct:process-order-saga
+                                - script:
+                                    id: create-success-response
+                                    groovy:
+                                      expression: >
+                                        def response = [
+                                          status: "success",
+                                          message: "Order processed successfully",
+                                          orderId: request.headers['orderId'],
+                                          amount: request.headers['amount']
+                                        ]
+
+                                        exchange.getIn().setBody(response)
+
+                                        return response
+                                - marshal:
+                                    id: marshal-success-response
+                                    json:
+                                      library: Jackson
+                                - setHeader:
+                                    id: set-success-content-type
+                                    expression:
+                                      constant: application/json
+                                    name: Content-Type
+                              doCatch:
+                                - steps:
+                                    - log:
+                                        id: log-saga-failure
+                                        message: "SAGA failed for Order: ${header.orderId} - ${exception.message}"
+                                    - script:
+                                        id: create-error-response
+                                        groovy:
+                                          expression: >
+                                            def response = [
+                                              status: "error",
+                                              message: "Order failed and was compensated: ${exception.message}",
+                                              orderId: request.headers['orderId'],
+                                              error: exception.message
+                                            ]
+
+                                            exchange.getIn().setBody(response)
+
+                                            return response
+                                    - marshal:
+                                        id: marshal-error-response
+                                        json:
+                                          library: Jackson
+                                    - setHeader:
+                                        id: set-error-content-type
+                                        expression:
+                                          constant: application/json
+                                        name: Content-Type
+                                    - setHeader:
+                                        id: set-error-status
+                                        expression:
+                                          constant: "400"
+                                        name: CamelHttpResponseCode
+                                  exception:
+                                    - java.lang.RuntimeException
+                        expression:
+                          simple: ${header.CamelHttpMethod} == 'POST'
+            when:
+              - steps:
+                  - setBody:
+                      id: set-cors-response
+                      expression:
+                        constant: ""
+                  - stop: {}
+                expression:
+                  simple: ${header.CamelHttpMethod} == 'OPTIONS'
+- route:
+    id: process-order-saga
+    from:
+      id: process-order-saga-direct
+      uri: direct:process-order-saga
+      steps:
         - saga:
             id: saga-init
             compensation: direct:saga-compensate
@@ -77,7 +297,7 @@
             uri: direct:send-confirmation
         - log:
             id: log-saga-success
-            message: "SAGA completed successfully for Order: ${header.sagaOrderId}"
+            message: "SAGA completed successfully for Order: ${header.orderId}"
 - route:
     id: reserve-inventory
     from:
@@ -94,26 +314,66 @@
             id: inventory-reservation-logic
             groovy:
               expression: >
-                // Simulate inventory reservation
-
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+
                 def orderId = request.headers['orderId']
+
+
+                def reservationList = orderState.get(orderId +
+                "_reservationList")
+
+                def reservedItems = []
+
+
+                for (reservation in reservationList) {
+                  def productId = reservation.productId
+                  def quantity = reservation.quantity
+                  def productName = inventoryState.get(productId + "_name")
+                  
+                  def currentStock = inventoryState.get(productId + "_stock")
+                  def currentReserved = inventoryState.get(productId + "_reserved") ?: 0
+                  def availableStock = currentStock - currentReserved
+                  
+                  if (quantity > availableStock) {
+                    throw new RuntimeException("Insufficient inventory for ${productName}. Available: ${availableStock}, Requested: ${quantity}")
+                    return "Insufficient inventory for ${productName}. Available: ${availableStock}, Requested: ${quantity}"
+                  }
+                  
+                  // Reserve the inventory
+                  inventoryState.put(productId + "_reserved", currentReserved + quantity)
+                  reservedItems.add([productId: productId, productName: productName, quantity: quantity])
+                  
+                  println "Reserved ${quantity} units of ${productName} (${productId})"
+                }
+
 
                 orderState.put(orderId + '_inventory', 'RESERVED')
 
+                orderState.put(orderId + '_reservedItems', reservedItems)
 
-                // Simulate occasional inventory failure
 
-                if (Math.random() < 0.1) {
-                  throw new RuntimeException("Inventory not available")
+                // Display current inventory status
+
+                println "=== INVENTORY STATUS AFTER RESERVATION ==="
+
+                ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                  def name = inventoryState.get(productId + "_name")
+                  def stock = inventoryState.get(productId + "_stock")
+                  def reserved = inventoryState.get(productId + "_reserved")
+                  def available = stock - reserved
+                  println "${name} (${productId}): Total=${stock}, Reserved=${reserved}, Available=${available}"
                 }
+
+                println "============================================="
 
 
                 request.headers['inventoryReserved'] = true
 
-                "Inventory reserved for order: " + orderId
+                return "Inventory reserved for order: " + orderId
         - log:
             id: log-inventory-success
             message: "Inventory reserved for Order: ${header.orderId}"
@@ -133,11 +393,49 @@
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+
                 def orderId = request.headers['orderId']
+
+
+                def reservedItems = orderState.get(orderId + '_reservedItems')
+
+
+                if (reservedItems) {
+                  for (item in reservedItems) {
+                    def productId = item.productId
+                    def quantity = item.quantity
+                    def productName = item.productName
+                    
+                    def currentReserved = inventoryState.get(productId + "_reserved") ?: 0
+                    def newReserved = Math.max(0, currentReserved - quantity)
+                    inventoryState.put(productId + "_reserved", newReserved)
+                    
+                    println "Released ${quantity} units of ${productName} (${productId})"
+                  }
+                }
+
 
                 orderState.put(orderId + '_inventory', 'RELEASED')
 
-                "Inventory released for order: " + orderId
+
+                // Display current inventory status
+
+                println "=== INVENTORY STATUS AFTER RELEASE ==="
+
+                ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                  def name = inventoryState.get(productId + "_name")
+                  def stock = inventoryState.get(productId + "_stock")
+                  def reserved = inventoryState.get(productId + "_reserved")
+                  def available = stock - reserved
+                  println "${name} (${productId}): Total=${stock}, Reserved=${reserved}, Available=${available}"
+                }
+
+                println "======================================="
+
+
+                return "Inventory released for order: " + orderId
 - route:
     id: process-payment
     from:
@@ -165,6 +463,9 @@
                       def orderState =
                       exchange.context.registry.lookupByName('orderState')
 
+                      def inventoryState =
+                      exchange.context.registry.lookupByName('inventoryState')
+
                       def orderId = request.headers['orderId']
 
                       def shouldFail = request.headers['shouldFailPayment']
@@ -173,9 +474,41 @@
                       if (shouldFail) {
                         throw new RuntimeException("Payment declined - insufficient funds")
                       } else {
+                        // Payment successful - convert reserved inventory to sold
+                        def reservedItems = orderState.get(orderId + '_reservedItems')
+                        
+                        if (reservedItems) {
+                          for (item in reservedItems) {
+                            def productId = item.productId
+                            def quantity = item.quantity
+                            def productName = item.productName
+                            
+                            def currentStock = inventoryState.get(productId + "_stock")
+                            def currentReserved = inventoryState.get(productId + "_reserved")
+                            
+                            // Reduce actual stock and reserved stock
+                            inventoryState.put(productId + "_stock", currentStock - quantity)
+                            inventoryState.put(productId + "_reserved", currentReserved - quantity)
+                            
+                            println "Sold ${quantity} units of ${productName} (${productId})"
+                          }
+                        }
+                        
                         orderState.put(orderId + '_payment', 'PROCESSED')
                         request.headers['paymentProcessed'] = true
-                        "Payment processed for order: " + orderId
+                        
+                        // Display current inventory status after sale
+                        println "=== INVENTORY STATUS AFTER PAYMENT ==="
+                        ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                          def name = inventoryState.get(productId + "_name")
+                          def stock = inventoryState.get(productId + "_stock")
+                          def reserved = inventoryState.get(productId + "_reserved")
+                          def available = stock - reserved
+                          println "${name} (${productId}): Total=${stock}, Reserved=${reserved}, Available=${available}"
+                        }
+                        println "=========================================="
+                        
+                        return "Payment processed for order: " + orderId
                       }
               - log:
                   id: log-payment-success
@@ -184,16 +517,13 @@
               - steps:
                   - log:
                       id: log-payment-error
-                      message: " Payment failed for Order: ${header.orderId} - ${exception.message}"
+                      message: "Payment failed for Order: ${header.orderId} - ${exception.message}"
                   - throwException:
                       id: rethrow-payment-error
                       exceptionType: java.lang.RuntimeException
                       message: ${exception.message}
                 exception:
                   - java.lang.RuntimeException
-        - log:
-            id: log-payment-success
-            message: "Payment processed for Order: ${header.orderId}"
 - route:
     id: refund-payment
     from:
@@ -212,9 +542,11 @@
 
                 def orderId = request.headers['orderId']
 
+
                 orderState.put(orderId + '_payment', 'REFUNDED')
 
-                "Payment refunded for order: " + orderId
+
+                return "Payment refunded for order: " + orderId
 - route:
     id: create-shipping
     from:
@@ -244,16 +576,26 @@
                 // Simulate rare shipping failure
 
                 if (Math.random() < 0.05) {
-                  orderState.put(orderId + 'shipping', 'FAILED')
+                  orderState.put(orderId + '_shipping', 'FAILED')
                   throw new RuntimeException("Shipping service unavailable")
                 }
 
 
+                def address = orderState.get(orderId + "_address")
+
+                def shippingAddress = "${address.line1}, ${address.city},
+                ${address.state}, ${address.country} - ${address.pincode}"
+
+
                 orderState.put(orderId + '_shipping', 'CREATED')
+
+                orderState.put(orderId + '_shippingAddress', shippingAddress)
 
                 request.headers['shippingCreated'] = true
 
-                "Shipping created for order: " + orderId
+
+                return "Shipping created for order: " + orderId + " to " +
+                shippingAddress
         - log:
             id: log-shipping-success
             message: "Shipping created for Order: ${header.orderId}"
@@ -275,9 +617,11 @@
 
                 def orderId = request.headers['orderId']
 
+
                 orderState.put(orderId + '_shipping', 'CANCELLED')
 
-                "Shipping cancelled for order: " + orderId
+
+                return "Shipping cancelled for order: " + orderId
 - route:
     id: send-confirmation
     from:
@@ -296,9 +640,37 @@
 
                 def orderId = request.headers['orderId']
 
+
+                def orderItems = orderState.get(orderId + "_orderItems")
+
+                def address = orderState.get(orderId + "_address")
+
+                def amount = orderState.get(orderId + "_amount")
+
+
+                def emailContent = "Order Confirmation for ${orderId}\n"
+
+                emailContent += "Items ordered:\n"
+
+
+                orderItems.each { item ->
+                  emailContent += "- ${item.productId}: ${item.quantity} units\n"
+                }
+
+
+                emailContent += "Total Amount: \$${amount}\n"
+
+                emailContent += "Shipping Address: ${address.line1},
+                ${address.city}, ${address.state}, ${address.country} -
+                ${address.pincode}"
+
+
                 orderState.put(orderId + '_email', 'SENT')
 
-                "Confirmation email sent for order: " + orderId
+                orderState.put(orderId + '_emailContent', emailContent)
+
+
+                return "Confirmation email sent for order: " + orderId
         - log:
             id: log-confirmation-success
             message: "Confirmation email sent for Order: ${header.orderId}"
@@ -336,7 +708,11 @@
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+
                 def orderId = exchange.getIn().getBody(String.class)
+
 
                 orderState.put(orderId + '_status', 'COMPLETED')
 
@@ -344,8 +720,20 @@
                 println "=== FINAL ORDER STATE ==="
 
                 if (orderId) {
-                  exchange.getIn().setBody(orderId)
-                  orderState.findAll { k, v -> k.startsWith(orderId) }.each { k, v ->
+                  def orderItems = orderState.get(orderId + "_orderItems")
+                  def address = orderState.get(orderId + "_address")
+                  def amount = orderState.get(orderId + "_amount")
+                  
+                  println "Order ID: ${orderId}"
+                  println "Amount: \$${amount}"
+                  println "Items:"
+                  orderItems?.each { item ->
+                    def productName = inventoryState.get(item.productId + "_name")
+                    println "  - ${productName} (${item.productId}): ${item.quantity} units"
+                  }
+                  println "Shipping Address: ${address.line1}, ${address.city}, ${address.state}, ${address.country} - ${address.pincode}"
+                  
+                  orderState.findAll { k, v -> k.startsWith(orderId) && !k.contains("_orderItems") && !k.contains("_address") && !k.contains("_reservedItems") }.each { k, v ->
                     println "${k}: ${v}"
                   }
                 } else {
@@ -353,6 +741,21 @@
                 }
 
                 println "========================="
+
+
+                // Display final inventory status
+
+                println "=== FINAL INVENTORY STATUS ==="
+
+                ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                  def name = inventoryState.get(productId + "_name")
+                  def stock = inventoryState.get(productId + "_stock")
+                  def reserved = inventoryState.get(productId + "_reserved")
+                  def available = stock - reserved
+                  println "${name} (${productId}): Total=${stock}, Reserved=${reserved}, Available=${available}"
+                }
+
+                println "==============================="
 - route:
     id: saga-compensation
     from:
@@ -374,12 +777,12 @@
                   exchange.getIn().setBody(orderId)
                   return orderId
                 } else {
-                  println "ERROR: Could not retrieve orderId in completion"
+                  println "ERROR: Could not retrieve orderId in compensation"
                   return "UNKNOWN"
                 }
         - log:
             id: log-saga-compensation
-            message: "SAGA FAILED: Compensating Order ${header.orderId}"
+            message: "SAGA FAILED: Compensating Order ${body}"
         - script:
             id: saga-compensation-logic
             groovy:
@@ -387,7 +790,11 @@
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+
                 def orderId = exchange.getIn().getBody(String.class)
+
 
                 orderState.put(orderId + '_status', 'COMPENSATED')
 
@@ -395,7 +802,20 @@
                 println "=== COMPENSATION COMPLETED ==="
 
                 if (orderId) {
-                  orderState.findAll { k, v -> k.startsWith(orderId) }.each { k, v ->
+                  def orderItems = orderState.get(orderId + "_orderItems")
+                  def address = orderState.get(orderId + "_address")
+                  def amount = orderState.get(orderId + "_amount")
+                  
+                  println "Order ID: ${orderId}"
+                  println "Amount: \$${amount}"
+                  println "Items:"
+                  orderItems?.each { item ->
+                    def productName = inventoryState.get(item.productId + "_name")
+                    println "  - ${productName} (${item.productId}): ${item.quantity} units"
+                  }
+                  println "Shipping Address: ${address.line1}, ${address.city}, ${address.state}, ${address.country} - ${address.pincode}"
+                  
+                  orderState.findAll { k, v -> k.startsWith(orderId) && !k.contains("_orderItems") && !k.contains("_address") && !k.contains("_reservedItems") }.each { k, v ->
                     println "${k}: ${v}"
                   }
                 } else {
@@ -403,14 +823,102 @@
                 }
 
                 println "==============================="
+
+
+                // Display final inventory status after compensation
+
+                println "=== INVENTORY STATUS AFTER COMPENSATION ==="
+
+                ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                  def name = inventoryState.get(productId + "_name")
+                  def stock = inventoryState.get(productId + "_stock")
+                  def reserved = inventoryState.get(productId + "_reserved")
+                  def available = stock - reserved
+                  println "${name} (${productId}): Total=${stock}, Reserved=${reserved}, Available=${available}"
+                }
+
+                println "============================================"
+- route:
+    id: inventory-status
+    from:
+      id: inventory-status-jetty
+      uri: platform-http:/inventory
+      steps:
+        - setHeader:
+            id: set-inventory-cors-origin
+            expression:
+              constant: "*"
+            name: Access-Control-Allow-Origin
+        - setHeader:
+            id: set-inventory-cors-methods
+            expression:
+              constant: GET, OPTIONS
+            name: Access-Control-Allow-Methods
+        - choice:
+            id: handle-inventory-cors-preflight
+            otherwise:
+              steps:
+                - script:
+                    id: inventory-status-logic
+                    groovy:
+                      expression: >
+                        
+                        def inventoryState =
+                        exchange.context.registry.lookupByName('inventoryState')
+
+                        def inventory = [:]
+
+
+                        ['ITM1', 'ITM2', 'ITM3'].each { productId ->
+                          def name = inventoryState.get(productId + "_name")
+                          def stock = inventoryState.get(productId + "_stock") ?: 0
+                          def reserved = inventoryState.get(productId + "_reserved") ?: 0
+                          def available = stock - reserved
+                          
+                          inventory[productId] = [
+                            name: name,
+                            totalStock: stock,
+                            reserved: reserved,
+                            available: available
+                          ]
+                        }
+
+
+                        def result = [
+                          inventory: inventory,
+                          timestamp: new Date().toString()
+                        ]
+
+
+                        exchange.getIn().setBody(result)
+
+                        //return result
+                - marshal:
+                    id: marshal-inventory-status
+                    json:
+                      library: Jackson
+                - setHeader:
+                    id: set-inventory-content-type
+                    expression:
+                      constant: application/json
+                    name: Content-Type
+            when:
+              - steps:
+                  - setBody:
+                      id: set-inventory-cors-response
+                      expression:
+                        constant: ""
+                  - stop: {}
+                expression:
+                  simple: ${header.CamelHttpMethod} == 'OPTIONS'
 - route:
     id: health-check
     from:
       id: health-check-jetty
-      uri: jetty:http://0.0.0.0:8001/health
+      uri: platform-http:/health
       steps:
         - setHeader:
-            id: set-orders-cors-origin
+            id: set-health-cors-origin
             expression:
               constant: "*"
             name: Access-Control-Allow-Origin
@@ -421,77 +929,164 @@
                 import java.time.LocalDateTime
 
                 import java.time.format.DateTimeFormatter
-
-
+                                
                 def timestamp =
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd
                 HH:mm:ss"))
 
                 def healthResponse = [
                   status: "healthy",
-                  service: "camel-saga-demo",
-                  timestamp: timestamp
+                  service: "camel-saga-demo-enhanced",
+                  timestamp: timestamp,
+                  endpoints: [
+                    "POST /orders - Submit new order",
+                    "GET /inventory - Check inventory status", 
+                    "GET /orders - View order status",
+                    "GET /health - Health check"
+                  ]
                 ]
 
 
                 exchange.getIn().setBody(healthResponse)
-
-                return healthResponse
+        - marshal:
+            id: marshal-health-response
+            json:
+              library: Jackson
         - setHeader:
             id: set-health-content-type
             expression:
               constant: application/json
             name: Content-Type
-        - marshal:
-            json: {}
 - route:
-    id: order-status
+    id: order-status-route
     from:
-      id: order-status-jetty
-      uri: jetty:http://0.0.0.0:8001/orders
+      id: order-status
+      uri: direct:order-status
       steps:
-        - setHeader:
-            id: set-cors-origin
-            expression:
-              constant: "*"
-            name: Access-Control-Allow-Origin
         - script:
             id: order-status-logic
             groovy:
               expression: >
+                
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def inventoryState =
+                exchange.context.registry.lookupByName('inventoryState')
+
                 def orders = [:]
 
+
+                // Debug: Print all keys in orderState
+
+                println "=== ALL ORDER STATE KEYS ==="
+
+                def orderKeys = []
+
+                def systemKeys = []
+
                 orderState.each { k, v ->
-                  def parts = k.split('_')
-                  if (parts.length == 2) {
-                    def orderId = parts[0]
-                    def field = parts[1]
-                    if (!orders[orderId]) orders[orderId] = [:]
-                    orders[orderId][field] = v
+                  if (k.contains('_') && !k.startsWith('currentOrderId') && !k.startsWith('sagaContext_')) {
+                    orderKeys.add(k)
+                    println "Order Key: ${k}"
+                  } else {
+                    systemKeys.add(k)
+                    println "System Key: ${k}"
                   }
                 }
 
+                println "Total Order Keys: ${orderKeys.size()}"
+
+                println "Total System Keys: ${systemKeys.size()}"
+
+                println "==============================="
+
+
+                // Group order data by orderId
+
+                orderState.each { k, v ->
+                  // Skip system keys but include all order-related keys
+                  if (k.contains('_') && !k.startsWith('currentOrderId') && !k.startsWith('sagaContext_')) {
+                    def parts = k.split('_', 2)
+                    if (parts.length == 2) {
+                      def orderId = parts[0]
+                      def field = parts[1]
+                      
+                      // Initialize order object if it doesn't exist
+                      if (!orders[orderId]) {
+                        orders[orderId] = [orderId: orderId]
+                      }
+                      
+                      // Store all fields
+                      orders[orderId][field] = v
+                    }
+                  }
+                }
+
+
+                // Debug: Print grouped orders
+
+                println "=== GROUPED ORDERS ==="
+
+                orders.each { orderId, orderData ->
+                  println "Order ID: ${orderId}"
+                  orderData.each { field, value ->
+                    println "  ${field}: ${value}"
+                  }
+                }
+
+                println "======================"
+
+
+                // Enhance orders with product names
+
+                orders.each { orderId, orderData ->
+                  if (orderData.orderItems) {
+                    orderData.orderItems.each { item ->
+                      item.productName = inventoryState.get(item.productId + "_name")
+                    }
+                  }
+                }
+
+
+                // Convert to list and sort by orderId (descending for newest
+                first)
+
+                def ordersList = orders.values().toList()
+
+                ordersList.sort { a, b -> 
+                  if (a.timestamp && b.timestamp) {
+                    return b.timestamp <=> a.timestamp
+                  }
+                  return b.orderId <=> a.orderId
+                }
+
+
                 def result = [
-                  orders: orders,
-                  totalOrders: orders.size(),
-                  timestamp: new Date().toString()
+                  orders: ordersList,
+                  totalOrders: ordersList.size(),
+                  timestamp: new Date().toString(),
+                  debug: [
+                    totalKeysInState: orderState.size(),
+                    orderKeysFound: orders.size()
+                  ]
                 ]
 
 
-                // Set the result as the exchange body
+                println "=== FINAL RESULT ==="
+
+                println "Total orders found: ${ordersList.size()}"
+
+                println "===================="
+
 
                 exchange.getIn().setBody(result)
-
-                return result
+        - marshal:
+            id: marshal-order-status
+            json:
+              library: Jackson
         - setHeader:
             id: set-orders-content-type
             expression:
               constant: application/json
             name: Content-Type
-        - marshal:
-            json:
-              library: Jackson
-              unmarshalType: java.util.Map

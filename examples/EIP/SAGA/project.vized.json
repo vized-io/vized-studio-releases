@@ -10,13 +10,43 @@
   "camel": {
     "routes": {
       "SAGA.camel.yaml": {
+        "inventory-initializer": {
+          "id": "inventory-initializer",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:init"
+            }
+          ],
+          "to": []
+        },
         "saga-orchestrator": {
           "id": "saga-orchestrator",
           "breakpoints": [],
           "from": [
             {
-              "uri": "timer",
-              "id": "order-generator-timer"
+              "uri": "platform-http",
+              "id": "order-input"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:order-status",
+              "id": "call-status-route"
+            },
+            {
+              "uri": "direct:process-order-saga",
+              "id": "call-process-order-saga"
+            }
+          ]
+        },
+        "process-order-saga": {
+          "id": "process-order-saga",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:process-order-saga",
+              "id": "process-order-saga-direct"
             }
           ],
           "to": [
@@ -137,24 +167,35 @@
           ],
           "to": []
         },
+        "inventory-status": {
+          "id": "inventory-status",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/inventory",
+              "id": "inventory-status-jetty"
+            }
+          ],
+          "to": []
+        },
         "health-check": {
           "id": "health-check",
           "breakpoints": [],
           "from": [
             {
-              "uri": "jetty:http://0.0.0.0:8001/health",
+              "uri": "platform-http:/health",
               "id": "health-check-jetty"
             }
           ],
           "to": []
         },
-        "order-status": {
-          "id": "order-status",
+        "order-status-route": {
+          "id": "order-status-route",
           "breakpoints": [],
           "from": [
             {
-              "uri": "jetty:http://0.0.0.0:8001/orders",
-              "id": "order-status-jetty"
+              "uri": "direct:order-status",
+              "id": "order-status"
             }
           ],
           "to": []
@@ -163,7 +204,8 @@
     },
     "beans": {
       "SAGA.camel.yaml": [
-        "orderState"
+        "orderState",
+        "inventoryState"
       ]
     }
   },

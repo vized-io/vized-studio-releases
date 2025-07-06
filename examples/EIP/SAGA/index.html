@@ -18,37 +18,81 @@
             overflow: hidden;
             transition: max-height 0.3s ease-in-out;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
     <div class="container mx-auto p-6">
         <header class="mb-8">
             <h1 class="text-4xl font-bold text-gray-800">Camel Saga Orchestrator</h1>
-            <p class="text-lg text-gray-600">Live monitoring of order processing sagas.</p>
+            <p class="text-lg text-gray-600">Live monitoring of order processing sagas with inventory management.</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Action Buttons -->
+        <div class="mb-6 flex flex-wrap gap-4">
+            <button onclick="showCreateOrderModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                Create New Order
+            </button>
+            <button onclick="fetchInventory()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                Refresh Inventory
+            </button>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div id="health-status-card" class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Application Health</h2>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Application Health</h2>
                 <div id="health-status" class="flex items-center">
                     <div class="w-4 h-4 rounded-full bg-gray-400 mr-3"></div>
                     <span class="text-gray-600">Checking...</span>
                 </div>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Total Orders</h2>
-                <p id="total-orders" class="text-4xl font-bold text-gray-800">0</p>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Total Orders</h2>
+                <p id="total-orders" class="text-3xl font-bold text-gray-800">0</p>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Last Updated</h2>
-                <p id="last-updated" class="text-xl text-gray-600">Never</p>
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Completed Orders</h2>
+                <p id="completed-orders" class="text-3xl font-bold text-green-600">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Last Updated</h2>
+                <p id="last-updated" class="text-lg text-gray-600">Never</p>
             </div>
         </div>
 
+        <!-- Inventory Status -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Current Inventory</h2>
+            <div id="inventory-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Inventory will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Orders Section -->
         <div>
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-3xl font-semibold text-gray-700">Order Status</h2>
-                <div id="loading-spinner" class="spinner w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                <div id="loading-spinner" class="spinner w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full" style="display: none;"></div>
             </div>
             <div id="orders-container" class="space-y-4">
                 <!-- Orders will be dynamically inserted here -->
@@ -56,10 +100,67 @@
         </div>
     </div>
 
-    <script>
-        const camelApiBaseUrl = 'http://localhost:8001';
+    <!-- Create Order Modal -->
+    <div id="createOrderModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800">Create New Order</h2>
+                <button onclick="closeCreateOrderModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <form id="orderForm" onsubmit="submitOrder(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Order ID</label>
+                    <input type="text" id="orderId" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Order Items</label>
+                    <div id="orderItems" class="space-y-2">
+                        <div class="flex gap-2 items-center">
+                            <select class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" name="productId">
+                                <option value="ITM1">iPhone 15 Pro</option>
+                                <option value="ITM2">MacBook Pro M3</option>
+                                <option value="ITM3">AirPods Pro</option>
+                            </select>
+                            <input type="number" name="quantity" placeholder="Qty" min="1" class="w-20 px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                            <button type="button" onclick="removeOrderItem(this)" class="text-red-500 hover:text-red-700">Remove</button>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addOrderItem()" class="mt-2 text-blue-500 hover:text-blue-700">+ Add Item</button>
+                </div>
 
-        function createOrderCard(orderId, orderData) {
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Shipping Address</label>
+                    <input type="text" id="addressLine1" placeholder="Address Line 1" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 mb-2" required>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="city" placeholder="City" class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                        <input type="text" id="state" placeholder="State" class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <input type="text" id="country" placeholder="Country" class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                        <input type="text" id="pincode" placeholder="Pincode" class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-4">
+                    <button type="button" onclick="closeCreateOrderModal()" class="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        Create Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const camelApiBaseUrl = window.location.origin;
+        
+        // Track expanded order IDs
+        let expandedOrderIds = new Set();
+
+        function createOrderCard(orderData, expanded = false) {
             const card = document.createElement('div');
             card.className = 'bg-white p-5 rounded-lg shadow-md transition-all duration-300';
 
@@ -70,19 +171,110 @@
                 'IN_PROGRESS': 'bg-yellow-500'
             }[status];
 
+            const statusText = {
+                'COMPLETED': 'Completed',
+                'COMPENSATED': 'Failed/Compensated',
+                'IN_PROGRESS': 'In Progress'
+            }[status];
+
+            // Format order items for display
+            let itemsHtml = '';
+            if (orderData.orderItems) {
+                itemsHtml = orderData.orderItems.map(item => 
+                    `<div class="flex justify-between"><span>${item.productId}</span><span>Qty: ${item.quantity}</span></div>`
+                ).join('');
+            }
+
+            // Create progress indicators
+            const steps = ['inventory', 'payment', 'shipping', 'email'];
+            const stepLabels = ['Inventory', 'Payment', 'Shipping', 'Email'];
+            let progressHtml = '<div class="mt-4"><h4 class="font-semibold mb-2">Processing Steps:</h4><div class="grid grid-cols-4 gap-2">';
+            
+            steps.forEach((step, index) => {
+                const stepStatus = orderData[step];
+                let stepColor = 'bg-gray-300';
+                let stepText = 'Pending';
+                
+                if (stepStatus === 'RESERVED' || stepStatus === 'PROCESSED' || stepStatus === 'CREATED' || stepStatus === 'SENT') {
+                    stepColor = 'bg-green-500';
+                    stepText = 'Done';
+                } else if (stepStatus === 'RELEASED' || stepStatus === 'REFUNDED' || stepStatus === 'CANCELLED' || stepStatus === 'FAILED') {
+                    stepColor = 'bg-red-500';
+                    stepText = 'Failed';
+                }
+                
+                progressHtml += `
+                    <div class="text-center">
+                        <div class="w-4 h-4 rounded-full ${stepColor} mx-auto mb-1"></div>
+                        <div class="text-xs">${stepLabels[index]}</div>
+                        <div class="text-xs text-gray-500">${stepText}</div>
+                    </div>
+                `;
+            });
+            progressHtml += '</div></div>';
+
+            // Expanded state styles
+            let detailsContentStyle = '';
+            let arrowStyle = '';
+            if (expanded) {
+                detailsContentStyle = 'max-height: 1000px;'; // Large enough to show all content
+                arrowStyle = 'transform: rotate(90deg);';
+            }
+
             card.innerHTML = `
                 <div class="flex justify-between items-center cursor-pointer" onclick="toggleDetails(this)">
                     <div class="flex items-center">
                         <div class="w-4 h-4 rounded-full ${statusColor} mr-4"></div>
                         <div>
-                            <p class="font-mono text-lg text-gray-800">${orderId}</p>
-                            <p class="text-sm font-semibold ${status === 'COMPLETED' ? 'text-green-700' : (status === 'COMPENSATED' ? 'text-red-700' : 'text-yellow-700')}">${status.replace('_', ' ')}</p>
+                            <p class="font-mono text-lg text-gray-800">${orderData.orderId}</p>
+                            <p class="text-sm font-semibold ${status === 'COMPLETED' ? 'text-green-700' : (status === 'COMPENSATED' ? 'text-red-700' : 'text-yellow-700')}">${statusText}</p>
+                            ${orderData.amount ? `<p class="text-sm text-gray-600">Amount: $${orderData.amount}</p>` : ''}
                         </div>
                     </div>
-                    <div class="details-arrow text-2xl text-gray-500 transform transition-transform">▶</div>
+                    <div class="details-arrow text-2xl text-gray-500 transform transition-transform" style="${arrowStyle}">▶</div>
                 </div>
-                <div class="details-content mt-4 pt-4 border-t border-gray-200">
-                    <pre class="bg-gray-50 p-3 rounded text-sm text-gray-700 overflow-x-auto"><code>${JSON.stringify(orderData, null, 2)}</code></pre>
+                <div class="details-content mt-4 pt-4 border-t border-gray-200" style="${detailsContentStyle}">
+                    ${orderData.orderItems ? `<div class="mb-4"><h4 class="font-semibold mb-2">Order Items:</h4>${itemsHtml}</div>` : ''}
+                    ${orderData.address ? `<div class="mb-4"><h4 class="font-semibold mb-2">Shipping Address:</h4><p class="text-sm">${orderData.address.line1}, ${orderData.address.city}, ${orderData.address.state}, ${orderData.address.country} - ${orderData.address.pincode}</p></div>` : ''}
+                    ${progressHtml}
+                    <div class="mt-4">
+                        <h4 class="font-semibold mb-2">Raw Data:</h4>
+                        <pre class="bg-gray-50 p-3 rounded text-sm text-gray-700 overflow-x-auto"><code>${JSON.stringify(orderData, null, 2)}</code></pre>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function createInventoryCard(productId, inventoryData) {
+            const card = document.createElement('div');
+            card.className = 'bg-gray-50 p-4 rounded-lg';
+            
+            const availablePercentage = inventoryData.totalStock > 0 ? (inventoryData.available / inventoryData.totalStock) * 100 : 0;
+            const stockColor = availablePercentage > 50 ? 'bg-green-500' : (availablePercentage > 20 ? 'bg-yellow-500' : 'bg-red-500');
+            
+            card.innerHTML = `
+                <h3 class="font-semibold text-gray-800">${inventoryData.name}</h3>
+                <p class="text-sm text-gray-600 mb-2">${productId}</p>
+                <div class="space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span>Total Stock:</span>
+                        <span class="font-semibold">${inventoryData.totalStock}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Reserved:</span>
+                        <span class="font-semibold text-yellow-600">${inventoryData.reserved}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Available:</span>
+                        <span class="font-semibold text-green-600">${inventoryData.available}</span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="${stockColor} h-2 rounded-full" style="width: ${availablePercentage}%"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">${availablePercentage.toFixed(1)}% available</p>
                 </div>
             `;
             return card;
@@ -91,12 +283,124 @@
         function toggleDetails(element) {
             const content = element.nextElementSibling;
             const arrow = element.querySelector('.details-arrow');
+            const orderId = element.querySelector('.font-mono').textContent;
             if (content.style.maxHeight) {
                 content.style.maxHeight = null;
                 arrow.style.transform = 'rotate(0deg)';
+                expandedOrderIds.delete(orderId);
             } else {
                 content.style.maxHeight = content.scrollHeight + "px";
                 arrow.style.transform = 'rotate(90deg)';
+                expandedOrderIds.add(orderId);
+            }
+        }
+
+        function showCreateOrderModal() {
+            document.getElementById('createOrderModal').style.display = 'block';
+            // Generate a random order ID
+            document.getElementById('orderId').value = 'ORD-' + Date.now();
+        }
+
+        function closeCreateOrderModal() {
+            document.getElementById('createOrderModal').style.display = 'none';
+            document.getElementById('orderForm').reset();
+        }
+
+        function addOrderItem() {
+            const container = document.getElementById('orderItems');
+            const newItem = document.createElement('div');
+            newItem.className = 'flex gap-2 items-center';
+            newItem.innerHTML = `
+                <select class="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" name="productId">
+                    <option value="ITM1">iPhone 15 Pro</option>
+                    <option value="ITM2">MacBook Pro M3</option>
+                    <option value="ITM3">AirPods Pro</option>
+                </select>
+                <input type="number" name="quantity" placeholder="Qty" min="1" class="w-20 px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500" required>
+                <button type="button" onclick="removeOrderItem(this)" class="text-red-500 hover:text-red-700">Remove</button>
+            `;
+            container.appendChild(newItem);
+        }
+
+        function removeOrderItem(button) {
+            const container = document.getElementById('orderItems');
+            if (container.children.length > 1) {
+                button.parentElement.remove();
+            }
+        }
+
+        async function submitOrder(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const orderItems = [];
+            
+            // Collect order items
+            const productIds = formData.getAll('productId');
+            const quantities = formData.getAll('quantity');
+            
+            for (let i = 0; i < productIds.length; i++) {
+                orderItems.push({
+                    productId: productIds[i],
+                    quantity: parseInt(quantities[i])
+                });
+            }
+            
+            const orderData = {
+                orderId: document.getElementById('orderId').value,
+                orderItems: orderItems,
+                address: {
+                    line1: document.getElementById('addressLine1').value,
+                    city: document.getElementById('city').value,
+                    state: document.getElementById('state').value,
+                    country: document.getElementById('country').value,
+                    pincode: document.getElementById('pincode').value
+                }
+            };
+            
+            try {
+                const response = await fetch(`${camelApiBaseUrl}/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(`Order created successfully! Order ID: ${result.orderId}`);
+                    closeCreateOrderModal();
+                    fetchOrders(); // Refresh orders list
+                } else {
+                    const error = await response.text();
+                    try {
+                        // Try to parse as JSON first
+                        const errorData = JSON.parse(error);
+                        if (errorData.status === "error") {
+                            alert(errorData.message);
+                        } else {
+                            alert(`Failed to create order: ${errorData.message || error}`);
+                        }
+                    } catch (parseError) {
+                        // If not JSON, check for SAGA compensation error patterns
+                        if (error.includes('Insufficient inventory') || 
+                            error.includes('Payment declined') || 
+                            error.includes('Shipping service unavailable') ||
+                            error.includes('RuntimeException')) {
+                            alert(`Order failed and was compensated: ${error}`);
+                        } else {
+                            alert(`Failed to create order: ${error}`);
+                        }
+                    }
+                    closeCreateOrderModal();
+                    fetchOrders(); // Refresh orders list to show the failed order
+                }
+            } catch (error) {
+                alert(`Error creating order: ${error.message}`);
+                console.error('Create Order Error:', error);
+                closeCreateOrderModal();
+                fetchOrders(); // Refresh orders list
             }
         }
 
@@ -120,6 +424,28 @@
             }
         }
 
+        async function fetchInventory() {
+            try {
+                const response = await fetch(`${camelApiBaseUrl}/inventory`);
+                const data = await response.json();
+                
+                const inventoryContainer = document.getElementById('inventory-container');
+                inventoryContainer.innerHTML = ''; // Clear previous inventory
+                
+                if (data.inventory) {
+                    Object.keys(data.inventory).forEach(productId => {
+                        const card = createInventoryCard(productId, data.inventory[productId]);
+                        inventoryContainer.appendChild(card);
+                    });
+                } else {
+                    inventoryContainer.innerHTML = '<p class="text-gray-500 col-span-3">No inventory data available.</p>';
+                }
+            } catch (error) {
+                document.getElementById('inventory-container').innerHTML = '<p class="text-red-500 col-span-3">Error fetching inventory data.</p>';
+                console.error('Fetch Inventory Error:', error);
+            }
+        }
+
         async function fetchOrders() {
             const spinner = document.getElementById('loading-spinner');
             spinner.style.display = 'block';
@@ -131,24 +457,35 @@
                 const ordersContainer = document.getElementById('orders-container');
                 ordersContainer.innerHTML = ''; // Clear previous orders
 
-                // Filter out sagaContext from orders
-                const allOrders = data.orders || {};
-                const orders = Object.keys(allOrders)
-                    .filter(key => key !== 'sagaContext')
-                    .reduce((filtered, key) => {
-                        filtered[key] = allOrders[key];
-                        return filtered;
-                    }, {});
-                    
-                const orderIds = Object.keys(orders);
+                // Process orders from the response
+                let orders = [];
+                if (data.orders && Array.isArray(data.orders)) {
+                    orders = data.orders;
+                } else if (data.orders && typeof data.orders === 'object') {
+                    // Convert object to array if needed
+                    orders = Object.values(data.orders).filter(order => order && order.orderId);
+                }
 
-                document.getElementById('total-orders').textContent = orderIds.length;
+                document.getElementById('total-orders').textContent = orders.length;
+                
+                // Count completed orders
+                const completedCount = orders.filter(order => order.status === 'COMPLETED').length;
+                document.getElementById('completed-orders').textContent = completedCount;
 
-                if (orderIds.length === 0) {
-                    ordersContainer.innerHTML = '<p class="text-gray-500">No orders processed yet. Waiting for the timer to trigger...</p>';
+                if (orders.length === 0) {
+                    ordersContainer.innerHTML = '<p class="text-gray-500">No orders processed yet. Create a new order to get started!</p>';
                 } else {
-                    orderIds.sort().reverse().forEach(orderId => {
-                        const card = createOrderCard(orderId, orders[orderId]);
+                    // Sort orders by timestamp (newest first)
+                    orders.sort((a, b) => {
+                        if (a.timestamp && b.timestamp) {
+                            return new Date(b.timestamp) - new Date(a.timestamp);
+                        }
+                        return b.orderId.localeCompare(a.orderId);
+                    });
+
+                    orders.forEach(orderData => {
+                        const expanded = expandedOrderIds.has(orderData.orderId);
+                        const card = createOrderCard(orderData, expanded);
                         ordersContainer.appendChild(card);
                     });
                 }
@@ -165,9 +502,26 @@
         function startPolling() {
             fetchHealth();
             fetchOrders();
+            fetchInventory();
             setInterval(fetchHealth, 10000); // Poll health every 10 seconds
             setInterval(fetchOrders, 5000);  // Poll orders every 5 seconds
+            setInterval(fetchInventory, 15000); // Poll inventory every 15 seconds
         }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('createOrderModal');
+            if (event.target === modal) {
+                closeCreateOrderModal();
+            }
+        }
+
+        // Handle escape key to close modal
+        // document.addEventListener('keydown', function(event) {
+        //     if (event.key === 'Escape') {
+        //         closeCreateOrderModal();
+        //     }
+        // });
 
         document.addEventListener('DOMContentLoaded', startPolling);
     </script>

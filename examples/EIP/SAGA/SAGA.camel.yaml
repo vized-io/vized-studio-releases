@@ -3,9 +3,13 @@
       type: "#class:java.util.concurrent.ConcurrentHashMap"
     - name: inventoryState
       type: "#class:java.util.concurrent.ConcurrentHashMap"
+    - name: sagaTracker
+      type: "#class:java.util.concurrent.ConcurrentHashMap"
+
 - route:
     id: inventory-initializer
     from:
+      id: inventory-initializer-timer
       uri: timer:init
       parameters:
         repeatCount: 1
@@ -13,10 +17,10 @@
         - script:
             id: initialize-inventory
             groovy:
-              expression: >
+              expression: |
                 def inventoryState =
                 exchange.context.registry.lookupByName('inventoryState')
-                                
+                
                 // Initialize inventory with real-world products
 
                 inventoryState.put("ITM1_name", "iPhone 15 Pro")
@@ -93,10 +97,15 @@
                               json:
                                 library: Jackson
                                 unmarshalType: java.util.Map
+                          - setHeader:
+                              id: set-saga-id-header
+                              name: sagaId
+                              expression:
+                                simple: ${random(1000,9999)}
                           - script:
                               id: validate-and-process-order
                               groovy:
-                                expression: >
+                                expression: |
                                   
                                   def orderData = request.body
 
@@ -152,28 +161,21 @@
 
                                   // Store order context
 
-                                  orderState.put(orderId + "_orderItems",
-                                  orderItems)
+                                  orderState.put(orderId + "_orderItems", orderItems)
 
                                   orderState.put(orderId + "_address", address)
 
-                                  orderState.put(orderId + "_amount",
-                                  totalAmount)
+                                  orderState.put(orderId + "_amount", totalAmount)
 
-                                  orderState.put(orderId + "_reservationList",
-                                  reservationList)
+                                  orderState.put(orderId + "_reservationList", reservationList)
 
                                   orderState.put("currentOrderId", orderId)
 
-                                  orderState.put("sagaContext_" +
-                                  Thread.currentThread().id, orderId)
+                                  orderState.put("sagaContext_" + Thread.currentThread().id, orderId)
 
-                                  orderState.put(orderId + "_timestamp", new
-                                  Date().toString())
+                                  orderState.put(orderId + "_timestamp", new Date().toString())
 
-                                  orderState.put(orderId + "_threadId",
-                                  Thread.currentThread().id)
-
+                                  orderState.put(orderId + "_threadId", Thread.currentThread().id)
 
                                   // Set headers for downstream processing
 
@@ -181,9 +183,7 @@
 
                                   request.headers['amount'] = totalAmount
 
-                                  request.headers['shouldFailPayment'] =
-                                  Math.random() < 0.3
-
+                                  request.headers['shouldFailPayment'] = Math.random() < 0.3
 
                                   return orderId
                           - marshal:
@@ -192,7 +192,7 @@
                                 library: Jackson
                           - log:
                               id: log-saga-start
-                              message: "Starting SAGA for Order: ${header.orderId}, Amount: ${header.amount}"
+                              message: "Starting SAGA for Order: ${header.orderId}, Amount: ${header.amount}, Saga ID: ${header.sagaId}"
                           - doTry:
                               id: try-saga-processing
                               steps:
@@ -202,11 +202,12 @@
                                 - script:
                                     id: create-success-response
                                     groovy:
-                                      expression: >
+                                      expression: |
                                         def response = [
                                           status: "success",
                                           message: "Order processed successfully",
                                           orderId: request.headers['orderId'],
+                                          sagaId: request.headers['sagaId'],
                                           amount: request.headers['amount']
                                         ]
 
@@ -226,15 +227,16 @@
                                 - steps:
                                     - log:
                                         id: log-saga-failure
-                                        message: "SAGA failed for Order: ${header.orderId} - ${exception.message}"
+                                        message: "SAGA failed for Order: ${header.orderId}, Saga ID: ${header.sagaId} - ${exception.message}"
                                     - script:
                                         id: create-error-response
                                         groovy:
-                                          expression: >
+                                          expression: |
                                             def response = [
                                               status: "error",
                                               message: "Order failed and was compensated: ${exception.message}",
                                               orderId: request.headers['orderId'],
+                                              sagaId: request.headers['sagaId'],
                                               error: exception.message
                                             ]
 
@@ -282,7 +284,30 @@
               - expression:
                   simple: ${header.orderId}
                 key: orderId
+              - expression:
+                  simple: ${date:now:yyyy-MM-dd'T'HH:mm:ss}
+                key: startedAt
             propagation: REQUIRED
+        - script:
+            id: saga-tracking-script
+            groovy:
+              expression: |
+                def lraId = exchange.in.headers['Long-Running-Action']
+                def orderId = exchange.in.headers['orderId']
+                def sagaId = exchange.in.headers['sagaId']
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
+                def orderData = [
+                  orderId: orderId,
+                  sagaId: sagaId,
+                  lraId: lraId,
+                  status: 'STARTED',
+                  steps: [],
+                  startTime: new Date().toString()
+                ]
+
+                sagaTracker.put(lraId, orderData)
+                println "TRACKING: Stored order ${orderId} with LRA ${lraId} and Saga ${sagaId}"
         - to:
             id: call-reserve-inventory
             uri: direct:reserve-inventory
@@ -297,7 +322,7 @@
             uri: direct:send-confirmation
         - log:
             id: log-saga-success
-            message: "SAGA completed successfully for Order: ${header.orderId}"
+            message: "SAGA completed successfully for Order: ${header.orderId}, Saga ID: ${header.sagaId}"
 - route:
     id: reserve-inventory
     from:
@@ -311,16 +336,32 @@
             id: log-inventory-start
             message: "Reserving inventory for Order: ${header.orderId}"
         - script:
+            id: inventory-tracking-script
+            groovy:
+              expression: |
+                def lraId = exchange.in.headers['Long-Running-Action']
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+                def orderData = sagaTracker.get(lraId)
+
+                if (orderData) {
+                  orderData.currentStep = 'INVENTORY'
+                  orderData.steps.add('INVENTORY_STARTED')
+                  sagaTracker.put(lraId, orderData)
+                }
+        - script:
             id: inventory-reservation-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
                 def inventoryState =
                 exchange.context.registry.lookupByName('inventoryState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = request.headers['orderId']
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 def reservationList = orderState.get(orderId +
@@ -339,8 +380,13 @@
                   def availableStock = currentStock - currentReserved
                   
                   if (quantity > availableStock) {
+                    def orderData = sagaTracker.get(lraId)
+                    if (orderData) {
+                      orderData.failureReason = "Insufficient inventory for ${productName}. Available: ${availableStock}, Requested: ${quantity}"
+                      orderData.steps.add('INVENTORY_FAILED')
+                      sagaTracker.put(lraId, orderData)
+                    }
                     throw new RuntimeException("Insufficient inventory for ${productName}. Available: ${availableStock}, Requested: ${quantity}")
-                    return "Insufficient inventory for ${productName}. Available: ${availableStock}, Requested: ${quantity}"
                   }
                   
                   // Reserve the inventory
@@ -354,6 +400,16 @@
                 orderState.put(orderId + '_inventory', 'RESERVED')
 
                 orderState.put(orderId + '_reservedItems', reservedItems)
+
+                request.headers['inventoryReserved'] = true
+
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  orderData.steps.add('INVENTORY_SUCCESS')
+                  sagaTracker.put(lraId, orderData)
+                }
 
 
                 // Display current inventory status
@@ -371,8 +427,6 @@
                 println "============================================="
 
 
-                request.headers['inventoryReserved'] = true
-
                 return "Inventory reserved for order: " + orderId
         - log:
             id: log-inventory-success
@@ -389,14 +443,17 @@
         - script:
             id: inventory-release-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
                 def inventoryState =
                 exchange.context.registry.lookupByName('inventoryState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = request.headers['orderId']
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 def reservedItems = orderState.get(orderId + '_reservedItems')
@@ -416,8 +473,20 @@
                   }
                 }
 
-
                 orderState.put(orderId + '_inventory', 'RELEASED')
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  if (request.headers['inventoryReserved'] == true) {
+                    println "COMPENSATION-INVENTORY: Released inventory for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_INVENTORY_SUCCESS')
+                  } else {
+                    println "COMPENSATION-INVENTORY: No inventory to release for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_INVENTORY_SKIPPED')
+                  }
+                  sagaTracker.put(lraId, orderData)
+                }
 
 
                 // Display current inventory status
@@ -453,25 +522,47 @@
             id: log-payment-start
             message: "Processing payment for Order: ${header.orderId}, Amount:
               ${header.amount}"
+        - script:
+            id: payment-tracking-script
+            groovy:
+              expression: |
+                def lraId = exchange.in.headers['Long-Running-Action']
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+                def orderData = sagaTracker.get(lraId)
+
+                if (orderData) {
+                  orderData.currentStep = 'PAYMENT'
+                  orderData.steps.add('PAYMENT_STARTED')
+                  sagaTracker.put(lraId, orderData)
+                }
         - doTry:
             id: try-payment-processing
             steps:
               - script:
                   id: payment-processing-logic
                   groovy:
-                    expression: >
+                    expression: |
                       def orderState =
                       exchange.context.registry.lookupByName('orderState')
 
                       def inventoryState =
                       exchange.context.registry.lookupByName('inventoryState')
 
+                      def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                       def orderId = request.headers['orderId']
+                      def lraId = exchange.in.headers['Long-Running-Action']
 
                       def shouldFail = request.headers['shouldFailPayment']
 
 
                       if (shouldFail) {
+                        def orderData = sagaTracker.get(lraId)
+                        if (orderData) {
+                          orderData.failureReason = "Payment declined - insufficient funds"
+                          orderData.steps.add('PAYMENT_FAILED')
+                          sagaTracker.put(lraId, orderData)
+                        }
                         throw new RuntimeException("Payment declined - insufficient funds")
                       } else {
                         // Payment successful - convert reserved inventory to sold
@@ -496,6 +587,13 @@
                         
                         orderState.put(orderId + '_payment', 'PROCESSED')
                         request.headers['paymentProcessed'] = true
+                        
+                        // Update saga tracking
+                        def orderData = sagaTracker.get(lraId)
+                        if (orderData) {
+                          orderData.steps.add('PAYMENT_SUCCESS')
+                          sagaTracker.put(lraId, orderData)
+                        }
                         
                         // Display current inventory status after sale
                         println "=== INVENTORY STATUS AFTER PAYMENT ==="
@@ -536,14 +634,31 @@
         - script:
             id: payment-refund-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = request.headers['orderId']
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 orderState.put(orderId + '_payment', 'REFUNDED')
+
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  if (request.headers['paymentProcessed'] == true) {
+                    println "COMPENSATION-PAYMENT: Refunded payment for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_PAYMENT_SUCCESS')
+                  } else {
+                    println "COMPENSATION-PAYMENT: No payment to refund for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_PAYMENT_SKIPPED')
+                  }
+                  sagaTracker.put(lraId, orderData)
+                }
 
 
                 return "Payment refunded for order: " + orderId
@@ -564,18 +679,40 @@
             id: log-shipping-start
             message: "Creating shipping for Order: ${header.orderId}"
         - script:
+            id: shipping-tracking-script
+            groovy:
+              expression: |
+                def lraId = exchange.in.headers['Long-Running-Action']
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+                def orderData = sagaTracker.get(lraId)
+
+                if (orderData) {
+                  orderData.currentStep = 'SHIPPING'
+                  orderData.steps.add('SHIPPING_STARTED')
+                  sagaTracker.put(lraId, orderData)
+                }
+        - script:
             id: shipping-creation-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = request.headers['orderId']
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 // Simulate rare shipping failure
 
                 if (Math.random() < 0.05) {
+                  def orderData = sagaTracker.get(lraId)
+                  if (orderData) {
+                    orderData.failureReason = "Shipping service unavailable"
+                    orderData.steps.add('SHIPPING_FAILED')
+                    sagaTracker.put(lraId, orderData)
+                  }
                   orderState.put(orderId + '_shipping', 'FAILED')
                   throw new RuntimeException("Shipping service unavailable")
                 }
@@ -583,8 +720,7 @@
 
                 def address = orderState.get(orderId + "_address")
 
-                def shippingAddress = "${address.line1}, ${address.city},
-                ${address.state}, ${address.country} - ${address.pincode}"
+                def shippingAddress = "${address.line1}, ${address.city}, ${address.state}, ${address.country} - ${address.pincode}"
 
 
                 orderState.put(orderId + '_shipping', 'CREATED')
@@ -593,9 +729,16 @@
 
                 request.headers['shippingCreated'] = true
 
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  orderData.steps.add('SHIPPING_SUCCESS')
+                  sagaTracker.put(lraId, orderData)
+                }
 
-                return "Shipping created for order: " + orderId + " to " +
-                shippingAddress
+
+                return "Shipping created for order: " + orderId + " to " + shippingAddress
         - log:
             id: log-shipping-success
             message: "Shipping created for Order: ${header.orderId}"
@@ -611,14 +754,34 @@
         - script:
             id: shipping-cancellation-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = request.headers['orderId']
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 orderState.put(orderId + '_shipping', 'CANCELLED')
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  if (request.headers['shippingCreated'] == true) {
+                    println "COMPENSATION-SHIPPING: Cancelled shipment for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_SHIPPING_SUCCESS')
+                  } else {
+                    println "COMPENSATION-SHIPPING: No shipment to cancel for order ${orderId}"
+                    orderData.steps.add('COMPENSATION_SHIPPING_SKIPPED')
+                  }
+                  
+                  // Mark compensation as completed
+                  orderData.status = 'COMPENSATED'
+                  orderData.compensationEndTime = new Date().toString()
+                  sagaTracker.put(lraId, orderData)
+                }
 
 
                 return "Shipping cancelled for order: " + orderId
@@ -634,7 +797,7 @@
         - script:
             id: confirmation-email-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
@@ -652,18 +815,11 @@
 
                 emailContent += "Items ordered:\n"
 
-
-                orderItems.each { item ->
-                  emailContent += "- ${item.productId}: ${item.quantity} units\n"
-                }
-
+                orderItems.each { item -> emailContent += "- ${item.productId}: ${item.quantity} units\n" }
 
                 emailContent += "Total Amount: \$${amount}\n"
 
-                emailContent += "Shipping Address: ${address.line1},
-                ${address.city}, ${address.state}, ${address.country} -
-                ${address.pincode}"
-
+                emailContent += "Shipping Address: ${address.line1}, ${address.city}, ${address.state}, ${address.country} - ${address.pincode}"
 
                 orderState.put(orderId + '_email', 'SENT')
 
@@ -683,7 +839,7 @@
         - script:
             id: retrieve-order-context-completion
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
@@ -700,21 +856,39 @@
                 }
         - log:
             id: log-saga-completion
-            message: "SAGA COMPLETED: Order ${body} processed successfully!"
+            message: "SAGA COMPLETED: Order ${body} processed successfully! LRA-ID = ${header.Long-Running-Action}"
         - script:
             id: saga-completion-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
                 def inventoryState =
                 exchange.context.registry.lookupByName('inventoryState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = exchange.getIn().getBody(String.class)
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 orderState.put(orderId + '_status', 'COMPLETED')
+
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  println "SUCCESS: Order ${orderData.orderId} completed successfully (Saga: ${orderData.sagaId})"
+                  
+                  // Update tracking data
+                  orderData.status = 'COMPLETED'
+                  orderData.endTime = new Date().toString()
+                  orderData.steps.add('SAGA_COMPLETED')
+                  sagaTracker.put(lraId, orderData)
+                } else {
+                  println "COMPLETION: No order data found for LRA ${lraId}"
+                }
 
 
                 println "=== FINAL ORDER STATE ==="
@@ -765,7 +939,7 @@
         - script:
             id: retrieve-order-context-compensate
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
@@ -782,21 +956,40 @@
                 }
         - log:
             id: log-saga-compensation
-            message: "SAGA FAILED: Compensating Order ${body}"
+            message: "SAGA FAILED: Compensating Order ${body} - LRA-ID = ${header.Long-Running-Action}"
         - script:
             id: saga-compensation-logic
             groovy:
-              expression: >
+              expression: |
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
 
                 def inventoryState =
                 exchange.context.registry.lookupByName('inventoryState')
 
+                def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+
                 def orderId = exchange.getIn().getBody(String.class)
+                def lraId = exchange.in.headers['Long-Running-Action']
 
 
                 orderState.put(orderId + '_status', 'COMPENSATED')
+
+                
+                // Update saga tracking
+                def orderData = sagaTracker.get(lraId)
+                if (orderData) {
+                  println "COMPENSATION: Order ${orderData.orderId} failed and needs rollback (Saga: ${orderData.sagaId})"
+                  println "COMPENSATION: Failed at step ${orderData.currentStep} - Reason: ${orderData.failureReason}"
+                  
+                  // Update tracking data
+                  orderData.status = 'COMPENSATING'
+                  orderData.compensationStartTime = new Date().toString()
+                  orderData.steps.add('SAGA_COMPENSATION_STARTED')
+                  sagaTracker.put(lraId, orderData)
+                } else {
+                  println "COMPENSATION: No order data found for LRA ${lraId}"
+                }
 
 
                 println "=== COMPENSATION COMPLETED ==="
@@ -839,6 +1032,66 @@
 
                 println "============================================"
 - route:
+    id: saga-tracker
+    from:
+      id: saga-tracker-jetty
+      uri: platform-http:/saga-tracker
+      steps:
+        - setHeader:
+            id: set-saga-cors-origin
+            expression:
+              constant: "*"
+            name: Access-Control-Allow-Origin
+        - setHeader:
+            id: set-saga-cors-methods
+            expression:
+              constant: GET, OPTIONS
+            name: Access-Control-Allow-Methods
+        - choice:
+            id: handle-saga-cors-preflight
+            otherwise:
+              steps:
+                - script:
+                    id: saga-tracker-logic
+                    groovy:
+                      expression: |
+                        def sagaTracker = exchange.context.registry.lookupByName('sagaTracker')
+                        def result = [:]
+
+                        if (sagaTracker.isEmpty()) {
+                          result.message = "No active or completed sagas"
+                          result.count = 0
+                          result.sagas = [:]
+                        } else {
+                          result.message = "Saga tracking status"
+                          result.count = sagaTracker.size()
+                          result.sagas = [:]
+                          
+                          sagaTracker.each { lraId, orderData ->
+                            result.sagas[lraId] = orderData
+                          }
+                        }
+
+                        exchange.getIn().setBody(result)
+                - marshal:
+                    id: marshal-saga-tracker
+                    json:
+                      library: Jackson
+                - setHeader:
+                    id: set-saga-content-type
+                    expression:
+                      constant: application/json
+                    name: Content-Type
+            when:
+              - steps:
+                  - setBody:
+                      id: set-saga-cors-response
+                      expression:
+                        constant: ""
+                  - stop: {}
+                expression:
+                  simple: ${header.CamelHttpMethod} == 'OPTIONS'
+- route:
     id: inventory-status
     from:
       id: inventory-status-jetty
@@ -861,7 +1114,7 @@
                 - script:
                     id: inventory-status-logic
                     groovy:
-                      expression: >
+                      expression: |
                         
                         def inventoryState =
                         exchange.context.registry.lookupByName('inventoryState')
@@ -925,23 +1178,22 @@
         - script:
             id: create-health-response
             groovy:
-              expression: >
+              expression: |
                 import java.time.LocalDateTime
 
                 import java.time.format.DateTimeFormatter
                                 
-                def timestamp =
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd
-                HH:mm:ss"))
+                def timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
                 def healthResponse = [
                   status: "healthy",
-                  service: "camel-saga-demo-enhanced",
+                  service: "camel-saga-demo-enhanced-with-lra",
                   timestamp: timestamp,
                   endpoints: [
                     "POST /orders - Submit new order",
                     "GET /inventory - Check inventory status", 
                     "GET /orders - View order status",
+                    "GET /saga-tracker - View saga tracking status",
                     "GET /health - Health check"
                   ]
                 ]
@@ -966,7 +1218,7 @@
         - script:
             id: order-status-logic
             groovy:
-              expression: >
+              expression: |
                 
                 def orderState =
                 exchange.context.registry.lookupByName('orderState')
@@ -1049,8 +1301,7 @@
                 }
 
 
-                // Convert to list and sort by orderId (descending for newest
-                first)
+                // Convert to list and sort by orderId (descending for newest first)
 
                 def ordersList = orders.values().toList()
 

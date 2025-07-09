@@ -10,82 +10,62 @@
   "camel": {
     "routes": {
       "SAGA.camel.yaml": {
-        "inventory-initializer": {
-          "id": "inventory-initializer",
+        "get-saga-tracker": {
+          "id": "get-saga-tracker",
           "breakpoints": [],
           "from": [
             {
-              "uri": "timer:init"
+              "uri": "direct",
+              "id": "saga tracker"
             }
           ],
           "to": []
         },
-        "saga-orchestrator": {
-          "id": "saga-orchestrator",
+        "order-processing-saga": {
+          "id": "order-processing-saga",
           "breakpoints": [],
           "from": [
             {
-              "uri": "platform-http",
-              "id": "order-input"
+              "uri": "direct:processOrder"
             }
           ],
           "to": [
-            {
-              "uri": "direct:order-status",
-              "id": "call-status-route"
-            },
-            {
-              "uri": "direct:process-order-saga",
-              "id": "call-process-order-saga"
-            }
+            {},
+            {},
+            {}
           ]
         },
-        "process-order-saga": {
-          "id": "process-order-saga",
-          "breakpoints": [],
+        "saga-complete": {
+          "id": "saga-complete",
+          "breakpoints": [
+            "log-saga-completion"
+          ],
           "from": [
             {
-              "uri": "direct:process-order-saga",
-              "id": "process-order-saga-direct"
+              "uri": "direct:sagaComplete"
             }
           ],
-          "to": [
+          "to": []
+        },
+        "saga-compensate": {
+          "id": "saga-compensate",
+          "breakpoints": [
+            "log-saga-compensation",
+            "saga-compensation-script"
+          ],
+          "from": [
             {
-              "uri": "direct:reserve-inventory",
-              "id": "call-reserve-inventory"
-            },
-            {
-              "uri": "direct:process-payment",
-              "id": "call-process-payment"
-            },
-            {
-              "uri": "direct:create-shipping",
-              "id": "call-create-shipping"
-            },
-            {
-              "uri": "direct:send-confirmation",
-              "id": "call-send-confirmation"
+              "uri": "direct:sagaCompensate"
             }
-          ]
+          ],
+          "to": []
         },
         "reserve-inventory": {
           "id": "reserve-inventory",
           "breakpoints": [],
           "from": [
             {
-              "uri": "direct:reserve-inventory",
-              "id": "reserve-inventory-direct"
-            }
-          ],
-          "to": []
-        },
-        "release-inventory": {
-          "id": "release-inventory",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:release-inventory",
-              "id": "release-inventory-direct"
+              "uri": "direct:reserveInventory"
             }
           ],
           "to": []
@@ -95,8 +75,27 @@
           "breakpoints": [],
           "from": [
             {
-              "uri": "direct:process-payment",
-              "id": "process-payment-direct"
+              "uri": "direct:processPayment"
+            }
+          ],
+          "to": []
+        },
+        "ship-order": {
+          "id": "ship-order",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:shipOrder"
+            }
+          ],
+          "to": []
+        },
+        "release-inventory": {
+          "id": "release-inventory",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:releaseInventory"
             }
           ],
           "to": []
@@ -106,96 +105,17 @@
           "breakpoints": [],
           "from": [
             {
-              "uri": "direct:refund-payment",
-              "id": "refund-payment-direct"
+              "uri": "direct:refundPayment"
             }
           ],
           "to": []
         },
-        "create-shipping": {
-          "id": "create-shipping",
+        "cancel-shipment": {
+          "id": "cancel-shipment",
           "breakpoints": [],
           "from": [
             {
-              "uri": "direct:create-shipping",
-              "id": "create-shipping-direct"
-            }
-          ],
-          "to": []
-        },
-        "cancel-shipping": {
-          "id": "cancel-shipping",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:cancel-shipping",
-              "id": "cancel-shipping-direct"
-            }
-          ],
-          "to": []
-        },
-        "send-confirmation": {
-          "id": "send-confirmation",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:send-confirmation",
-              "id": "send-confirmation-direct"
-            }
-          ],
-          "to": []
-        },
-        "saga-completion": {
-          "id": "saga-completion",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:saga-complete",
-              "id": "saga-complete-direct"
-            }
-          ],
-          "to": []
-        },
-        "saga-compensation": {
-          "id": "saga-compensation",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:saga-compensate",
-              "id": "saga-compensate-direct"
-            }
-          ],
-          "to": []
-        },
-        "inventory-status": {
-          "id": "inventory-status",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "platform-http:/inventory",
-              "id": "inventory-status-jetty"
-            }
-          ],
-          "to": []
-        },
-        "health-check": {
-          "id": "health-check",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "platform-http:/health",
-              "id": "health-check-jetty"
-            }
-          ],
-          "to": []
-        },
-        "order-status-route": {
-          "id": "order-status-route",
-          "breakpoints": [],
-          "from": [
-            {
-              "uri": "direct:order-status",
-              "id": "order-status"
+              "uri": "direct:cancelShipment"
             }
           ],
           "to": []
@@ -204,8 +124,7 @@
     },
     "beans": {
       "SAGA.camel.yaml": [
-        "orderState",
-        "inventoryState"
+        "sagaTracker"
       ]
     }
   },

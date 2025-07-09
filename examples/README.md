@@ -76,6 +76,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**Message Filter**](EIP/MessageFilter) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
 | [**Ports and Adapters**](EIP/PortsAndAdapters) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
 | [**Recipient List**](EIP/RecipientList) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
+| [**SAGA**](EIP/SAGA) | Manage distributed transactions across multiple services | • Coordinate multi-step business processes<br>• Handle compensation for failed transactions |
 | [**XSLT Mapper**](EIP/XsltMapper) | Transform XML documents using XSLT  | • Transform XML data structures • Modify XML data |
 
 

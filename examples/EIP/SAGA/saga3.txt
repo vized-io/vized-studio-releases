@@ -1,0 +1,403 @@
+# camel-k: dependency=camel:saga
+# camel-k: dependency=camel:groovy
+
+# Apache Camel SAGA Pattern Demo
+# This example demonstrates order processing with compensation on failure
+# Run with: camel run saga-demo.yaml
+
+- beans:
+  - name: orderState
+    type: "#class:java.util.concurrent.ConcurrentHashMap"
+
+- onException:
+    exception:
+      - java.lang.RuntimeException
+    handled:
+      constant: "true"
+    # logHandled: true
+    # logStackTrace: false
+    steps:
+      - log:
+          message: "🚨 SAGA Error handled: ${exception.message} for Order: ${header.orderId}"
+      - script:
+          groovy:
+            expression: |
+              // Log the error gracefully
+              def orderId = request.headers['orderId'] ?: 'UNKNOWN'
+              println "💥 SAGA Transaction failed for Order: ${orderId}"
+              println "🔄 Compensation will be triggered automatically"
+
+- route:
+    id: saga-orchestrator
+    from:
+      id: order-generator-timer
+      uri: timer:order-generator
+      parameters:
+        period: 10000
+        repeatCount: 1
+      steps:
+        - setHeader:
+            id: set-order-id
+            name: orderId
+            expression:
+              groovy:
+                expression: "UUID.randomUUID().toString().substring(0,8)"
+        - setProperty:
+            id: preserve-order-id
+            name: sagaOrderId
+            expression:
+              simple: "${header.orderId}"
+        - setHeader:
+            id: set-customer-id
+            name: customerId
+            expression:
+              constant: "CUST-001"
+        - setHeader:
+            id: set-amount
+            name: amount
+            expression:
+              groovy:
+                expression: "Math.round(Math.random() * 1000 + 100)"
+        - setHeader:
+            id: set-payment-failure-flag
+            name: shouldFailPayment
+            expression:
+              groovy:
+                expression: "Math.random() < 0.3" # 30% chance of payment failure
+        - setBody:
+            id: set-body-order-id
+            expression:
+              simple: "${header.orderId}"
+        - log:
+            id: log-saga-start
+            message: "🚀 Starting SAGA for Order: ${header.orderId}, Amount: ${header.amount}"
+        
+        # Initialize the SAGA
+        - saga:
+            id: saga-init
+            propagation: REQUIRED
+            completion: direct:saga-complete
+            compensation: direct:saga-compensate
+            option:
+              - key: "orderId"
+                expression:
+                  simple: "${header.orderId}"
+        
+        # Step 1: Reserve Inventory
+        - to:
+            id: call-reserve-inventory
+            uri: direct:reserve-inventory
+        
+        # Step 2: Process Payment  
+        - to:
+            id: call-process-payment
+            uri: direct:process-payment
+        
+        # Step 3: Create Shipping
+        - to:
+            id: call-create-shipping
+            uri: direct:create-shipping
+        
+        # Step 4: Send Confirmation
+        - to:
+            id: call-send-confirmation
+            uri: direct:send-confirmation
+        
+        - log:
+            id: log-saga-success
+            message: "SAGA completed successfully for Order: ${header.sagaOrderId}"
+
+- route:
+    id: reserve-inventory
+    from:
+      id: reserve-inventory-direct
+      uri: direct:reserve-inventory
+      steps:
+        - saga:
+            id: saga-inventory-compensation
+            option:
+              - key: "orderId"
+                expression:
+                  simple: "${header.orderId}"
+            compensation: direct:release-inventory
+        - log:
+            id: log-inventory-start
+            message: "Reserving inventory for Order: ${header.orderId}"
+        - script:
+            id: inventory-reservation-logic
+            groovy:
+              expression: |
+                // Simulate inventory reservation
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                orderState.put(orderId + '_inventory', 'RESERVED')
+                
+                // Simulate occasional inventory failure
+                if (Math.random() < 0.1) {
+                  throw new RuntimeException("Inventory not available")
+                }
+                
+                request.headers['inventoryReserved'] = true
+                "Inventory reserved for order: " + orderId
+        - log:
+            id: log-inventory-success
+            message: "Inventory reserved for Order: ${header.orderId}"
+
+- route:
+    id: release-inventory
+    from:
+      id: release-inventory-direct
+      uri: direct:release-inventory
+      steps:
+        - log:
+            id: log-inventory-compensation
+            message: "🔄 COMPENSATING: Releasing inventory for Order: ${header.orderId}"
+        - script:
+            id: inventory-release-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                orderState.put(orderId + '_inventory', 'RELEASED')
+                "Inventory released for order: " + orderId
+
+- route:
+    id: process-payment
+    from:
+      id: process-payment-direct
+      uri: direct:process-payment
+      steps:
+        - saga:
+            id: saga-payment-compensation
+            option:
+              - key: "orderId"
+                expression:
+                  simple: "${header.orderId}"
+            compensation: direct:refund-payment
+        - log:
+            id: log-payment-start
+            message: "💳 Processing payment for Order: ${header.orderId}, Amount: ${header.amount}"
+        - script:
+            id: payment-processing-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                def shouldFail = request.headers['shouldFailPayment']
+                
+                if (shouldFail) {
+                  throw new RuntimeException("Payment declined - insufficient funds")
+                }
+                
+                orderState.put(orderId + '_payment', 'PROCESSED')
+                request.headers['paymentProcessed'] = true
+                "Payment processed for order: " + orderId
+        - log:
+            id: log-payment-success
+            message: "✅ Payment processed for Order: ${header.orderId}"
+
+- route:
+    id: refund-payment
+    from:
+      id: refund-payment-direct
+      uri: direct:refund-payment
+      steps:
+        - log:
+            id: log-payment-compensation
+            message: "🔄 COMPENSATING: Refunding payment for Order: ${header.orderId}"
+        - script:
+            id: payment-refund-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                orderState.put(orderId + '_payment', 'REFUNDED')
+                "Payment refunded for order: " + orderId
+
+- route:
+    id: create-shipping
+    from:
+      id: create-shipping-direct
+      uri: direct:create-shipping
+      steps:
+        - saga:
+            id: saga-shipping-compensation
+            option:
+              - key: "orderId"
+                expression:
+                  simple: "${header.orderId}"
+            compensation: direct:cancel-shipping
+        - log:
+            id: log-shipping-start
+            message: "🚚 Creating shipping for Order: ${header.orderId}"
+        - script:
+            id: shipping-creation-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                
+                // Simulate rare shipping failure
+                if (Math.random() < 0.05) {
+                  throw new RuntimeException("Shipping service unavailable")
+                }
+                
+                orderState.put(orderId + '_shipping', 'CREATED')
+                request.headers['shippingCreated'] = true
+                "Shipping created for order: " + orderId
+        - log:
+            id: log-shipping-success
+            message: "✅ Shipping created for Order: ${header.orderId}"
+
+- route:
+    id: cancel-shipping
+    from:
+      id: cancel-shipping-direct
+      uri: direct:cancel-shipping
+      steps:
+        - log:
+            id: log-shipping-compensation
+            message: "🔄 COMPENSATING: Canceling shipping for Order: ${header.orderId}"
+        - script:
+            id: shipping-cancellation-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                orderState.put(orderId + '_shipping', 'CANCELLED')
+                "Shipping cancelled for order: " + orderId
+
+- route:
+    id: send-confirmation
+    from:
+      id: send-confirmation-direct
+      uri: direct:send-confirmation
+      steps:
+        - log:
+            id: log-confirmation-start
+            message: "📧 Sending confirmation email for Order: ${header.orderId}"
+        - script:
+            id: confirmation-email-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = request.headers['orderId']
+                orderState.put(orderId + '_email', 'SENT')
+                "Confirmation email sent for order: " + orderId
+        - log:
+            id: log-confirmation-success
+            message: "✅ Confirmation email sent for Order: ${header.orderId}"
+
+- route:
+    id: saga-completion
+    from:
+      id: saga-complete-direct
+      uri: direct:saga-complete
+      steps:
+        - log:
+            id: log-saga-completion
+            message: "🎉 SAGA COMPLETED: Order ${exchangeProperty.sagaOrderId} processed successfully!"
+        - script:
+            id: saga-completion-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = exchange.getIn().getBody(String.class)
+                orderState.put(orderId + '_status', 'COMPLETED')
+                
+                println "=== FINAL ORDER STATE ==="
+                if (orderId) {
+                  orderState.findAll { k, v -> k.startsWith(orderId) }.each { k, v ->
+                    println "${k}: ${v}"
+                  }
+                } else {
+                  println "OrderId is null! Cannot print order state."
+                }
+                println "========================="
+
+- route:
+    id: saga-compensation
+    from:
+      id: saga-compensate-direct
+      uri: direct:saga-compensate
+      steps:
+        - log:
+            id: log-saga-compensation
+            message: "💥 SAGA FAILED: Compensating Order ${header.orderId}"
+        - script:
+            id: saga-compensation-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def orderId = exchange.getIn().getBody(String.class)
+                orderState.put(orderId + '_status', 'COMPENSATED')
+                
+                println "=== COMPENSATION COMPLETED ==="
+                if (orderId) {
+                  orderState.findAll { k, v -> k.startsWith(orderId) }.each { k, v ->
+                    println "${k}: ${v}"
+                  }
+                } else {
+                  println "OrderId is null! Cannot print order state."
+                }
+                println "==============================="
+
+# Health check endpoint
+- route:
+    id: health-check
+    from:
+      id: health-check-jetty
+      uri: jetty:http://localhost:8000/health
+      steps:
+        - setBody:
+            id: set-health-response
+            expression:
+              constant: |
+                {
+                  "status": "healthy",
+                  "service": "camel-saga-demo",
+                  "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"
+                }
+        - setHeader:
+            id: set-health-content-type
+            name: Content-Type
+            expression:
+              constant: application/json
+
+# Status endpoint to check order states
+- route:
+    id: order-status
+    from:
+      id: order-status-jetty
+      uri: jetty:http://localhost:8000/orders
+      steps:
+        - script:
+            id: order-status-logic
+            groovy:
+              expression: |
+                def orderState = exchange.context.registry.lookupByName('orderState')
+                def json = new groovy.json.JsonBuilder()
+                
+                def orders = [:]
+                orderState.each { k, v ->
+                  def parts = k.split('_')
+                  if (parts.length == 2) {
+                    def orderId = parts[0]
+                    def field = parts[1]
+                    if (!orders[orderId]) orders[orderId] = [:]
+                    orders[orderId][field] = v
+                  }
+                }
+                
+                json {
+                  orders orders
+                  totalOrders orders.size()
+                  timestamp new Date().toString()
+                }
+                
+                json.toString()
+        - setHeader:
+            id: set-orders-content-type
+            name: Content-Type
+            expression:
+              constant: application/json

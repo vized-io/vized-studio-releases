@@ -1,0 +1,137 @@
+{
+  "name": "SAGA",
+  "version": "0.0.1",
+  "artifactId": "SAGA",
+  "group": "com.vized.project",
+  "relativePath": "SAGA",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "SAGA.camel.yaml": {
+        "get-saga-tracker": {
+          "id": "get-saga-tracker",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct",
+              "id": "saga tracker"
+            }
+          ],
+          "to": []
+        },
+        "order-processing-saga": {
+          "id": "order-processing-saga",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:processOrder"
+            }
+          ],
+          "to": [
+            {},
+            {},
+            {}
+          ]
+        },
+        "saga-complete": {
+          "id": "saga-complete",
+          "breakpoints": [
+            "log-saga-completion"
+          ],
+          "from": [
+            {
+              "uri": "direct:sagaComplete"
+            }
+          ],
+          "to": []
+        },
+        "saga-compensate": {
+          "id": "saga-compensate",
+          "breakpoints": [
+            "log-saga-compensation",
+            "saga-compensation-script"
+          ],
+          "from": [
+            {
+              "uri": "direct:sagaCompensate"
+            }
+          ],
+          "to": []
+        },
+        "reserve-inventory": {
+          "id": "reserve-inventory",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:reserveInventory"
+            }
+          ],
+          "to": []
+        },
+        "process-payment": {
+          "id": "process-payment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:processPayment"
+            }
+          ],
+          "to": []
+        },
+        "ship-order": {
+          "id": "ship-order",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:shipOrder"
+            }
+          ],
+          "to": []
+        },
+        "release-inventory": {
+          "id": "release-inventory",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:releaseInventory"
+            }
+          ],
+          "to": []
+        },
+        "refund-payment": {
+          "id": "refund-payment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:refundPayment"
+            }
+          ],
+          "to": []
+        },
+        "cancel-shipment": {
+          "id": "cancel-shipment",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:cancelShipment"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "SAGA.camel.yaml": [
+        "sagaTracker"
+      ]
+    }
+  },
+  "environments": {
+    "default": [
+      "camel.server.enabled",
+      "camel.server.staticEnabled"
+    ]
+  }
+}

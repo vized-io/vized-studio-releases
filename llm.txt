@@ -1,0 +1,11 @@
+
+https://raw.githubusercontent.com/apache/camel/main/dsl/camel-yaml-dsl/camel-yaml-dsl/src/generated/resources/schema/camelYamlDsl.json
+
+Write a simple example for [ExampleName] using apache camel yaml dsl. 
+Runtime is jbang, route will be executed like camel run *.
+
+make sure: 
+- id: A unique ID for this specific node in the route is present. 
+- Using URI and parameters. 
+- Expression aware steps with Explicit Expression field is implemented.
+- use saga component to achieve this

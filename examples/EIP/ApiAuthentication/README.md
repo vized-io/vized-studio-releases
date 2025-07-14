@@ -107,6 +107,9 @@ Prepare your authentication provider for token validation:
 
 <video src="assets/keycloak_config.mp4" controls width="500"></video>
 
+https://github.com/user-attachments/assets/0d68654a-7a62-4396-a4f8-9524f81097d8
+
+
 ## Running the Integration Project
 
 1. Select your integration project in VIZED.

@@ -1,0 +1,38 @@
+{
+  "name": "SplitterResequencer",
+  "version": "0.0.1",
+  "artifactId": "SplitterResequencer",
+  "group": "com.vized.project",
+  "relativePath": "SplitterResequencer",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "SplitterResequencer.camel.yaml": {
+        "SplitterResequencer": {
+          "id": "SplitterResequencer",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:orders/incoming",
+              "id": "Read Orders File"
+            }
+          ],
+          "to": [
+            {
+              "uri": "file:orders/processed",
+              "id": "Write Processed Orders"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "SplitterResequencer.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  }
+} 

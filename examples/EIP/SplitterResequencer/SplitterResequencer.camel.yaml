@@ -1,0 +1,102 @@
+- route:
+    id: SplitterResequencer
+    from:
+      id: Read Orders File
+      uri: file:orders/incoming
+      parameters:
+        fileName: orders.json
+        noop: "true"
+        delay: 5000
+      steps:
+        - log:
+            id: log-start
+            message: "Starting to process orders file: ${header.CamelFileName}"
+        - unmarshal:
+            id: unmarshal-json
+            json:
+              library: jackson
+        - split:
+            id: split-orders
+            expression:
+              simple:
+                expression: ${body}
+            steps:
+              - log:
+                  id: log-split-item
+                  message: "Processing order: ${body[orderId]} with date: ${body[orderDate]}"
+              - setHeader:
+                  id: set-order-id
+                  name: OrderId
+                  expression:
+                    simple:
+                      expression: ${body[orderId]}
+              - setHeader:
+                  id: set-order-date
+                  name: OrderDate
+                  expression:
+                    simple:
+                      expression: ${body[orderDate]}
+              - setHeader:
+                  id: set-priority
+                  name: Priority
+                  expression:
+                    simple:
+                      expression: ${body[priority]}
+              - setBody:
+                  id: enrich-order
+                  expression:
+                    groovy:
+                      expression: |
+                        import java.time.Instant
+                        
+                        def order = request.body
+                        order.put("processedAt", Instant.now().toString())
+                        order.put("processingSequence", exchange.getProperty("CamelSplitIndex"))
+                        
+                        // Add enrichment based on priority
+                        switch(order.priority) {
+                          case "HIGH":
+                            order.put("expedited", true)
+                            order.put("processingFee", 0.0)
+                            break
+                          case "MEDIUM":
+                            order.put("expedited", false)
+                            order.put("processingFee", 5.0)
+                            break
+                          case "LOW":
+                            order.put("expedited", false)
+                            order.put("processingFee", 2.0)
+                            break
+                        }
+                        
+                        return order
+              - resequence:
+                  id: resequence-by-date
+                  expression:
+                    simple:
+                      expression: ${header.OrderDate}
+                  batchConfig:
+                    batchSize: 100
+                    batchTimeout: 10000
+              - log:
+                  id: log-resequenced
+                  message: "Resequenced order: ${header.OrderId} - Original sequence: ${header.CamelSplitIndex}, Date: ${header.OrderDate}"
+              - marshal:
+                  id: marshal-json
+                  json:
+                    library: jackson
+                    prettyPrint: true
+              - setHeader:
+                  id: set-output-filename
+                  name: CamelFileName
+                  expression:
+                    simple:
+                      expression: "processed-${header.OrderId}-${date:now:yyyyMMdd-HHmmss}.json"
+              - to:
+                  id: Write Processed Orders
+                  uri: file:orders/processed
+                  parameters:
+                    fileName: "${header.CamelFileName}"
+              - log:
+                  id: log-completed
+                  message: "Completed processing order: ${header.OrderId}" 

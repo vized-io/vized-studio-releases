@@ -1,0 +1,197 @@
+{
+  "name": "AuthGateway",
+  "description": "API Gateway demonstrating various authentication and authorization techniques including API Key, OAuth2, and OIDC JWT validation",
+  "version": "1.0.0",
+  "type": "integration",
+  "category": "EIP",
+  "tags": ["authentication", "authorization", "api-gateway", "security", "oauth2", "jwt", "oidc"],
+  "author": "Vized Studio",
+  "camelVersion": "4.0.0",
+  "runtime": "jbang",
+  "components": {
+    "netty-http": {
+      "groupId": "org.apache.camel",
+      "artifactId": "camel-netty-http",
+      "version": "4.0.0",
+      "description": "HTTP server component for API gateway endpoints",
+      "configuration": {
+        "host": "0.0.0.0",
+        "port": 8080,
+        "matchOnUriPrefix": true
+      }
+    },
+    "http": {
+      "groupId": "org.apache.camel",
+      "artifactId": "camel-http",
+      "version": "4.0.0",
+      "description": "HTTP client component for OAuth2 token introspection",
+      "configuration": {
+        "bridgeEndpoint": true
+      }
+    },
+    "jackson": {
+      "groupId": "org.apache.camel",
+      "artifactId": "camel-jackson",
+      "version": "4.0.0",
+      "description": "JSON marshalling/unmarshalling for token responses"
+    },
+    "jsonpath": {
+      "groupId": "org.apache.camel",
+      "artifactId": "camel-jsonpath",
+      "version": "4.0.0",
+      "description": "JSONPath expressions for parsing OAuth2 responses"
+    },
+    "bean": {
+      "groupId": "org.apache.camel",
+      "artifactId": "camel-bean",
+      "version": "4.0.0",
+      "description": "Bean component for JWT verification logic"
+    }
+  },
+  "dependencies": {
+    "jackson-databind": {
+      "groupId": "com.fasterxml.jackson.core",
+      "artifactId": "jackson-databind",
+      "version": "2.15.2",
+      "description": "JSON processing for JWT token parsing"
+    },
+    "slf4j-simple": {
+      "groupId": "org.slf4j",
+      "artifactId": "slf4j-simple",
+      "version": "2.0.7",
+      "description": "Simple logging implementation"
+    }
+  },
+  "routes": [
+    {
+      "id": "api-gateway",
+      "description": "Main API gateway route that routes requests to appropriate authentication flow",
+      "from": "netty-http:http://0.0.0.0:8080/api",
+      "authentication": ["api-key", "oauth2", "oidc-jwt"]
+    },
+    {
+      "id": "auth-apikey",
+      "description": "API Key authentication flow",
+      "from": "direct:auth-apikey",
+      "authentication": "api-key"
+    },
+    {
+      "id": "auth-oauth2",
+      "description": "OAuth2 token introspection authentication flow",
+      "from": "direct:auth-oauth2",
+      "authentication": "oauth2"
+    },
+    {
+      "id": "auth-oidc",
+      "description": "OIDC JWT token validation authentication flow",
+      "from": "direct:auth-oidc",
+      "authentication": "oidc-jwt"
+    },
+    {
+      "id": "backend",
+      "description": "Mock backend service that returns authenticated response",
+      "from": "direct:backend"
+    },
+    {
+      "id": "health-check",
+      "description": "Health check endpoint for monitoring",
+      "from": "netty-http:http://0.0.0.0:8080/health"
+    }
+  ],
+  "configuration": {
+    "server": {
+      "port": 8080,
+      "host": "0.0.0.0"
+    },
+    "authentication": {
+      "api-key": {
+        "enabled": true,
+        "header": "x-api-key",
+        "keys": ["12345", "secret-api-key", "demo-key", "vized-key"]
+      },
+      "oauth2": {
+        "enabled": true,
+        "client-id": "camel-gateway",
+        "client-secret": "your-client-secret",
+        "introspect-url": "http://localhost:8081/auth/realms/demo/protocol/openid-connect/token/introspect",
+        "token-url": "http://localhost:8081/auth/realms/demo/protocol/openid-connect/token"
+      },
+      "oidc-jwt": {
+        "enabled": true,
+        "issuer": "http://localhost:8081/auth/realms/demo",
+        "jwks-url": "http://localhost:8081/auth/realms/demo/protocol/openid-connect/certs",
+        "audience": "camel-gateway"
+      }
+    },
+    "backend": {
+      "mock-enabled": true,
+      "service-url": "http://localhost:9000/api"
+    },
+    "security": {
+      "cors": {
+        "enabled": true,
+        "allowed-origins": "*",
+        "allowed-methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "allowed-headers": "*"
+      }
+    }
+  },
+  "examples": {
+    "api-key": {
+      "description": "Test API Key authentication",
+      "curl": "curl -H 'x-api-key: 12345' http://localhost:8080/api/test"
+    },
+    "oauth2": {
+      "description": "Test OAuth2 token authentication",
+      "steps": [
+        "1. Get token: curl -X POST -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials&client_id=YOUR_CLIENT_ID&client_secret=YOUR_CLIENT_SECRET' https://your-auth-server.com/oauth2/token",
+        "2. Use token: curl -H 'Authorization: Bearer YOUR_TOKEN' http://localhost:8080/api/test"
+      ]
+    },
+    "oidc-jwt": {
+      "description": "Test OIDC JWT authentication",
+      "steps": [
+        "1. Get JWT: curl -X POST -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=YOUR_USERNAME&password=YOUR_PASSWORD&client_id=YOUR_CLIENT_ID' https://your-auth-server.com/oauth2/token",
+        "2. Use JWT: curl -H 'Authorization: Bearer YOUR_JWT_TOKEN' http://localhost:8080/api/test"
+      ]
+    }
+  },
+  "monitoring": {
+    "health-endpoint": "http://localhost:8080/health",
+    "metrics": {
+      "authentication-success": "Counter for successful authentications by method",
+      "authentication-failure": "Counter for failed authentications by method",
+      "request-duration": "Histogram for request processing time"
+    }
+  },
+  "deployment": {
+    "jbang": {
+      "command": "jbang camel@apache/camel run AuthGateway.camel.yaml",
+      "requirements": ["Java 17+", "JBang 0.100+"]
+    },
+    "docker": {
+      "base-image": "openjdk:17-jre-slim",
+      "ports": ["8080:8080"]
+    }
+  },
+  "testing": {
+    "unit-tests": {
+      "jwt-verification": "Test JWT token validation logic",
+      "api-key-validation": "Test API key validation",
+      "oauth2-introspection": "Test OAuth2 token introspection"
+    },
+    "integration-tests": {
+      "auth-flows": "Test all authentication flows end-to-end",
+      "error-handling": "Test error scenarios and responses"
+    }
+  },
+  "documentation": {
+    "readme": "README.md",
+    "assets": ["assets/AuthGateway.gif", "assets/setup.gif"],
+    "external-links": [
+      "https://camel.apache.org/components/latest/netty-http-component.html",
+      "https://oauth.net/2/",
+      "https://openid.net/connect/"
+    ]
+  }
+} 

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camel API Gateway UI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        body {
+            background-color: #111827; /* gray-900 */
+            color: #d1d5db; /* gray-300 */
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s, transform 0.3s;
+            z-index: 50;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success { background-color: #059669; } /* green-600 */
+        .toast.error { background-color: #dc2626; } /* red-600 */
+        .toast.info { background-color: #2563eb; } /* blue-600 */
+        
+        .oauth-flow-step {
+            @apply bg-gray-700 p-3 rounded-md mb-3;
+        }
+        .oauth-flow-step.active {
+            @apply bg-blue-600;
+        }
+        .oauth-flow-step.completed {
+            @apply bg-green-600;
+        }
+        
+        .token-info {
+            @apply bg-gray-700 p-2 rounded-md text-xs font-mono;
+        }
+        
+        .scope-badge {
+            @apply inline-block bg-blue-500 text-white text-xs px-2 py-1 rounded mr-1 mb-1;
+        }
+    </style>
+</head>
+<body class="font-sans">
+
+    <div id="app" class="flex flex-col h-screen">
+        <!-- Header -->
+        <header class="bg-gray-800 border-b border-gray-700 px-6 py-3 flex items-center justify-between flex-shrink-0">
+            <h1 class="text-xl font-bold text-white">Camel API Gateway Interface</h1>
+            <div class="flex items-center space-x-2">
+                <span class="text-sm text-gray-400">Health Status:</span>
+                <span id="health-status-badge" class="px-2 py-1 text-xs font-bold rounded-full">
+                    Checking...
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow grid grid-cols-1 md:grid-cols-12 gap-4 p-6 overflow-auto">
+
+            <!-- Left Column: Auth & Endpoints -->
+            <div class="md:col-span-3 bg-gray-800 rounded-lg p-4 flex flex-col space-y-6">
+                <div>
+                    <h2 class="text-lg font-semibold text-white mb-3">1. Authentication</h2>
+                    <select id="auth-method-select" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="api-key">API Key</option>
+                        <option value="jwt">OIDC - JWT Token</option>
+                        <option value="oauth2-flow">OAuth2 Authorization Flow</option>
+                        <option value="none">No Auth</option>
+                    </select>
+                    <div id="auth-inputs-container" class="mt-3">
+                        <!-- API Key Input -->
+                        <div id="api-key-input-div">
+                            <label for="api-key-input" class="text-sm font-medium text-gray-400">X-API-Key</label>
+                            <input type="text" id="api-key-input" placeholder="Enter your API Key" class="w-full mt-1 p-2 bg-gray-900 border border-gray-600 rounded-md text-white">
+                        </div>
+                        <!-- JWT Input -->
+                        <div id="jwt-input-div" class="hidden">
+                            <label for="jwt-input" class="text-sm font-medium text-gray-400">Bearer Token (JWT)</label>
+                            <div class="space-y-3">
+                                <!-- JWT Fetch Section -->
+                                <div class="bg-gray-700 p-3 rounded-md">
+                                    <h4 class="text-sm font-semibold text-white mb-2">Fetch JWT Token</h4>
+                                    <div class="space-y-2">
+                                        <div>
+                                            <label for="jwt-username" class="text-xs text-gray-400">Username</label>
+                                            <input type="text" id="jwt-username" placeholder="Enter username" class="w-full mt-1 p-2 bg-gray-900 border border-gray-600 rounded-md text-white text-sm">
+                                        </div>
+                                        <div>
+                                            <label for="jwt-password" class="text-xs text-gray-400">Password</label>
+                                            <input type="password" id="jwt-password" placeholder="Enter password" class="w-full mt-1 p-2 bg-gray-900 border border-gray-600 rounded-md text-white text-sm">
+                                        </div>
+                                        <button id="fetch-jwt-btn" class="w-full p-2 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors duration-200 text-sm">
+                                            Fetch JWT Token
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- JWT Token Display -->
+                                <div>
+                                    <label for="jwt-input" class="text-sm font-medium text-gray-400">JWT Token</label>
+                                    <textarea id="jwt-input" placeholder="Paste your JWT Token or fetch one above" rows="3" class="w-full mt-1 p-2 bg-gray-900 border border-gray-600 rounded-md text-white"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- OAuth2 Input -->
+                        <div id="oauth2-input-div" class="hidden">
+                             <label for="oauth2-input" class="text-sm font-medium text-gray-400">Bearer Token (OAuth2)</label>
+                            <div class="flex space-x-2 mt-1">
+                                <input type="text" id="oauth2-input" placeholder="OAuth2 Access Token" class="flex-grow p-2 bg-gray-900 border border-gray-600 rounded-md text-white">
+                                <button id="fetch-token-btn" title="Fetch Token from /token endpoint" class="p-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white transition-colors duration-200">Fetch</button>
+                            </div>
+                        </div>
+                        <!-- OAuth2 Flow -->
+                        <div id="oauth2-flow-div" class="hidden">
+                            <div class="space-y-3">
+                                <div class="oauth-flow-step" id="step-1">
+                                    <h4 class="font-semibold text-white mb-2">Step 1: Start Authorization</h4>
+                                    <p class="text-sm text-gray-400 mb-2">Click to begin the OAuth2 authorization code flow</p>
+                                    <button id="start-oauth-btn" class="w-full p-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white transition-colors duration-200">
+                                        Start OAuth2 Flow
+                                    </button>
+                                </div>
+                                
+                                <div class="oauth-flow-step" id="step-2">
+                                    <h4 class="font-semibold text-white mb-2">Step 2: Authorization</h4>
+                                    <p class="text-sm text-gray-400 mb-2">Complete authorization in the popup window</p>
+                                    <div id="auth-status" class="text-sm text-yellow-400">Waiting for authorization...</div>
+                                </div>
+                                
+                                <div class="oauth-flow-step" id="step-3">
+                                    <h4 class="font-semibold text-white mb-2">Step 3: Token Exchange</h4>
+                                    <p class="text-sm text-gray-400 mb-2">Exchanging authorization code for tokens</p>
+                                    <div id="token-status" class="text-sm text-yellow-400">Ready for token exchange</div>
+                                </div>
+                                
+                                <div class="oauth-flow-step" id="step-4">
+                                    <h4 class="font-semibold text-white mb-2">Step 4: Token Management</h4>
+                                    <div id="token-info-container" class="space-y-2">
+                                        <div class="token-info">
+                                            <div class="font-semibold">Access Token:</div>
+                                            <div id="access-token-display" class="text-xs break-all">Not obtained</div>
+                                        </div>
+                                        <div class="token-info">
+                                            <div class="font-semibold">Refresh Token:</div>
+                                            <div id="refresh-token-display" class="text-xs break-all">Not obtained</div>
+                                        </div>
+                                        <div class="token-info">
+                                            <div class="font-semibold">Expires In:</div>
+                                            <div id="expires-in-display" class="text-xs">Not obtained</div>
+                                        </div>
+                                        <div class="token-info">
+                                            <div class="font-semibold">Scopes:</div>
+                                            <div id="scopes-display" class="text-xs">Not obtained</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2 mt-3">
+                                        <button id="refresh-token-btn" class="flex-1 p-2 bg-green-600 hover:bg-green-700 rounded-md text-white transition-colors duration-200" disabled>
+                                            Refresh Token
+                                        </button>
+                                        <button id="clear-tokens-btn" class="flex-1 p-2 bg-red-600 hover:bg-red-700 rounded-md text-white transition-colors duration-200">
+                                            Clear Tokens
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-grow">
+                    <h2 class="text-lg font-semibold text-white mb-3">2. Select Scope</h2>
+                    <select id="scope-select" class="w-full p-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <option value="">Select a scope</option>
+                        <option value="profile">profile</option>
+                        <option value="admin">admin</option>
+                        <option value="user">user (default)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Middle Column: Request Info -->
+            <div class="md:col-span-4 bg-gray-800 rounded-lg p-4 flex flex-col">
+                 <h2 class="text-lg font-semibold text-white mb-3">3. Send Request</h2>
+                <div class="bg-gray-900 p-3 rounded-md mb-4 flex-grow">
+                    <div class="mb-3">
+                        <span class="text-sm font-bold text-blue-400">GET</span>
+                        <span id="request-url" class="ml-2 text-white">Select an endpoint</span>
+                    </div>
+                    <div>
+                         <h3 class="text-md font-semibold text-gray-300 mb-2">Required Scopes:</h3>
+                         <div id="required-scopes" class="bg-gray-700 text-yellow-400 p-2 rounded-md text-sm font-mono">
+                            Select an endpoint to see required scopes.
+                         </div>
+                    </div>
+                </div>
+                <button id="send-request-btn" class="w-full p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed rounded-md text-white font-bold transition-colors duration-200 flex items-center justify-center space-x-2">
+                    <svg id="send-request-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    <span>Send Request</span>
+                </button>
+            </div>
+
+            <!-- Right Column: Response -->
+            <div class="md:col-span-5 bg-gray-800 rounded-lg p-4 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-lg font-semibold text-white">4. Response</h2>
+                    <div class="flex items-center space-x-4">
+                        <span id="response-status-badge" class="px-2 py-1 text-xs font-bold rounded-full"> </span>
+                        <button id="copy-response-btn" class="text-gray-400 hover:text-white" title="Copy Response">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                              <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2H6zm8 2v11H6V5h8z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-grow bg-gray-900 rounded-md overflow-auto">
+                    <pre><code id="response-body" class="language-json hljs p-4"></code></pre>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE ---
+        const state = {
+            authMethod: 'api-key',
+            selectedScope: '',
+            isLoading: false,
+            oauthTokens: {
+                accessToken: null,
+                refreshToken: null,
+                expiresIn: null,
+                scopes: null,
+                tokenType: null
+            },
+            authWindow: null,
+            authState: null
+        };
+
+        // --- DOM ELEMENTS ---
+        const authMethodSelect = document.getElementById('auth-method-select');
+        const authInputsContainer = document.getElementById('auth-inputs-container');
+        const apiKeyInputDiv = document.getElementById('api-key-input-div');
+        const jwtInputDiv = document.getElementById('jwt-input-div');
+        const oauth2InputDiv = document.getElementById('oauth2-input-div');
+        const oauth2FlowDiv = document.getElementById('oauth2-flow-div');
+        const scopeSelect = document.getElementById('scope-select');
+        const requestUrlEl = document.getElementById('request-url');
+        const requiredScopesEl = document.getElementById('required-scopes');
+        const sendRequestBtn = document.getElementById('send-request-btn');
+        const sendRequestSpinner = document.getElementById('send-request-spinner');
+        const responseBodyEl = document.getElementById('response-body');
+        const responseStatusBadge = document.getElementById('response-status-badge');
+        const copyResponseBtn = document.getElementById('copy-response-btn');
+        const fetchTokenBtn = document.getElementById('fetch-token-btn');
+        const fetchJwtBtn = document.getElementById('fetch-jwt-btn');
+        const healthStatusBadge = document.getElementById('health-status-badge');
+        const toastEl = document.getElementById('toast');
+        
+        // OAuth2 Flow Elements
+        const startOauthBtn = document.getElementById('start-oauth-btn');
+        const authStatus = document.getElementById('auth-status');
+        const tokenStatus = document.getElementById('token-status');
+        const accessTokenDisplay = document.getElementById('access-token-display');
+        const refreshTokenDisplay = document.getElementById('refresh-token-display');
+        const expiresInDisplay = document.getElementById('expires-in-display');
+        const scopesDisplay = document.getElementById('scopes-display');
+        const refreshTokenBtn = document.getElementById('refresh-token-btn');
+        const clearTokensBtn = document.getElementById('clear-tokens-btn');
+
+        const scopeToEndpointMap = {
+            'profile': '/api/profile',
+            'admin': '/api/admin',
+            'user': '/api/some-other-path'
+        };
+
+        // --- FUNCTIONS ---
+        const updateAuthInputVisibility = () => {
+            apiKeyInputDiv.classList.add('hidden');
+            jwtInputDiv.classList.add('hidden');
+            oauth2InputDiv.classList.add('hidden');
+            oauth2FlowDiv.classList.add('hidden');
+
+            if (state.authMethod === 'api-key') apiKeyInputDiv.classList.remove('hidden');
+            else if (state.authMethod === 'jwt') jwtInputDiv.classList.remove('hidden');
+            else if (state.authMethod === 'oauth2') oauth2InputDiv.classList.remove('hidden');
+            else if (state.authMethod === 'oauth2-flow') oauth2FlowDiv.classList.remove('hidden');
+        };
+        
+        const updateRequiredScopes = () => {
+            if (!state.selectedScope) {
+                requiredScopesEl.textContent = 'Select a scope to see required scopes.';
+                return;
+            }
+            requiredScopesEl.textContent = state.selectedScope;
+        };
+
+        const updateOAuthFlowSteps = () => {
+            const steps = ['step-1', 'step-2', 'step-3', 'step-4'];
+            steps.forEach((stepId, index) => {
+                const step = document.getElementById(stepId);
+                step.classList.remove('active', 'completed');
+                
+                if (index === 0) {
+                    step.classList.add('active');
+                }
+            });
+        };
+
+        const updateTokenDisplay = () => {
+            accessTokenDisplay.textContent = state.oauthTokens.accessToken ? 
+                `${state.oauthTokens.accessToken.substring(0, 20)}...` : 'Not obtained';
+            refreshTokenDisplay.textContent = state.oauthTokens.refreshToken ? 
+                `${state.oauthTokens.refreshToken.substring(0, 20)}...` : 'Not obtained';
+            expiresInDisplay.textContent = state.oauthTokens.expiresIn ? 
+                `${state.oauthTokens.expiresIn} seconds` : 'Not obtained';
+            
+            if (state.oauthTokens.scopes) {
+                const scopes = state.oauthTokens.scopes.split(' ');
+                scopesDisplay.innerHTML = scopes.map(scope => 
+                    `<span class="scope-badge">${scope}</span>`
+                ).join('');
+            } else {
+                scopesDisplay.textContent = 'Not obtained';
+            }
+            
+            refreshTokenBtn.disabled = !state.oauthTokens.refreshToken;
+        };
+
+        const updateUI = () => {
+            // Update auth inputs
+            updateAuthInputVisibility();
+            
+            // Update request URL
+            const endpoint = state.selectedScope ? scopeToEndpointMap[state.selectedScope] : '';
+            requestUrlEl.textContent = endpoint || 'Select a scope';
+
+            // Update required scopes
+            updateRequiredScopes();
+
+            // Update button state
+            sendRequestBtn.disabled = !state.selectedScope || state.isLoading;
+            if(state.isLoading) {
+                sendRequestSpinner.classList.remove('hidden');
+            } else {
+                sendRequestSpinner.classList.add('hidden');
+            }
+        };
+
+        const showToast = (message, type = 'success') => {
+            toastEl.textContent = message;
+            toastEl.className = `toast ${type} show`;
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 3000);
+        };
+
+        const checkHealth = async () => {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                if (response.ok && data.status === 'UP') {
+                    healthStatusBadge.textContent = 'Online';
+                    healthStatusBadge.className = 'px-2 py-1 text-xs font-bold rounded-full bg-green-500 text-white';
+                } else {
+                    throw new Error('Service is down');
+                }
+            } catch (error) {
+                healthStatusBadge.textContent = 'Offline';
+                healthStatusBadge.className = 'px-2 py-1 text-xs font-bold rounded-full bg-red-500 text-white';
+                console.error('Health check failed:', error);
+            }
+        };
+
+        const generateState = () => {
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        };
+
+        const startOAuthFlow = () => {
+            state.authState = generateState();
+            const authUrl = `/oauth2/authorize?state=${state.authState}`;
+            
+            // Open popup window
+            state.authWindow = window.open(authUrl, 'oauth_popup', 
+                'width=600,height=700,scrollbars=yes,resizable=yes');
+            
+            if (!state.authWindow) {
+                showToast('Popup blocked! Please allow popups and try again.', 'error');
+                return;
+            }
+            
+            // Update UI
+            document.getElementById('step-1').classList.remove('active');
+            document.getElementById('step-2').classList.add('active');
+            authStatus.textContent = 'Authorization window opened. Please complete the flow.';
+            
+            console.log('OAuth flow started, listening for messages from popup...');
+            
+            // Listen for messages from popup
+            const messageListener = (event) => {
+                console.log('Received message from popup:', event.data);
+                
+                // Accept messages from any origin for testing
+                if (event.origin !== window.location.origin && event.origin !== '*') {
+                    console.log('Origin mismatch, but accepting message for testing');
+                }
+                
+                if (event.data.type === 'OAUTH_SUCCESS') {
+                    console.log('Received OAUTH_SUCCESS message');
+                    // Remove listener
+                    window.removeEventListener('message', messageListener);
+                    
+                    // Exchange code for token
+                    exchangeCodeForToken(event.data.code, event.data.state);
+                    
+                    // Close popup
+                    if (state.authWindow && !state.authWindow.closed) {
+                        console.log('Closing popup window');
+                        state.authWindow.close();
+                    }
+                } else if (event.data.type === 'OAUTH_ERROR') {
+                    console.log('Received OAUTH_ERROR message');
+                    // Remove listener
+                    window.removeEventListener('message', messageListener);
+                    
+                    showToast(`OAuth error: ${event.data.error}`, 'error');
+                    resetOAuthFlow();
+                    
+                    // Close popup
+                    if (state.authWindow && !state.authWindow.closed) {
+                        console.log('Closing popup window due to error');
+                        state.authWindow.close();
+                    }
+                }
+            };
+            
+            window.addEventListener('message', messageListener);
+            
+            // Fallback: poll for completion
+            const pollInterval = setInterval(() => {
+                if (state.authWindow.closed) {
+                    clearInterval(pollInterval);
+                    window.removeEventListener('message', messageListener);
+                    // Check for stored tokens as fallback
+                    checkForStoredTokens();
+                }
+            }, 1000);
+        };
+
+        const checkForAuthCode = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            
+            if (error) {
+                showToast(`OAuth error: ${error}`, 'error');
+                resetOAuthFlow();
+                return;
+            }
+            
+            if (code && state === state.authState) {
+                exchangeCodeForToken(code, state);
+            } else {
+                // Check if we have tokens in localStorage
+                const storedTokens = localStorage.getItem('oauth_tokens');
+                if (storedTokens) {
+                    try {
+                        state.oauthTokens = JSON.parse(storedTokens);
+                        updateTokenDisplay();
+                        showToast('Using stored OAuth tokens', 'info');
+                    } catch (e) {
+                        console.error('Failed to parse stored tokens:', e);
+                    }
+                }
+            }
+        };
+
+        // Add a function to check for stored tokens
+        const checkForStoredTokens = () => {
+            const storedTokens = localStorage.getItem('oauth_tokens');
+            if (storedTokens) {
+                try {
+                    state.oauthTokens = JSON.parse(storedTokens);
+                    updateTokenDisplay();
+                    showToast('Using stored OAuth tokens', 'info');
+                } catch (e) {
+                    console.error('Failed to parse stored tokens:', e);
+                }
+            }
+        };
+
+        const exchangeCodeForToken = async (code, authState) => {
+            try {
+                document.getElementById('step-2').classList.remove('active');
+                document.getElementById('step-3').classList.add('active');
+                tokenStatus.textContent = 'Exchanging authorization code for tokens...';
+                
+                const response = await fetch('/oauth2/callback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `code=${code}&state=${authState}`
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error_description || 'Token exchange failed');
+                }
+                
+                // Store tokens
+                state.oauthTokens = {
+                    accessToken: data.access_token,
+                    refreshToken: data.refresh_token,
+                    expiresIn: data.expires_in,
+                    scopes: data.scope,
+                    tokenType: data.token_type
+                };
+                
+                // Save to localStorage
+                localStorage.setItem('oauth_tokens', JSON.stringify(state.oauthTokens));
+                
+                // Update UI
+                document.getElementById('step-3').classList.remove('active');
+                document.getElementById('step-4').classList.add('active');
+                updateTokenDisplay();
+                tokenStatus.textContent = 'Token exchange completed successfully!';
+                showToast('OAuth2 tokens obtained successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Token exchange error:', error);
+                showToast(error.message, 'error');
+                resetOAuthFlow();
+            }
+        };
+
+        const refreshOAuthToken = async () => {
+            if (!state.oauthTokens.refreshToken) {
+                showToast('No refresh token available', 'error');
+                return;
+            }
+            
+            try {
+                refreshTokenBtn.disabled = true;
+                refreshTokenBtn.textContent = 'Refreshing...';
+                
+                const response = await fetch('/oauth2/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `refresh_token=${state.oauthTokens.refreshToken}`
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error_description || 'Token refresh failed');
+                }
+                
+                // Update tokens
+                state.oauthTokens = {
+                    accessToken: data.access_token,
+                    refreshToken: data.refresh_token || state.oauthTokens.refreshToken,
+                    expiresIn: data.expires_in,
+                    scopes: data.scope,
+                    tokenType: data.token_type
+                };
+                
+                // Save to localStorage
+                localStorage.setItem('oauth_tokens', JSON.stringify(state.oauthTokens));
+                
+                updateTokenDisplay();
+                showToast('OAuth2 token refreshed successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Token refresh error:', error);
+                showToast(error.message, 'error');
+                // Clear tokens if refresh failed
+                clearOAuthTokens();
+            } finally {
+                refreshTokenBtn.disabled = false;
+                refreshTokenBtn.textContent = 'Refresh Token';
+            }
+        };
+
+        const clearOAuthTokens = () => {
+            state.oauthTokens = {
+                accessToken: null,
+                refreshToken: null,
+                expiresIn: null,
+                scopes: null,
+                tokenType: null
+            };
+            localStorage.removeItem('oauth_tokens');
+            updateTokenDisplay();
+            showToast('OAuth2 tokens cleared', 'info');
+        };
+
+        const resetOAuthFlow = () => {
+            updateOAuthFlowSteps();
+            authStatus.textContent = 'Waiting for authorization...';
+            tokenStatus.textContent = 'Ready for token exchange';
+        };
+
+        // --- EVENT HANDLERS ---
+        authMethodSelect.addEventListener('change', (e) => {
+            state.authMethod = e.target.value;
+            updateUI();
+            if (state.authMethod === 'oauth2-flow') {
+                updateOAuthFlowSteps();
+                checkForAuthCode();
+            }
+        });
+
+        scopeSelect.addEventListener('change', (e) => {
+            state.selectedScope = e.target.value;
+            updateUI();
+        });
+
+        fetchTokenBtn.addEventListener('click', async () => {
+            const originalText = fetchTokenBtn.textContent;
+            fetchTokenBtn.textContent = '...';
+            fetchTokenBtn.disabled = true;
+
+            try {
+                const response = await fetch('/token', { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error_description || 'Failed to fetch token');
+                }
+                document.getElementById('oauth2-input').value = data.access_token;
+                showToast('OAuth2 Token fetched successfully!');
+            } catch (error) {
+                console.error('Token fetch error:', error);
+                showToast(error.message, 'error');
+            } finally {
+                fetchTokenBtn.textContent = originalText;
+                fetchTokenBtn.disabled = false;
+            }
+        });
+
+        fetchJwtBtn.addEventListener('click', async () => {
+            const username = document.getElementById('jwt-username').value;
+            const password = document.getElementById('jwt-password').value;
+            
+            if (!username || !password) {
+                showToast('Please enter both username and password', 'error');
+                return;
+            }
+
+            const originalText = fetchJwtBtn.textContent;
+            fetchJwtBtn.textContent = 'Fetching...';
+            fetchJwtBtn.disabled = true;
+
+            try {
+                const response = await fetch('/jwt/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error_description || data.error || 'Failed to fetch JWT token');
+                }
+                
+                // Set the JWT token in the textarea
+                document.getElementById('jwt-input').value = data.access_token || data.token || data.jwt_token;
+                showToast('JWT Token fetched successfully!', 'success');
+                
+            } catch (error) {
+                console.error('JWT token fetch error:', error);
+                showToast(error.message, 'error');
+            } finally {
+                fetchJwtBtn.textContent = originalText;
+                fetchJwtBtn.disabled = false;
+            }
+        });
+
+        startOauthBtn.addEventListener('click', startOAuthFlow);
+        refreshTokenBtn.addEventListener('click', refreshOAuthToken);
+        clearTokensBtn.addEventListener('click', clearOAuthTokens);
+        
+        copyResponseBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(responseBodyEl.textContent)
+                .then(() => showToast('Response copied to clipboard!'))
+                .catch(err => showToast('Failed to copy response.', 'error'));
+        });
+
+        sendRequestBtn.addEventListener('click', async () => {
+            state.isLoading = true;
+            updateUI();
+
+            const headers = new Headers({ 'Content-Type': 'application/json' });
+            
+            if (state.authMethod === 'api-key') {
+                const apiKey = document.getElementById('api-key-input').value;
+                if (apiKey) headers.append('x-api-key', apiKey);
+            } else if (state.authMethod === 'jwt') {
+                const jwtToken = document.getElementById('jwt-input').value;
+                if (jwtToken) headers.append('Authorization', `Bearer ${jwtToken}`);
+            } else if (state.authMethod === 'oauth2') {
+                const oauth2Token = document.getElementById('oauth2-input').value;
+                if (oauth2Token) headers.append('Authorization', `Bearer ${oauth2Token}`);
+            } else if (state.authMethod === 'oauth2-flow') {
+                if (state.oauthTokens.accessToken) {
+                    headers.append('Authorization', `Bearer ${state.oauthTokens.accessToken}`);
+                }
+            }
+
+            try {
+                const endpoint = scopeToEndpointMap[state.selectedScope];
+                const response = await fetch(endpoint, {
+                    method: 'GET',
+                    headers: headers,
+                });
+                const responseData = await response.json();
+                
+                // Format and highlight JSON
+                const formattedJson = JSON.stringify(responseData, null, 2);
+                responseBodyEl.textContent = formattedJson;
+                hljs.highlightElement(responseBodyEl);
+
+                // Update status badge
+                responseStatusBadge.textContent = `${response.status} ${response.statusText}`;
+                if (response.ok) {
+                    responseStatusBadge.className = 'px-2 py-1 text-xs font-bold rounded-full bg-green-500 text-white';
+                } else {
+                     responseStatusBadge.className = 'px-2 py-1 text-xs font-bold rounded-full bg-red-500 text-white';
+                }
+
+            } catch (error) {
+                console.error('Request failed:', error);
+                responseBodyEl.textContent = `{\n  "error": "Failed to fetch. Check the console for details.",\n  "message": "${error.message}"\n}`;
+                hljs.highlightElement(responseBodyEl);
+                responseStatusBadge.textContent = 'Network Error';
+                responseStatusBadge.className = 'px-2 py-1 text-xs font-bold rounded-full bg-yellow-500 text-black';
+                showToast('Request failed. See response panel.', 'error');
+            } finally {
+                state.isLoading = false;
+                updateUI();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        checkHealth();
+        updateUI();
+        checkForAuthCode(); // Check for existing tokens on load
+    });
+    </script>
+</body>
+</html>

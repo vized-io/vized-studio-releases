@@ -1,0 +1,74 @@
+{
+    "realm": "demo",
+    "enabled": true,
+    "displayName": "Demo Realm",
+    "registrationAllowed": true,
+    "rememberMe": true,
+    "verifyEmail": false,
+    "loginWithEmailAllowed": true,
+    "resetPasswordAllowed": true,
+    "accessTokenLifespan": 300,
+    "ssoSessionIdleTimeout": 1800,
+    "ssoSessionMaxLifespan": 36000,
+    "clients": [
+      {
+        "clientId": "camel-gateway",
+        "name": "Camel Gateway Client",
+        "enabled": true,
+        "clientAuthenticatorType": "client-secret",
+        "secret": "your-client-secret",
+        "redirectUris": ["http://localhost:8080/*"],
+        "webOrigins": ["http://localhost:8080"],
+        "protocol": "openid-connect",
+        "serviceAccountsEnabled": true,
+        "authorizationServicesEnabled": false,
+        "fullScopeAllowed": true,
+        "defaultClientScopes": ["web-origins", "role_list", "profile", "roles", "email"],
+        "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+      }
+    ],
+    "users": [
+      {
+        "username": "demo-user",
+        "enabled": true,
+        "emailVerified": true,
+        "firstName": "Demo",
+        "lastName": "User",
+        "email": "demo@example.com",
+        "credentials": [
+          {
+            "type": "password",
+            "value": "demo-password",
+            "temporary": false
+          }
+        ]
+      },
+      {
+        "username": "admin-user",
+        "enabled": true,
+        "emailVerified": true,
+        "firstName": "Admin",
+        "lastName": "User",
+        "email": "admin@example.com",
+        "credentials": [
+          {
+            "type": "password",
+            "value": "admin-password",
+            "temporary": false
+          }
+        ]
+      }
+    ],
+    "roles": {
+      "realm": [
+        {
+          "name": "user",
+          "description": "User role"
+        },
+        {
+          "name": "admin",
+          "description": "Administrator role"
+        }
+      ]
+    }
+  }

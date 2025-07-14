@@ -1,0 +1,1120 @@
+# camel-dependency = org.apache.camel:camel-script
+
+- beans:
+    - name: jwtVerifierBean
+      script: >
+        import org.apache.camel.Exchange
+
+        import org.slf4j.Logger
+
+        import org.slf4j.LoggerFactory
+
+        import com.fasterxml.jackson.databind.JsonNode
+
+        import com.fasterxml.jackson.databind.ObjectMapper
+
+        import java.util.Base64
+
+        import java.util.Date
+
+        import java.util.regex.Pattern
+
+
+        class JwtVerifierBean {
+            private static final Logger logger = LoggerFactory.getLogger(JwtVerifierBean.class)
+            private static final ObjectMapper objectMapper = new ObjectMapper()
+            private static final Pattern JWT_PATTERN = Pattern.compile("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\$")
+            
+            /**
+             * Verify JWT token and set validation results in exchange headers
+             */
+            def verifyToken(Exchange exchange) {
+                def jwtToken = exchange.message.getHeader('jwtToken')
+                logger.info("Starting JWT token verification")
+                
+                try {
+                    // Step 1: Basic format validation
+                    if (!isValidJwtFormat(jwtToken)) {
+                        logger.warn("Invalid JWT format")
+                        setValidationResult(exchange, false, "Invalid JWT format", null, null, null, null, null, null)
+                        return
+                    }
+                    
+                    // Step 2: Parse JWT components
+                    def parts = jwtToken.split("\\.")
+                    def header = parts[0]
+                    def payload = parts[1]
+                    def signature = parts[2]
+                    
+                    // Step 3: Decode and validate header
+                    def headerNode = decodeJwtPart(header)
+                    if (headerNode == null) {
+                        logger.warn("Failed to decode JWT header")
+                        setValidationResult(exchange, false, "Invalid JWT header", null, null, null, null, null, null)
+                        return
+                    }
+                    
+                    // Step 4: Decode and validate payload
+                    def payloadNode = decodeJwtPart(payload)
+                    if (payloadNode == null) {
+                        logger.warn("Failed to decode JWT payload")
+                        setValidationResult(exchange, false, "Invalid JWT payload", null, null, null, null, null, null)
+                        return
+                    }
+                    
+                    // Step 5: Validate token expiration
+                    if (isTokenExpired(payloadNode)) {
+                        logger.warn("JWT token is expired")
+                        setValidationResult(exchange, false, "Token expired", null, null, null, null, null, null)
+                        return
+                    }
+                    
+                    // Step 6: Validate issuer (if configured)
+                    def issuer = payloadNode.has("iss") ? payloadNode.get("iss").asText() : null
+                    if (!isValidIssuer(issuer)) {
+                        logger.warn("Invalid JWT issuer: {}", issuer)
+                        setValidationResult(exchange, false, "Invalid issuer", null, null, null, null, null, null)
+                        return
+                    }
+                    
+                    // Step 7: Extract subject and other claims
+                    def subject = payloadNode.has("sub") ? payloadNode.get("sub").asText() : null
+                    def audience = payloadNode.has("aud") ? payloadNode.get("aud").asText() : null
+                    
+                    // Step 7a: Extract scopes and additional claims
+                    def scopes = extractScopes(payloadNode)
+                    def email = payloadNode.has("email") ? payloadNode.get("email").asText() : null
+                    def preferredUsername = payloadNode.has("preferred_username") ? payloadNode.get("preferred_username").asText() : null
+                    def clientId = payloadNode.has("client_id") ? payloadNode.get("client_id").asText() : null
+                    
+                    // Step 8: Simplified signature verification (in production, use proper JWKS verification)
+                    if (!verifySignature(header, payload, signature)) {
+                        logger.warn("JWT signature verification failed")
+                        setValidationResult(exchange, false, "Invalid signature", subject, issuer, scopes, email, preferredUsername, clientId)
+                        return
+                    }
+                    
+                    // Step 9: All validations passed
+                    logger.info("JWT token validation successful for subject: {} with scopes: {}", subject, scopes)
+                    setValidationResult(exchange, true, "Valid token", subject, issuer, scopes, email, preferredUsername, clientId)
+                    
+                } catch (Exception e) {
+                    logger.error("JWT token verification failed with exception: {}", e.getMessage(), e)
+                    setValidationResult(exchange, false, "Verification error: " + e.getMessage(), null, null, null, null, null, null)
+                }
+            }
+            
+            /**
+             * Validate JWT format using regex pattern
+             */
+            private boolean isValidJwtFormat(String token) {
+                return token != null && JWT_PATTERN.matcher(token).matches()
+            }
+            
+            /**
+             * Decode JWT part (header or payload) from Base64
+             */
+            private JsonNode decodeJwtPart(String part) {
+                try {
+                    def decoded = Base64.getUrlDecoder().decode(part)
+                    return objectMapper.readTree(decoded)
+                } catch (Exception e) {
+                    logger.error("Failed to decode JWT part: {}", e.getMessage())
+                    return null
+                }
+            }
+            
+            /**
+             * Check if token is expired
+             */
+            private boolean isTokenExpired(JsonNode payload) {
+                if (!payload.has("exp")) {
+                    return false // No expiration claim, consider valid
+                }
+                
+                def expiration = payload.get("exp").asLong() * 1000L // Convert to milliseconds
+                def now = System.currentTimeMillis()
+                return now > expiration
+            }
+            
+            /**
+             * Validate issuer (simplified validation for demo)
+             */
+            private boolean isValidIssuer(String issuer) {
+                // In demo mode, accept any issuer or no issuer
+                return true
+            }
+            
+            /**
+             * Extract scopes from JWT payload
+             */
+            private String extractScopes(JsonNode payload) {
+                if (payload.has("scope")) {
+                    return payload.get("scope").asText()
+                }
+                
+                // Check for scopes in different formats
+                if (payload.has("scopes")) {
+                    def scopesNode = payload.get("scopes")
+                    if (scopesNode.isArray()) {
+                        def scopes = []
+                        scopesNode.forEach { scope ->
+                            scopes.add(scope.asText())
+                        }
+                        return scopes.join(" ")
+                    } else {
+                        return scopesNode.asText()
+                    }
+                }
+                
+                // Default scopes based on other claims
+                def defaultScopes = []
+                if (payload.has("email")) {
+                    defaultScopes.add("email")
+                }
+                if (payload.has("profile") || payload.has("preferred_username")) {
+                    defaultScopes.add("profile")
+                }
+                if (payload.has("openid") || payload.has("sub")) {
+                    defaultScopes.add("openid")
+                }
+                
+                return defaultScopes.isEmpty() ? "openid profile email" : defaultScopes.join(" ")
+            }
+            
+            /**
+             * Simplified signature verification (demo implementation)
+             */
+            private boolean verifySignature(String header, String payload, String signature) {
+                // In demo mode, we'll do a basic check
+                logger.info("Signature verification passed (demo mode)")
+                return true // Always pass for demo
+            }
+            
+            /**
+             * Set validation results in exchange headers
+             */
+            private void setValidationResult(Exchange exchange, boolean isValid, String message, 
+                                           String subject, String issuer, String scopes, 
+                                           String email, String username, String clientId) {
+                def headers = exchange.message.headers
+                
+                headers.put("jwtValid", String.valueOf(isValid))
+                headers.put("jwtValidationMessage", message ?: "")
+                headers.put("jwtSubject", subject ?: "")
+                headers.put("jwtIssuer", issuer ?: "")
+                headers.put("jwtScopes", scopes ?: "")
+                headers.put("jwtEmail", email ?: "")
+                headers.put("jwtUsername", username ?: "")
+                headers.put("jwtClientId", clientId ?: "")
+                
+                logger.debug("JWT validation result: valid={}, subject={}, scopes={}", isValid, subject, scopes)
+            }
+        }
+
+
+        return new JwtVerifierBean()
+      scriptLanguage: groovy
+      type: java.lang.Object
+    - name: roleMapperBean
+      script: >
+        import java.util.*
+
+        import org.slf4j.Logger
+
+        import org.slf4j.LoggerFactory
+
+
+        class RoleMapper {
+            // Default scope to role mappings (can be overridden via properties)
+            def DEFAULT_SCOPE_ROLE_MAPPINGS = [
+                "admin": "ADMIN",
+                "user": "USER", 
+                "profile": "PROFILE_ACCESS"
+            ]
+            
+            // Map scopes to roles using configured mappings
+            def mapScopesToRoles(scopes) {
+                def roles = new HashSet<String>()
+                
+                for (String scope : scopes) {
+                    def role = DEFAULT_SCOPE_ROLE_MAPPINGS.get(scope)
+                    if (role != null) {
+                        roles.add(role)
+                    }
+                }
+                
+                // Add default USER role if no specific roles mapped
+                if (roles.isEmpty() && !scopes.isEmpty()) {
+                    roles.add("USER")
+                }
+                
+                return roles
+            }
+            
+            // Check if scopes allow access to specific path
+            def checkPathAccess(path, scopes) {
+                if (!path) return false
+                
+                // Admin scope allows access to everything
+                if (scopes.contains("admin")) {
+                    return true
+                }
+                
+                // Path-based access control
+                if (path.startsWith("/api/profile")) {
+                    return scopes.contains("profile")
+                } else if (path.startsWith("/api/admin")) {
+                    return scopes.contains("admin")
+                }
+                
+                // Default: allow access for any authenticated user
+                return !scopes.isEmpty()
+            }
+            
+            // Map OAuth2 scopes to roles
+            def mapOAuth2ScopesToRoles(exchange) {
+                def scopes = exchange.message.getHeader('oauth2Scopes')
+                def headers = exchange.message.headers
+                
+                if (!scopes || scopes.trim().isEmpty()) {
+                    headers.put("userRoles", "")
+                    headers.put("hasAdminRole", "false")
+                    return
+                }
+                
+                def scopeSet = new HashSet<>(Arrays.asList(scopes.split("\\s+")))
+                def roles = mapScopesToRoles(scopeSet)
+                
+                // Set role headers
+                headers.put("userRoles", roles.join(","))
+                headers.put("hasAdminRole", String.valueOf(roles.contains("ADMIN")))
+                headers.put("hasUserRole", String.valueOf(roles.contains("USER")))
+                headers.put("hasProfileAccess", String.valueOf(roles.contains("PROFILE_ACCESS")))
+            }
+            
+            // Map JWT scopes to roles
+            def mapJwtScopesToRoles(exchange) {
+                def scopes = exchange.message.getHeader('jwtScopes')
+                def headers = exchange.message.headers
+                
+                if (!scopes || scopes.trim().isEmpty()) {
+                    headers.put("userRoles", "")
+                    headers.put("hasAdminRole", "false")
+                    return
+                }
+                
+                def scopeSet = new HashSet<>(Arrays.asList(scopes.split("\\s+")))
+                def roles = mapScopesToRoles(scopeSet)
+                
+                // Set role headers
+                headers.put("userRoles", roles.join(","))
+                headers.put("hasAdminRole", String.valueOf(roles.contains("ADMIN")))
+                headers.put("hasUserRole", String.valueOf(roles.contains("USER")))
+                headers.put("hasProfileAccess", String.valueOf(roles.contains("PROFILE_ACCESS")))
+            }
+            
+            // Map API Key scopes to roles
+            def mapApiKeyScopesToRoles(exchange) {
+                def scopes = exchange.message.getHeader('userScopes')
+                def headers = exchange.message.headers
+                
+                // API keys get full access by default
+                headers.put("userRoles", "ADMIN,USER,PROFILE_ACCESS")
+                headers.put("hasAdminRole", "true")
+                headers.put("hasUserRole", "true")
+                headers.put("hasProfileAccess", "true")
+                
+                // If specific scopes are provided, map them as well
+                if (scopes && !scopes.trim().isEmpty()) {
+                    def scopeSet = new HashSet<>(Arrays.asList(scopes.split("\\s+")))
+                    def roles = mapScopesToRoles(scopeSet)
+                    
+                    // Set role headers
+                    headers.put("userRoles", roles.join(","))
+                    headers.put("hasAdminRole", String.valueOf(roles.contains("ADMIN")))
+                    headers.put("hasUserRole", String.valueOf(roles.contains("USER")))
+                    headers.put("hasProfileAccess", String.valueOf(roles.contains("PROFILE_ACCESS")))
+                }
+            }
+            
+            // Check endpoint access
+            def checkEndpointAccess(exchange) {
+                def requestPath = exchange.message.getHeader('CamelHttpUri')
+                def userScopes = exchange.message.getHeader('userScopes')
+                def authMethod = exchange.message.getHeader('authMethod')
+                
+                // API keys get full access by default
+                if (authMethod == 'API_KEY') {
+                    exchange.message.setHeader("hasEndpointAccess", "true")
+                    return
+                }
+                
+                if (!userScopes || userScopes.trim().isEmpty()) {
+                    exchange.message.setHeader("hasEndpointAccess", "false")
+                    exchange.message.setHeader("accessDeniedReason", "No scopes provided")
+                    return
+                }
+                
+                def scopeSet = new HashSet<>(Arrays.asList(userScopes.split("\\s+")))
+                def hasAccess = checkPathAccess(requestPath, scopeSet)
+                
+                exchange.message.setHeader("hasEndpointAccess", String.valueOf(hasAccess))
+                if (!hasAccess) {
+                    exchange.message.setHeader("accessDeniedReason", "Insufficient scope for path: ${requestPath}")
+                }
+            }
+            
+            // Get required scopes for a path
+            def getRequiredScopes(exchange) {
+                def requestPath = exchange.message.getHeader('CamelHttpUri')
+                
+                if (!requestPath) {
+                    exchange.message.body = ""
+                    return
+                }
+                
+                def requiredScopes = ""
+                if (requestPath.startsWith("/api/profile")) {
+                    requiredScopes = "profile"
+                } else if (requestPath.startsWith("/api/admin")) {
+                    requiredScopes = "admin"
+                } else {
+                    requiredScopes = "user"
+                }
+                
+                exchange.message.body = requiredScopes
+            }
+        }
+
+
+        return new RoleMapper()
+      scriptLanguage: groovy
+      type: java.lang.Object
+- route:
+    id: web-ui
+    from:
+      id: WebUi
+      uri: netty-http
+      parameters:
+        host: 0.0.0.0
+        matchOnUriPrefix: false
+        port: 8080
+        protocol: http
+      steps:
+        - setHeader:
+            constant: text/html
+            name: Content-Type
+        - script:
+            id: No File Found
+            groovy: |
+              def file = new File("static/index.html")
+              if (file.exists()) {
+                  exchange.message.body = file.text
+              } else {
+                  exchange.message.body = """
+                  <html><body>
+                  <h1>File not found: index.html</h1>
+                  <p>Current directory: ${System.getProperty('user.dir')}</p>
+                  <p>Files in directory: ${new File('.').listFiles()*.name}</p>
+                  </body></html>
+                  """
+              }
+- route:
+    id: api-gateway
+    from:
+      uri: netty-http:http://0.0.0.0:8080/api
+      parameters:
+        matchOnUriPrefix: true
+      steps:
+        - log:
+            id: incoming-request
+            message: "Incoming request: ${header.CamelHttpMethod} ${header.CamelHttpUri}"
+        - choice:
+            id: auth-selector
+            otherwise:
+              steps:
+                - log:
+                    id: no-auth
+                    message: No authentication provided
+                - setBody:
+                    id: no-auth-body
+                    constant: '{"error":"Authentication required","message":"Please provide API key,
+                      OAuth2 token, or JWT token"}'
+                - setHeader:
+                    id: no-auth-status
+                    constant: "401"
+                    name: CamelHttpResponseCode
+                - setHeader:
+                    id: no-auth-content-type
+                    constant: application/json
+                    name: Content-Type
+            when:
+              - steps:
+                  - log:
+                      id: api-key-detected
+                      message: API Key authentication detected
+                  - to: direct:auth-apikey
+                simple: ${header.x-api-key} != null
+              - steps:
+                  - log:
+                      id: jwt-detected
+                      message: JWT token authentication detected
+                  - to: direct:auth-oidc
+                simple: ${header.Authorization} regex '^Bearer
+                  [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
+              - steps:
+                  - log:
+                      id: oauth2-detected
+                      message: OAuth2 token authentication detected
+                  - to: direct:auth-oauth2
+                simple: ${header.Authorization} starts with 'Bearer '
+- route:
+    id: auth-apikey
+    from:
+      uri: direct:auth-apikey
+      steps:
+        - log:
+            id: api-key-validation
+            message: "Validating API key: ${header.x-api-key}"
+        - script:
+            id: validate-api-key-script
+            groovy: >
+              def apiKey = exchange.message.getHeader('x-api-key')
+
+              def validKeys =
+              exchange.context.resolvePropertyPlaceholders('{{api.keys}}')
+
+              def isValid = validKeys.split(',').any { it.trim() ==
+              apiKey?.trim() }
+
+              exchange.message.setHeader('isValidApiKey', isValid.toString())
+        - choice:
+            id: api-key-check
+            otherwise:
+              steps:
+                - log:
+                    id: api-key-invalid
+                    message: Invalid API key provided
+                - setBody:
+                    id: api-key-error-body
+                    constant: '{"error":"Invalid API key","message":"The provided API key is not
+                      valid"}'
+                - setHeader:
+                    id: api-key-error-status
+                    constant: "401"
+                    name: CamelHttpResponseCode
+                - setHeader:
+                    id: api-key-error-content-type
+                    constant: application/json
+                    name: Content-Type
+            when:
+              - steps:
+                  - log:
+                      id: api-key-valid
+                      message: API key validation successful
+                  - setHeader:
+                      id: set-auth-method
+                      constant: API_KEY
+                      name: authMethod
+                  - setHeader:
+                      id: set-api-key-scopes
+                      constant: admin user profile
+                      name: userScopes
+                  - bean:
+                      id: map-api-key-roles
+                      method: mapApiKeyScopesToRoles(${exchange})
+                      ref: roleMapperBean
+                  - to: direct:backend
+                simple: ${header.isValidApiKey} == 'true'
+- route:
+    id: fetch-token
+    from:
+      uri: netty-http:http://0.0.0.0:8080/oauth2/token
+      parameters:
+        httpMethodRestrict: GET,POST
+      steps:
+        - log:
+            id: fetch-token-log
+            message: Request to fetch OAuth2 access token
+        - setHeader:
+            id: token-content-type
+            constant: application/x-www-form-urlencoded
+            name: Content-Type
+        - setBody:
+            id: token-request-body
+            simple: grant_type=client_credentials&client_id={{oauth2.client.id}}&client_secret={{oauth2.client.secret}}
+        - to: http://localhost:8081/realms/Vized/protocol/openid-connect/token?bridgeEndpoint=true
+        - log:
+            id: token-response-log
+            message: Token received from Keycloak
+- route:
+    id: auth-oauth2
+    from:
+      uri: direct:auth-oauth2
+      steps:
+        - log:
+            id: oauth2-validation
+            message: Validating OAuth2 token via introspection
+        - setHeader:
+            id: extract-token
+            name: accessToken
+            simple: ${header.Authorization.substring(7)}
+        - setBody:
+            id: introspect-body
+            simple: token=${header.accessToken}&client_id={{oauth2.client.id}}&client_secret={{oauth2.client.secret}}
+        - setHeader:
+            id: introspect-content-type
+            constant: application/x-www-form-urlencoded
+            name: Content-Type
+        - setHeader:
+            id: introspect-method
+            constant: POST
+            name: CamelHttpMethod
+        - doTry:
+            id: oauth2-try
+            steps:
+              - to: "{{oauth2.introspect.url}}?bridgeEndpoint=true"
+              - unmarshal:
+                  id: parse-introspect-response
+                  json: {}
+              - choice:
+                  id: oauth2-active-check
+                  otherwise:
+                    steps:
+                      - log:
+                          id: oauth2-inactive
+                          message: OAuth2 token is inactive
+                      - setBody:
+                          id: oauth2-inactive-body
+                          constant: '{"error":"Invalid token","message":"The provided OAuth2 token is
+                            inactive or expired"}'
+                      - setHeader:
+                          id: oauth2-inactive-status
+                          constant: "403"
+                          name: CamelHttpResponseCode
+                      - setHeader:
+                          id: oauth2-inactive-content-type
+                          constant: application/json
+                          name: Content-Type
+                  when:
+                    - steps:
+                        - log:
+                            id: oauth2-valid
+                            message: OAuth2 token validation successful
+                        - setHeader:
+                            id: set-oauth2-auth-method
+                            constant: OAUTH2
+                            name: authMethod
+                        - setHeader:
+                            id: extract-oauth2-scopes
+                            jsonpath: $.scope
+                            name: oauth2Scopes
+                        - setHeader:
+                            id: extract-oauth2-client-id
+                            jsonpath: $.client_id
+                            name: oauth2ClientId
+                        - setHeader:
+                            id: extract-oauth2-username
+                            jsonpath: $.username
+                            name: oauth2Username
+                        - setHeader:
+                            id: set-user-scopes
+                            name: userScopes
+                            simple: ${header.oauth2Scopes}
+                        - bean:
+                            id: map-oauth2-roles
+                            method: mapOAuth2ScopesToRoles(${exchange})
+                            ref: roleMapperBean
+                        - to: direct:backend
+                      jsonpath: $.active
+            doCatch:
+              - steps:
+                  - log:
+                      id: oauth2-error
+                      message: "OAuth2 token validation failed: ${exception.message}"
+                  - setBody:
+                      id: oauth2-error-body
+                      constant: '{"error":"Token validation failed","message":"Unable to validate
+                        OAuth2 token"}'
+                  - setHeader:
+                      id: oauth2-error-status
+                      constant: "401"
+                      name: CamelHttpResponseCode
+                  - setHeader:
+                      id: oauth2-error-content-type
+                      constant: application/json
+                      name: Content-Type
+                exception:
+                  - java.lang.Exception
+- route:
+    id: oauth2-authorize
+    from:
+      uri: netty-http:http://0.0.0.0:8080/oauth2/authorize
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - log:
+            id: oauth2-authorize-log
+            message: OAuth2 authorization request
+        - setHeader:
+            id: redirect-to-keycloak
+            name: Location
+            simple: http://localhost:8081/realms/Vized/protocol/openid-connect/auth?response_type=code&client_id={{oauth2.client.id}}&redirect_uri=http://localhost:8080/oauth2/callback&scope=openid
+              profile email&state=${header.state}
+        - setHeader:
+            id: oauth2-authorize-status
+            constant: "302"
+            name: CamelHttpResponseCode
+- route:
+    id: oauth2-callback
+    from:
+      uri: netty-http:http://0.0.0.0:8080/oauth2/callback
+      parameters:
+        httpMethodRestrict: GET
+      steps:
+        - log:
+            id: oauth2-callback-log
+            message: OAuth2 callback GET - serving callback.html
+        - setHeader:
+            id: callback-content-type
+            constant: text/html
+            name: Content-Type
+        - script:
+            id: serve-callback-html
+            groovy: >
+              def file = new File("static/callback.html")
+
+              if (file.exists()) {
+                  exchange.message.body = file.text
+              } else {
+                  exchange.message.body = """
+                  <!DOCTYPE html>
+                  <html>
+                  <head>
+                      <title>OAuth2 Callback</title>
+                      <style>
+                          body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+                          .error { color: #dc2626; }
+                      </style>
+                  </head>
+                  <body>
+                      <h2 class="error">Callback file not found</h2>
+                      <p>static/callback.html not found in current directory: ${System.getProperty('user.dir')}</p>
+                  </body>
+                  </html>
+                  """
+              }
+- route:
+    id: oauth2-callback-post
+    from:
+      uri: netty-http:http://0.0.0.0:8080/oauth2/callback
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            id: oauth2-callback-post-log
+            message: "OAuth2 callback POST received with body: ${body}"
+        - script:
+            id: parse-form-data
+            groovy: >
+              // Convert body to string properly
+
+              def body = exchange.in.body
+
+              def formData = ""
+
+
+              if (body instanceof
+              org.apache.camel.component.netty.http.NettyChannelBufferStreamCache)
+              {
+                  // Read the stream cache properly
+                  def buffer = new StringBuilder()
+                  def reader = new java.io.BufferedReader(new java.io.InputStreamReader(body))
+                  def line
+                  while ((line = reader.readLine()) != null) {
+                      buffer.append(line)
+                  }
+                  formData = buffer.toString()
+                  body.reset() // Reset the stream for potential reuse
+              } else {
+                  formData = body.toString()
+              }
+
+
+              println "Form data: ${formData}"
+
+
+              def params = [:]
+
+              formData.split('&').each { param ->
+                  def parts = param.split('=')
+                  if (parts.length == 2) {
+                      params[parts[0]] = java.net.URLDecoder.decode(parts[1], 'UTF-8')
+                  }
+              }
+
+
+              println "Parsed parameters:"
+
+              params.each { key, value ->
+                  println "${key}: ${value}"
+              }
+
+
+              // Set headers directly from parsed data
+
+              exchange.message.setHeader('authorizationCode', params['code'])
+
+              exchange.message.setHeader('state', params['state'])
+
+
+              println "Set headers - Code: ${params['code']}, State:
+              ${params['state']}"
+        - log:
+            id: log-extracted-values
+            message: "Extracted code: ${header.authorizationCode}, state: ${header.state}"
+        - setBody:
+            id: token-exchange-body-post
+            simple: grant_type=authorization_code&client_id={{oauth2.client.id}}&client_secret={{oauth2.client.secret}}&code=${header.authorizationCode}&redirect_uri=http://localhost:8080/oauth2/callback
+        - setHeader:
+            id: token-exchange-content-type-post
+            constant: application/x-www-form-urlencoded
+            name: Content-Type
+        - log:
+            id: log-token-request
+            message: "Making token request to Keycloak with body: ${body}"
+        - doTry:
+            id: token-exchange-try
+            steps:
+              - to:
+                  id: token-exchange-request-post
+                  uri: http://localhost:8081/realms/Vized/protocol/openid-connect/token
+                  parameters:
+                    bridgeEndpoint: "true"
+                    httpMethod: POST
+              - unmarshal:
+                  id: parse-token-response-post
+                  json: {}
+              - setHeader:
+                  id: extract-access-token-post
+                  jsonpath: $.access_token
+                  name: accessToken
+              - setHeader:
+                  id: extract-refresh-token-post
+                  jsonpath: $.refresh_token
+                  name: refreshToken
+              - setHeader:
+                  id: extract-expires-in-post
+                  jsonpath: $.expires_in
+                  name: expiresIn
+              - setHeader:
+                  id: extract-scope-post
+                  jsonpath: $.scope
+                  name: scope
+              - setBody:
+                  id: success-response-post
+                  simple: '{"access_token":"${header.accessToken}","refresh_token":"${header.refreshToken}","expires_in":"${header.expiresIn}","scope":"${header.scope}","token_type":"Bearer"}'
+              - setHeader:
+                  id: success-content-type-post
+                  constant: application/json
+                  name: Content-Type
+            doCatch:
+              - steps:
+                  - log:
+                      id: token-exchange-error
+                      message: "Token exchange failed with status: ${exception.statusCode}, body:
+                        ${exception.responseBody}"
+                  - setBody:
+                      id: error-response
+                      simple: '{"error":"token_exchange_failed","error_description":"Failed to
+                        exchange authorization code for
+                        tokens","status_code":"${exception.statusCode}","keycloak_response":"${exception.responseBody}"}'
+                  - setHeader:
+                      id: error-status
+                      constant: "400"
+                      name: CamelHttpResponseCode
+                  - setHeader:
+                      id: error-content-type
+                      constant: application/json
+                      name: Content-Type
+                exception:
+                  - org.apache.camel.http.base.HttpOperationFailedException
+- route:
+    id: oauth2-refresh
+    from:
+      uri: netty-http:http://0.0.0.0:8080/oauth2/refresh
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            id: oauth2-refresh-log
+            message: OAuth2 token refresh request
+        - setHeader:
+            id: extract-refresh-token-header
+            name: refreshToken
+            simple: ${header.refresh_token}
+        - setBody:
+            id: refresh-body
+            simple: grant_type=refresh_token&client_id={{oauth2.client.id}}&client_secret={{oauth2.client.secret}}&refresh_token=${header.refreshToken}
+        - setHeader:
+            id: refresh-content-type
+            constant: application/x-www-form-urlencoded
+            name: Content-Type
+        - to: http://localhost:8081/realms/Vized/protocol/openid-connect/token?bridgeEndpoint=true
+        - unmarshal:
+            id: parse-refresh-response
+            json: {}
+        - setHeader:
+            id: extract-refresh-access-token
+            jsonpath: $.access_token
+            name: accessToken
+        - setHeader:
+            id: extract-refresh-refresh-token
+            jsonpath: $.refresh_token
+            name: refreshToken
+        - setHeader:
+            id: extract-refresh-expires-in
+            jsonpath: $.expires_in
+            name: expiresIn
+        - setHeader:
+            id: extract-refresh-scope
+            jsonpath: $.scope
+            name: scope
+        - setBody:
+            id: refresh-success-response
+            simple: '{"access_token":"${header.accessToken}","refresh_token":"${header.refreshToken}","expires_in":"${header.expiresIn}","scope":"${header.scope}","token_type":"Bearer"}'
+        - setHeader:
+            id: refresh-success-content-type
+            constant: application/json
+            name: Content-Type
+- route:
+    id: auth-oidc
+    from:
+      uri: direct:auth-oidc
+      steps:
+        - log:
+            id: jwt-validation
+            message: Validating JWT token
+        - setHeader:
+            id: extract-jwt
+            name: jwtToken
+            simple: ${header.Authorization.substring(7)}
+        - doTry:
+            id: jwt-try
+            steps:
+              - bean:
+                  id: jwt-verify
+                  method: verifyToken(${exchange})
+                  ref: jwtVerifierBean
+              - choice:
+                  id: jwt-valid-check
+                  otherwise:
+                    steps:
+                      - log:
+                          id: jwt-invalid
+                          message: JWT token validation failed
+                      - setBody:
+                          id: jwt-invalid-body
+                          constant: '{"error":"Invalid JWT token","message":"The provided JWT token is
+                            invalid or expired"}'
+                      - setHeader:
+                          id: jwt-invalid-status
+                          constant: "403"
+                          name: CamelHttpResponseCode
+                      - setHeader:
+                          id: jwt-invalid-content-type
+                          constant: application/json
+                          name: Content-Type
+                  when:
+                    - steps:
+                        - log:
+                            id: jwt-valid
+                            message: "JWT token validation successful for user: ${header.jwtSubject}"
+                        - setHeader:
+                            id: set-jwt-auth-method
+                            constant: OIDC_JWT
+                            name: authMethod
+                        - setHeader:
+                            id: set-user-scopes-jwt
+                            name: userScopes
+                            simple: ${header.jwtScopes}
+                        - bean:
+                            id: map-jwt-roles
+                            method: mapJwtScopesToRoles(${exchange})
+                            ref: roleMapperBean
+                        - to: direct:backend
+                      simple: ${header.jwtValid} == 'true'
+            doCatch:
+              - steps:
+                  - log:
+                      id: jwt-error
+                      message: "JWT token validation error: ${exception.message}"
+                  - setBody:
+                      id: jwt-error-body
+                      constant: '{"error":"JWT validation failed","message":"Unable to validate JWT
+                        token"}'
+                  - setHeader:
+                      id: jwt-error-status
+                      constant: "401"
+                      name: CamelHttpResponseCode
+                  - setHeader:
+                      id: jwt-error-content-type
+                      constant: application/json
+                      name: Content-Type
+                exception:
+                  - java.lang.Exception
+- route:
+    id: fetch-jwt-token
+    from:
+      uri: netty-http:http://0.0.0.0:8080/jwt/token
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            id: jwt-token-request
+            message: JWT token request
+        - setHeader:
+            id: jwt-content-type
+            constant: application/x-www-form-urlencoded
+            name: Content-Type
+        - setBody:
+            id: jwt-request-body
+            simple: grant_type=password&client_id={{oauth2.client.id}}&client_secret={{oauth2.client.secret}}&username=${header.username}&password=${header.password}
+        - to: http://localhost:8081/realms/Vized/protocol/openid-connect/token?bridgeEndpoint=true
+        - log:
+            id: jwt-token-response
+            message: JWT token received from Keycloak
+- route:
+    id: backend
+    from:
+      uri: direct:backend
+      steps:
+        - log:
+            id: backend-access
+            message: Request authorized via ${header.authMethod} - forwarding to backend
+              service
+        - bean:
+            id: check-endpoint-access
+            method: checkEndpointAccess(${exchange})
+            ref: roleMapperBean
+        - choice:
+            id: scope-based-routing
+            otherwise:
+              steps:
+                - to: direct:default-backend
+            when:
+              - steps:
+                  - log:
+                      id: access-denied
+                      message: "Access denied: ${header.accessDeniedReason}"
+                  - bean:
+                      id: get-required-scopes
+                      method: getRequiredScopes(${exchange})
+                      ref: roleMapperBean
+                  - setHeader:
+                      id: set-required-scopes
+                      name: requiredScopes
+                      simple: ${body}
+                  - setBody:
+                      id: access-denied-body
+                      simple: '{"error":"insufficient_scope","message":"${header.accessDeniedReason}","required_scopes":"${header.requiredScopes}"}'
+                  - setHeader:
+                      id: access-denied-status
+                      constant: "403"
+                      name: CamelHttpResponseCode
+                  - setHeader:
+                      id: access-denied-content-type
+                      constant: application/json
+                      name: Content-Type
+                simple: ${header.hasEndpointAccess} == 'false'
+              - steps:
+                  - to: direct:profile-backend
+                simple: ${header.CamelHttpUri} regex '^/api/profile.*'
+              - steps:
+                  - to: direct:admin-backend
+                simple: ${header.CamelHttpUri} regex '^/api/admin.*'
+- route:
+    id: profile-backend
+    from:
+      uri: direct:profile-backend
+      steps:
+        - log:
+            id: profile-access
+            message: "Profile API access granted for user with roles: ${header.userRoles}"
+        - setBody:
+            id: profile-response
+            simple: '{"service":"Profile API","message":"Profile data retrieved
+              successfully","user_roles":"${header.userRoles}","scopes":"${header.userScopes}","authenticated_via":"${header.authMethod}","timestamp":"${date:now:yyyy-MM-dd
+              HH:mm:ss}","request_path":"${header.CamelHttpUri}","profile":{"user_id":"${header.jwtSubject}","username":"${header.jwtUsername}","email":"${header.jwtEmail}","client_id":"${header.jwtClientId}","roles":"${header.userRoles}"}}'
+        - setHeader:
+            id: profile-content-type
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            id: profile-status
+            constant: "200"
+            name: CamelHttpResponseCode
+- route:
+    id: admin-backend
+    from:
+      uri: direct:admin-backend
+      steps:
+        - log:
+            id: admin-access
+            message: "Admin API access granted for user with roles: ${header.userRoles}"
+        - setBody:
+            id: admin-response
+            simple: '{"service":"Admin API","message":"Admin data retrieved
+              successfully","user_roles":"${header.userRoles}","scopes":"${header.userScopes}","authenticated_via":"${header.authMethod}","timestamp":"${date:now:yyyy-MM-dd
+              HH:mm:ss}","request_path":"${header.CamelHttpUri}","admin_data":{"total_users":1250,"total_orders":3450,"total_payments":2890,"system_status":"healthy"}}'
+        - setHeader:
+            id: admin-content-type
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            id: admin-status
+            constant: "200"
+            name: CamelHttpResponseCode
+- route:
+    id: default-backend
+    from:
+      uri: direct:default-backend
+      steps:
+        - log:
+            id: default-access
+            message: "Default API access granted for user with roles: ${header.userRoles}"
+        - setBody:
+            id: default-response
+            simple: '{"service":"Default API","message":"Hello from secured
+              backend!","user_roles":"${header.userRoles}","scopes":"${header.userScopes}","authenticated_via":"${header.authMethod}","timestamp":"${date:now:yyyy-MM-dd
+              HH:mm:ss}","request_path":"${header.CamelHttpUri}"}'
+        - setHeader:
+            id: default-content-type
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            id: default-status
+            constant: "200"
+            name: CamelHttpResponseCode
+- route:
+    id: health-check
+    from:
+      uri: netty-http:http://0.0.0.0:8080/health
+      steps:
+        - log:
+            id: health-check-log
+            message: Health check requested
+        - setBody:
+            id: health-response
+            expression:
+              simple: '{"status":"UP","service":"AuthGateway","timestamp":"${date:now:yyyy-MM-dd
+                HH:mm:ss}"}'
+        - setHeader:
+            id: health-content-type
+            constant: application/json
+            name: Content-Type
+        - setHeader:
+            id: health-status
+            constant: "200"
+            name: CamelHttpResponseCode

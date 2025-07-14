@@ -117,7 +117,7 @@ https://github.com/user-attachments/assets/0d68654a-7a62-4396-a4f8-9524f81097d8
 3. Open `http://localhost:8080` in your browser for the interactive testing interface.
 4. Test different authentication methods and authorization scenarios.
 
-<video src="assets/execution.mp4" controls width="500"></video>
+https://github.com/user-attachments/assets/bb41469a-a40e-46af-a660-37378800d16c
 
 
 ## External Dependencies Setup

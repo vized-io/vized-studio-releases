@@ -68,6 +68,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | Pattern | Description | Example Use Cases |
 |---------|-------------|-------------------|
 | [**Aggregator**](EIP/Aggregation/README.md) | Combine multiple related messages into a single message | • Combine order items into complete order<br>• Merge partial results from multiple systems | 
+| [**API Authentication**](EIP/ApiAuthentication) | Secure API endpoints with various authentication methods | • Implement OAuth 2.0 flows<br>• Handle API keys and tokens |
 | [**Change Data Capture**](EIP/ChangeDataCapture) | Capture changes in data sources and propagate them | • Monitor database changes<br>• Sync data between systems |
 | [**Circuit Breaker**](EIP/CircuitBreaker) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Content-Based Router**](EIP/ContentBasedRouter) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|

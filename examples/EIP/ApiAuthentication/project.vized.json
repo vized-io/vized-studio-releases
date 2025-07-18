@@ -1,0 +1,253 @@
+{
+  "name": "ApiAuthentication",
+  "version": "0.0.1",
+  "artifactId": "ApiAuthentication",
+  "group": "com.vized.project",
+  "relativePath": "ApiAuthentication",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "ApiAuthentication.camel.yaml": {
+        "web-ui": {
+          "id": "web-ui",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http",
+              "id": "WebUi"
+            }
+          ],
+          "to": []
+        },
+        "api-gateway": {
+          "id": "api-gateway",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/api"
+            }
+          ],
+          "to": [
+            {},
+            {},
+            {}
+          ]
+        },
+        "auth-apikey": {
+          "id": "auth-apikey",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:auth-apikey"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "fetch-token": {
+          "id": "fetch-token",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/oauth2/token"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "auth-oauth2": {
+          "id": "auth-oauth2",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:auth-oauth2"
+            }
+          ],
+          "to": [
+            {},
+            {}
+          ]
+        },
+        "oauth2-authorize": {
+          "id": "oauth2-authorize",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/oauth2/authorize"
+            }
+          ],
+          "to": []
+        },
+        "oauth2-callback": {
+          "id": "oauth2-callback",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/oauth2/callback"
+            }
+          ],
+          "to": []
+        },
+        "oauth2-callback-post": {
+          "id": "oauth2-callback-post",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/oauth2/callback"
+            }
+          ],
+          "to": [
+            {
+              "uri": "http://localhost:8081/realms/Vized/protocol/openid-connect/token",
+              "id": "token-exchange-request-post"
+            }
+          ]
+        },
+        "oauth2-refresh": {
+          "id": "oauth2-refresh",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/oauth2/refresh"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "auth-oidc": {
+          "id": "auth-oidc",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:auth-oidc"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "fetch-jwt-token": {
+          "id": "fetch-jwt-token",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/jwt/token"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "backend": {
+          "id": "backend",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:backend"
+            }
+          ],
+          "to": [
+            {},
+            {},
+            {}
+          ]
+        },
+        "profile-backend": {
+          "id": "profile-backend",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:profile-backend"
+            }
+          ],
+          "to": []
+        },
+        "admin-backend": {
+          "id": "admin-backend",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:admin-backend"
+            }
+          ],
+          "to": []
+        },
+        "default-backend": {
+          "id": "default-backend",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:default-backend"
+            }
+          ],
+          "to": []
+        },
+        "health-check": {
+          "id": "health-check",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "netty-http:http://0.0.0.0:8080/health"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "ApiAuthentication.camel.yaml": [
+        "jwtVerifierBean",
+        "roleMapperBean"
+      ]
+    }
+  },
+  "environments": {
+    "default": [
+      "api.keys",
+      "oauth2.client.id",
+      "oauth2.client.secret",
+      "oauth2.introspect.url",
+      "oauth2.token.url",
+      "oidc.issuer",
+      "oidc.jwks.url",
+      "jwt.audience",
+      "jwt.issuer",
+      "backend.service.url",
+      "camel.springboot.name",
+      "camel.springboot.main-run-controller",
+      "camel.springboot.shutdown-timeout",
+      "camel.component.netty-http.configuration.host",
+      "camel.component.netty-http.configuration.port",
+      "auth.apikey.enabled",
+      "auth.oauth2.enabled",
+      "auth.oidc.enabled",
+      "backend.mock.enabled",
+      "scope.role.mappings.admin",
+      "scope.role.mappings.user",
+      "scope.role.mappings.orders:read",
+      "scope.role.mappings.orders:write",
+      "scope.role.mappings.payments:read",
+      "scope.role.mappings.payments:write",
+      "scope.role.mappings.profile:read",
+      "scope.role.mappings.profile:write",
+      "endpoint.access.orders",
+      "endpoint.access.payments",
+      "endpoint.access.profile",
+      "endpoint.access.admin",
+      "default.user.scopes",
+      "cors.allowed.origins",
+      "cors.allowed.methods",
+      "cors.allowed.headers",
+      "cors.max.age",
+      "security.headers.enabled",
+      "security.headers.x-frame-options",
+      "security.headers.x-content-type-options",
+      "security.headers.x-xss-protection"
+    ]
+  }
+}

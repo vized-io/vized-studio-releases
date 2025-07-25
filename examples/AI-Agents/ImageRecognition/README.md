@@ -55,6 +55,8 @@ Set up the entry point for your integration flow:
 2. Search for the Platform HTTP Component in the Component tab.
 3. Configure it to accept POST requests on the `/upload` endpoint with multipart/form-data content type.
 
+https://github.com/user-attachments/assets/bb5e27d7-e9d6-48cb-9834-da26ed9aded5
+
 ### 3. Implement Image Processing
 
 Process the uploaded image for AI analysis:
@@ -62,6 +64,8 @@ Process the uploaded image for AI analysis:
 1. Add a Groovy script to handle the file upload and extract the image bytes.
 2. Convert the image to the appropriate format for the AI model.
 3. Create a LangChain4j UserMessage with both text prompt and image content.
+
+https://github.com/user-attachments/assets/ee3caaa2-e973-46ee-8155-69f7ca14c48f
 
 ### 4. Configure AI Integration
 
@@ -71,6 +75,7 @@ Set up the connection to the Google Gemini AI model:
 2. Set appropriate parameters for the AI model (temperature, token limits).
 3. Implement error handling for AI service failures.
 
+https://github.com/user-attachments/assets/ac99533f-10da-4863-942f-219213322273
 
 ## Running the Integration Project
 
@@ -78,6 +83,8 @@ Set up the connection to the Google Gemini AI model:
 2. Right-click on the Camel file and select "Run" from the context menu.
 3. Open your browser to `http://localhost:8080` to access the web interface.
 4. Upload an image and receive AI-powered analysis of its content.
+
+https://github.com/user-attachments/assets/d6bd13ee-b502-4fd1-aa9c-3cbb8ac7ca4a
 
 ## Testing the Image Recognition API
 

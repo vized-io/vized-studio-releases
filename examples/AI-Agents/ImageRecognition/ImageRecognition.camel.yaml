@@ -1,0 +1,225 @@
+- route:
+    id: ImageRecognition
+    from:
+      id: Http Endpoint
+      uri: platform-http
+      parameters:
+        consumes: multipart/form-data
+        httpMethodRestrict: POST
+        path: /upload
+      steps:
+        - log:
+            id: LogImageReceived
+            message: "Received image for recognition: ${header.CamelFileName}"
+        - script:
+            id: script
+            expression:
+              groovy: >
+                import dev.langchain4j.data.message.UserMessage
+
+                import dev.langchain4j.data.message.ImageContent
+
+                import dev.langchain4j.data.message.TextContent
+
+
+                // Handle file upload - body contains the file bytes
+
+                def userPrompt = exchange.getIn().getHeader("prompt")
+
+                def sysPrompt = """Analyze the uploaded image and provide a
+                structured, concise response within 200 words. Include the
+                following:
+                  1. Scene Overview:
+                    Summarize the main elements and visual focus.
+
+                  2. Recognizable Details: 
+                    List any identifiable people, animals, objects, or readable text.
+
+                  3. Setting Description:
+                    Briefly describe the environment or background context.
+
+                  4. Visual Tone:
+                    Mention dominant colors, emotional impression, and overall mood.
+                  
+                  5. Authenticity Check:
+                    Based on visual cues, lighting, textures, and composition, briefly state whether the image appears real or AI-generated.
+
+                  Ensure your analysis is clear, structured, and observational rather than speculative.
+                """
+
+
+                def prompt = userPrompt ? userPrompt + sysPrompt : sysPrompt
+
+
+                def body = exchange.getIn().getBody()
+
+                def imageBytes = null
+
+
+                if (body instanceof java.io.File) {
+                  imageBytes = body.readBytes()
+                }
+
+                else if (body instanceof byte[]) {
+                  imageBytes = body
+                } else if (body instanceof java.io.InputStream) {
+                  imageBytes = body.readAllBytes()
+                } else if (body instanceof String) {
+                  if (body.startsWith("data:image")) {
+                    def base64Data = body.substring(body.indexOf(",") + 1)
+                    imageBytes = java.util.Base64.getDecoder().decode(base64Data)
+                  } else {
+                    imageBytes = body.getBytes()
+                  }
+                }
+
+
+                // Detect image type for MIME
+
+                def mimeType = "image/png" // default
+
+                def fileName = exchange.getIn().getHeader("CamelFileName")
+
+                if (fileName != null && fileName.toLowerCase().endsWith(".jpg")) {
+                  mimeType = "image/jpeg"
+                } else if (fileName != null &&
+                fileName.toLowerCase().endsWith(".jpeg")) {
+                  mimeType = "image/jpeg"
+                } else if (fileName != null &&
+                fileName.toLowerCase().endsWith(".png")) {
+                  mimeType = "image/png"
+                }
+
+
+                def userMessage
+
+                if (imageBytes != null && imageBytes.length > 0) {
+                  def base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes)
+                  def imageContent = ImageContent.from(base64Image, mimeType)
+                  userMessage = UserMessage.from(TextContent.from(prompt), imageContent)
+                  println("Successfully created UserMessage with image content and mimeType: " + mimeType)
+                } else {
+                  // No image, just chat
+                  def chatPrompt = userPrompt ?: "Hello! How can I assist you today?"
+                  userMessage = UserMessage.from(TextContent.from(chatPrompt))
+                  println("Created UserMessage for text-only chat.")
+                }
+
+                exchange.getIn().setBody(userMessage)
+        - to:
+            id: call-ai-recognition
+            uri: direct:call-ai-recognition
+            parameters: {}
+        - log:
+            id: LogRecognitionResult
+            message: Recognition completed
+        - setHeader:
+            id: SetContentType
+            constant: application/json
+            name: Content-Type
+- route:
+    id: CallAIRecognition
+    from:
+      id: from-ai-recognition
+      uri: direct:call-ai-recognition
+      parameters: {}
+      steps:
+        - log:
+            id: log-ai-recognition
+            message: Analyzing image using AI
+        - log:
+            id: log-message-body
+            message: "Message body type: ${body.class.name}"
+        - doTry:
+            id: TryAICall
+            steps:
+              - to:
+                  id: CallGeminiModel
+                  uri: langchain4j-chat
+                  parameters:
+                    chatId: imageRecognition
+                    chatModel: "#bean:googleAiChatModel"
+                    lazyStartProducer: "true"
+                    chatOperation: CHAT_SINGLE_MESSAGE
+            doCatch:
+              - steps:
+                  - log:
+                      id: LogDetailedError
+                      loggingLevel: ERROR
+                      message: "Detailed error - Type: ${exception.class.name}, Message:
+                        ${exception.message}, Cause: ${exception.cause}"
+                  - script:
+                      id: ScriptDetailedError
+                      expression:
+                        groovy: |
+                          def ex = exchange.getProperty("CamelExceptionCaught")
+                          println("Full exception details:")
+                          ex.printStackTrace()
+
+                          // Check if it's a specific LangChain4j exception
+                          if (ex.getCause() != null) {
+                            println("Root cause: " + ex.getCause().getMessage())
+                            ex.getCause().printStackTrace()
+                          }
+                  - setBody:
+                      id: SetErrorBody
+                      constant: "Error processing image: AI service unavailable"
+                exception:
+                  - java.lang.Exception
+- route:
+    id: TestTextAI
+    from:
+      id: test-text-timer
+      uri: timer:testText?delay=10000&repeatCount=1
+      steps:
+        - script:
+            groovy: >
+              import dev.langchain4j.data.message.UserMessage
+
+              import dev.langchain4j.data.message.TextContent
+
+
+              def userMessage = UserMessage.from("Hello, can you respond with a
+              simple greeting?")
+
+              exchange.getIn().setBody(userMessage)
+        - log:
+            message: Testing AI with simple text message
+        - doTry:
+            steps:
+              - to:
+                  uri: langchain4j-chat
+                  parameters:
+                    chatId: textTest
+                    chatModel: "#bean:googleAiChatModel"
+              - log:
+                  message: "Text AI test successful: ${body}"
+            doCatch:
+              - steps:
+                  - log:
+                      loggingLevel: ERROR
+                      message: "Text AI test failed: ${exception.message}"
+                exception:
+                  - java.lang.Exception
+- beans:
+    - name: googleAiChatModel
+      script: |
+        import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel
+        import dev.langchain4j.model.chat.ChatModel
+
+        try {
+          def model = GoogleAiGeminiChatModel.builder()
+            .apiKey("AIzaSyARf1E3zznDMvDVxUDnO2NquhbqQfeRTHc")
+            .modelName("gemini-2.5-flash")
+            .temperature(0.9)
+            //.maxOutputTokens(12000)
+            .build()
+
+          println("Successfully created Google AI model: " + model)
+          return model
+        } catch (Exception e) {
+          println("Error creating Google AI model: " + e.getMessage())
+          throw e
+        }
+      scriptLanguage: groovy
+      type: dev.langchain4j.model.chat.ChatModel

@@ -1,0 +1,129 @@
+{
+  "name": "ImageRecognition",
+  "version": "0.0.1",
+  "artifactId": "ImageRecognition",
+  "group": "com.vized.project",
+  "relativePath": "ImageRecognition",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "ImageRecognition.camel.yaml": {
+        "ImageRecognitionAgent": {
+          "id": "ImageRecognitionAgent",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "Http Endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-ai-recognition",
+              "id": "call-ai-recognition"
+            }
+          ]
+        },
+        "CallAIRecognition": {
+          "id": "CallAIRecognition",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-ai-recognition",
+              "id": "from-ai-recognition"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-chat",
+              "id": "CallGeminiModel"
+            }
+          ]
+        },
+        "TestTextAI": {
+          "id": "TestTextAI",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:testText?delay=10000&repeatCount=1",
+              "id": "test-text-timer"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-chat"
+            }
+          ]
+        }
+      },
+      "ImageRecognitionAPI.camel.yaml": {
+        "ImageRecognition": {
+          "id": "ImageRecognition",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "Http Endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:call-ai-recognition",
+              "id": "call-ai-recognition"
+            }
+          ]
+        },
+        "CallAIRecognition": {
+          "id": "CallAIRecognition",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-ai-recognition",
+              "id": "from-ai-recognition"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-chat",
+              "id": "CallGeminiModel"
+            }
+          ]
+        },
+        "TestTextAI": {
+          "id": "TestTextAI",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "timer:testText?delay=10000&repeatCount=1",
+              "id": "test-text-timer"
+            }
+          ],
+          "to": [
+            {
+              "uri": "langchain4j-chat"
+            }
+          ]
+        }
+      }
+    },
+    "beans": {
+      "ImageRecognition.camel.yaml": [
+        "googleAiChatModel"
+      ],
+      "ImageRecognitionAPI.camel.yaml": [
+        "googleAiChatModel"
+      ]
+    }
+  },
+  "environments": {
+    "default": [
+      "google.api.key",
+      "camel.jbang.dependencies",
+      "camel.server.enabled",
+      "camel.server.port",
+      "camel.server.staticEnabled"
+    ]
+  }
+}

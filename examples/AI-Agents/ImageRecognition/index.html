@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Recognition Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1e1e1e;
+            color: #ffffff;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #1e1e1e;
+            border-bottom: 1px solid #333;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #333;
+        }
+
+        .header-right {
+            button {
+                background: none;
+                border: none;
+                color: #ffffff;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 6px;
+                transition: background 0.2s;
+            }
+
+            button:hover {
+                background: #333;
+            }
+        }
+
+        /* Main content area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Welcome screen */
+        .welcome-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .welcome-screen.hidden {
+            display: none;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 24px;
+            object-fit: cover;
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .welcome-subtitle {
+            font-size: 18px;
+            color: #a0a0a0;
+            margin-bottom: 12px;
+        }
+
+        .welcome-description {
+            font-size: 16px;
+            color: #808080;
+            max-width: 400px;
+            line-height: 1.4;
+        }
+
+        /* Chat area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            display: none;
+        }
+
+        .chat-area.active {
+            display: flex;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message.user .message-bubble {
+            background: #0084ff;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            gap: 12px;
+        }
+
+        .message.assistant .message-bubble {
+            background: #2a2a2a;
+            color: #ffffff;
+            font-size: 15px;
+            line-height: 1.6;
+            padding: 14px 18px;
+            border-left: 3px solid #0084ff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .message.assistant .message-bubble strong {
+            color: #ffd700;
+        }
+        .message.assistant .message-bubble em {
+            color: #b3e5fc;
+        }
+        .message.assistant .message-bubble code {
+            background: #23272f;
+            color: #ffb86c;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .message.assistant .message-bubble pre {
+            background: #23272f;
+            color: #ffb86c;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .message.assistant .message-bubble ul,
+        .message.assistant .message-bubble ol {
+            margin: 8px 0 8px 20px;
+            padding: 0;
+        }
+        .message.assistant .message-bubble li {
+            margin-bottom: 4px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #808080;
+            margin-top: 4px;
+            padding: 0 4px;
+        }
+
+        .message img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #2a2a2a;
+            border-radius: 18px;
+            align-self: flex-start;
+            max-width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0084ff;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                opacity: 0.3;
+                transform: scale(0.8);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Input area */
+        .input-area {
+            padding: 16px 20px 20px;
+            background: #1e1e1e;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: flex-end;
+            background: #2a2a2a;
+            border-radius: 24px;
+            padding: 8px 12px;
+            gap: 8px;
+        }
+
+        .file-upload-btn {
+            background: none;
+            border: none;
+            color: #808080;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-upload-btn:hover {
+            color: #ffffff;
+        }
+
+        .message-input {
+            flex: 1;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 16px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            padding: 8px 4px;
+            max-height: 120px;
+            min-height: 24px;
+            /* Hide scrollbar for all browsers */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE 10+ */
+        }
+        .message-input::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .message-input::placeholder {
+            color: #808080;
+        }
+
+        .voice-btn, .send-btn {
+            background: none;
+            border: none;
+            color: #808080;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-btn:hover, .send-btn:hover {
+            color: #ffffff;
+        }
+
+        .send-btn.active {
+            color: #0084ff;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* File preview */
+        .file-preview {
+            display: none;
+            align-items: center;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            gap: 12px;
+        }
+
+        .file-preview img {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+        }
+
+        .file-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .file-name {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .file-size {
+            color: #808080;
+            font-size: 12px;
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: #ff4444;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        /* Status bar */
+        .status-bar {
+            background: #1e1e1e;
+            border-top: 1px solid #333;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: #808080;
+        }
+
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .modal img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #444;
+            border: none;
+            color: #ffffff;
+            font-size: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Scrollbar styling */
+        .messages-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header flex items-start">
+            <div style="width:100%;text-align:left;font-size:20px;font-weight:600;letter-spacing:0.5px;">Image Recognition</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Welcome Screen -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <!-- <img src="https://randomuser.me/api/portraits/lego/1.jpg" alt="AI Assistant" class="avatar"> -->
+                <h1 class="welcome-title">Good to see you!</h1>
+                <h2 class="welcome-subtitle">How can I assist you?</h2>
+                <!-- <p class="welcome-description">I'm available 24/7 for you, ask me anything.</p> -->
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea">
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div class="file-preview" id="filePreview">
+                <img id="previewImage" src="" alt="Preview">
+                <div class="file-info">
+                    <div class="file-name" id="fileName"></div>
+                    <div class="file-size" id="fileSize"></div>
+                </div>
+                <button class="remove-file-btn" id="removeFileBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="input-container">
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                <button class="file-upload-btn" id="fileUploadBtn">
+                    <i class="fas fa-plus-circle"></i>
+                </button>
+                <textarea class="message-input" id="messageInput" placeholder="Ask anything..." rows="1"></textarea>
+                <button class="voice-btn" id="voiceBtn">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button class="send-btn" id="sendBtn" disabled>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">
+                <i class="fas fa-times"></i>
+            </button>
+            <img id="modalImage" src="" alt="Full size image">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script>
+        // DOM Elements
+        const welcomeScreen = document.getElementById('welcomeScreen');
+        const chatArea = document.getElementById('chatArea');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const fileInput = document.getElementById('fileInput');
+        const fileUploadBtn = document.getElementById('fileUploadBtn');
+        const filePreview = document.getElementById('filePreview');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalClose = document.getElementById('modalClose');
+        const voiceBtn = document.getElementById('voiceBtn');
+        let recognition = null;
+        let isListening = false;
+
+        // State
+        let selectedFile = null;
+        let isProcessing = false;
+
+        // Initialize
+        updateSendButton();
+        setupEventListeners();
+
+        function setupEventListeners() {
+            // Message input
+            messageInput.addEventListener('input', handleInputChange);
+            messageInput.addEventListener('keydown', handleKeyDown);
+
+            // File upload
+            fileUploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            removeFileBtn.addEventListener('click', clearFile);
+
+            // Send message
+            sendBtn.addEventListener('click', sendMessage);
+
+            // Modal
+            modalClose.addEventListener('click', closeModal);
+            imageModal.addEventListener('click', (e) => {
+                if (e.target === imageModal) closeModal();
+            });
+        }
+
+        function handleInputChange() {
+            // Auto-resize textarea
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+            updateSendButton();
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendBtn.disabled) {
+                    sendMessage();
+                }
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                selectedFile = file;
+                showFilePreview(file);
+                updateSendButton();
+            }
+        }
+
+        function showFilePreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                fileName.textContent = file.name;
+                fileSize.textContent = formatFileSize(file.size);
+                filePreview.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            filePreview.style.display = 'none';
+            updateSendButton();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function updateSendButton() {
+            const hasContent = messageInput.value.trim() || selectedFile;
+            sendBtn.disabled = !hasContent || isProcessing;
+            if (hasContent && !isProcessing) {
+                sendBtn.classList.add('active');
+            } else {
+                sendBtn.classList.remove('active');
+            }
+        }
+
+        function showChatArea() {
+            welcomeScreen.classList.add('hidden');
+            chatArea.classList.add('active');
+        }
+
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+        }
+
+        function addMessage(content, isUser = false, imageUrl = null) {
+            if (welcomeScreen && !welcomeScreen.classList.contains('hidden')) {
+                showChatArea();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+
+            if (isUser && imageUrl) {
+                const textSpan = document.createElement('span');
+                textSpan.textContent = content;
+                bubbleDiv.appendChild(textSpan);
+
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.alt = 'Uploaded image';
+                img.addEventListener('click', () => showImageModal(imageUrl));
+                bubbleDiv.appendChild(img);
+            } else if (isUser) {
+                bubbleDiv.textContent = content;
+            } else {
+                bubbleDiv.innerHTML = marked.parse(content);
+            }
+
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = getCurrentTime();
+
+            messageDiv.appendChild(bubbleDiv);
+            messageDiv.appendChild(timeDiv);
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.id = 'typingIndicator';
+            
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'typing-dot';
+                typingDiv.appendChild(dot);
+            }
+
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function showImageModal(src) {
+            modalImage.src = src;
+            imageModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            imageModal.style.display = 'none';
+        }
+
+        async function sendMessage() {
+            if (isProcessing) return;
+
+            const message = messageInput.value.trim();
+            if (!message && !selectedFile) return;
+
+            const userMessage = message || 'Please analyze this image.';
+            const imageUrl = selectedFile ? URL.createObjectURL(selectedFile) : null;
+
+            // Add user message
+            addMessage(userMessage, true, imageUrl);
+
+            // Clear input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // Set processing state
+            isProcessing = true;
+            updateSendButton();
+            addTypingIndicator();
+
+            try {
+                const formData = new FormData();
+                if (selectedFile) {
+                    formData.append('file', selectedFile);
+                }
+                formData.append('prompt', userMessage); // Always send prompt
+
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.text();
+                    removeTypingIndicator();
+                    addMessage(result, false);
+                } else {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                removeTypingIndicator();
+                addMessage('Sorry, there was an error processing your request. Please try again.', false);
+            } finally {
+                isProcessing = false;
+                clearFile();
+                updateSendButton();
+            }
+        }
+
+        // Voice recognition setup
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = true;
+            recognition.continuous = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                voiceBtn.classList.add('active');
+                voiceBtn.innerHTML = '<i class="fas fa-wave-square"></i>';
+            };
+            recognition.onend = () => {
+                isListening = false;
+                voiceBtn.classList.remove('active');
+                voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            };
+            recognition.onerror = (e) => {
+                isListening = false;
+                voiceBtn.classList.remove('active');
+                voiceBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+            };
+            recognition.onresult = (event) => {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                messageInput.value = transcript;
+                handleInputChange();
+            };
+        }
+
+        voiceBtn.addEventListener('click', () => {
+            if (!recognition) {
+                alert('Voice recognition is not supported in this browser.');
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+    </script>
+</body>
+</html>

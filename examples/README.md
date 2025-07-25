@@ -96,7 +96,8 @@ VIZED also supports implementing AI Agents connecting with various LLM APIs to b
 
 | Project | Use Cases Description |
 |---------|-------------|
-| [**Ticket Agent**](AI-Agents/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 | [**Email Summariser**](AI-Agents/EmailSummariser) | Summarize long email contents for quick view of highlights
+| [**Image Recognition**](AI-Agents/ImageRecognition) | Analyze images to identify objects, scenes, and text |
 | [**Sentiment Analyser**](AI-Agents/SentimentAnalyser) | Analyze the sentiments of feedbacks and store in mongodb
+| [**Ticket Agent**](AI-Agents/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 | [**Weather Agent**](AI-Agents/WeatherAgent) | AI to retrieve weather information for a specified location |

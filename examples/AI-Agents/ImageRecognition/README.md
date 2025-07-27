@@ -63,7 +63,7 @@ Process the uploaded image for AI analysis:
 
 1. Add a Groovy script to handle the file upload and extract the image bytes.
 2. Convert the image to the appropriate format for the AI model.
-3. Create a LangChain4j UserMessage with both text prompt and image content.
+3. Create a LangChain4j UserMessage with image content.
 
 https://github.com/user-attachments/assets/ee3caaa2-e973-46ee-8155-69f7ca14c48f
 

@@ -84,7 +84,8 @@ https://github.com/user-attachments/assets/ac99533f-10da-4863-942f-219213322273
 3. Open your browser to `http://localhost:8080` to access the web interface.
 4. Upload an image and receive AI-powered analysis of its content.
 
-https://github.com/user-attachments/assets/d6bd13ee-b502-4fd1-aa9c-3cbb8ac7ca4a
+https://github.com/user-attachments/assets/c2cb2991-7bbb-4737-84cc-2b386bbcbf69
+
 
 ## Testing the Image Recognition API
 

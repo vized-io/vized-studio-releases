@@ -9,14 +9,14 @@
 
 ## Overview
 
-This tutorial demonstrates how to implement **Splitter** and **Resequencer** using **VIZED** and **Apache Camel YAML DSL**. You'll learn how to process a JSON file containing multiple orders, split them into individual messages, enrich each order with business logic, and resequence them by order date.
+This tutorial demonstrates how to implement **Splitter** and **Resequencer** using **VIZED** and **Apache Camel YAML DSL**. You'll learn how to process a JSON file containing multiple restaurant orders, split them into individual messages, enrich each order with business logic, and resequence them by delivery time to ensure optimal kitchen workflow.
 
 ## Key Features
 
-- **JSON File Processing**: Read and parse JSON files with multiple orders.
+- **JSON File Processing**: Read and parse JSON files with multiple restaurant orders.
 - **Message Splitting**: Process each order individually.
 - **Order Enrichment**: Add processing metadata and business rules.
-- **Resequencing**: Ensure orders are processed in chronological order.
+- **Resequencing**: Ensure orders are processed in delivery time order for optimal kitchen workflow.
 - **Dynamic File Writing**: Output each processed order as a separate JSON file.
 - **Comprehensive Logging**: Track every step for easy debugging.
 
@@ -36,7 +36,7 @@ Set up the entry point for your integration flow:
 1. Click the "Add Route" button in the visual designer.
 2. Search for the File Component in the Component tab.
 3. Configure it to read `orders.json` from the `orders/incoming` directory.
-4. Set parameters: `noop=true` (do not move/delete after reading), `delay=5000` (polling interval).
+4. Set parameters: `delay=5000` (polling interval), `initialDelay=2000` (startup delay).
 
 ### 3. Parse and Split JSON Data
 
@@ -49,7 +49,7 @@ Convert the JSON content into a structured format and split it into individual r
 
 Enhance each order with processing metadata and business rules:
 
-1. Add Set Header processors to extract order information (orderId, orderDate, priority).
+1. Add Set Header processors to extract order information (orderId, orderTime, deliveryTime, priority).
 2. Add a Set Body processor with Groovy script to enrich orders with:
    - Processing timestamp
    - Original processing sequence number
@@ -57,9 +57,9 @@ Enhance each order with processing metadata and business rules:
 
 ### 5. Implement Resequencing Logic
 
-Ensure orders are processed in chronological order:
+Ensure orders are processed in delivery time order for optimal kitchen workflow:
 
-1. Add a Resequence processor to reorder messages by `orderDate`.
+1. Add a Resequence processor to reorder messages by `deliveryTime`.
 2. Configure batch settings for optimal performance.
 
 ### 6. Output Processed Orders
@@ -77,7 +77,6 @@ Write each processed order to a separate file:
 3. Monitor the logs to see orders being processed and resequenced.
 4. Check the `orders/processed` directory for output files.
 
-
 ## Sample Input Data
 
 Place the following file as `orders/incoming/orders.json`:
@@ -85,76 +84,48 @@ Place the following file as `orders/incoming/orders.json`:
 ```json
 [
   {
-    "orderId": "ORD-001",
-    "customerId": "CUST-123",
-    "productName": "Laptop",
-    "quantity": 1,
-    "price": 999.99,
-    "orderDate": "2024-01-15T10:30:00Z",
-    "priority": "HIGH",
-    "status": "PENDING"
+    "orderId": "REST-001",
+    "tableId": "TABLE-5", 
+    "items": ["Burger", "Fries"],
+    "orderTime": "18:30",
+    "deliveryTime": "19:00",
+    "priority": "HIGH"
   },
   {
-    "orderId": "ORD-002",
-    "customerId": "CUST-456",
-    "productName": "Mouse",
-    "quantity": 2,
-    "price": 29.99,
-    "orderDate": "2024-01-15T09:15:00Z",
-    "priority": "LOW",
-    "status": "PENDING"
+    "orderId": "REST-002",
+    "tableId": "TABLE-3",
+    "items": ["Pizza"], 
+    "orderTime": "18:45",
+    "deliveryTime": "18:55",
+    "priority": "HIGH"
   },
   {
-    "orderId": "ORD-003",
-    "customerId": "CUST-789",
-    "productName": "Keyboard",
-    "quantity": 1,
-    "price": 79.99,
-    "orderDate": "2024-01-15T11:45:00Z",
-    "priority": "MEDIUM",
-    "status": "PENDING"
-  },
-  {
-    "orderId": "ORD-004",
-    "customerId": "CUST-321",
-    "productName": "Monitor",
-    "quantity": 1,
-    "price": 299.99,
-    "orderDate": "2024-01-15T08:20:00Z",
-    "priority": "HIGH",
-    "status": "PENDING"
-  },
-  {
-    "orderId": "ORD-005",
-    "customerId": "CUST-654",
-    "productName": "Headphones",
-    "quantity": 1,
-    "price": 149.99,
-    "orderDate": "2024-01-15T12:00:00Z",
-    "priority": "MEDIUM",
-    "status": "PENDING"
+    "orderId": "REST-003",
+    "tableId": "TABLE-7",
+    "items": ["Salad"],
+    "orderTime": "18:20", 
+    "deliveryTime": "19:30",
+    "priority": "LOW"
   }
 ]
 ```
 
 ## Expected Output
 
-Each order will be processed in chronological order (by `orderDate`), enriched, and written as a separate JSON file in `orders/processed/`.
+Each order will be processed in delivery time order, enriched, and written as a separate JSON file in `orders/processed/`.
 
-**Example output for `ORD-004` (earliest order):**
+**Example output for `REST-002` (earliest delivery time):**
 
 ```json
 {
-  "orderId": "ORD-004",
-  "customerId": "CUST-321",
-  "productName": "Monitor",
-  "quantity": 1,
-  "price": 299.99,
-  "orderDate": "2024-01-15T08:20:00Z",
+  "orderId": "REST-002",
+  "tableId": "TABLE-3",
+  "items": ["Pizza"],
+  "orderTime": "18:45",
+  "deliveryTime": "18:55",
   "priority": "HIGH",
-  "status": "PENDING",
   "processedAt": "2024-07-01T12:34:56.789Z",
-  "processingSequence": 3,
+  "processingSequence": 2,
   "expedited": true,
   "processingFee": 0.0
 }
@@ -162,9 +133,16 @@ Each order will be processed in chronological order (by `orderDate`), enriched, 
 
 - `processedAt`: Timestamp when the order was processed
 - `processingSequence`: Original sequence in the input array
-- `expedited` and `processingFee`: Set based on priority
-- Output filename: `processed-ORD-004-YYYYMMDD-HHMMSS.json`
+- `expedited` and `processingFee`: Set based on priority (HIGH: expedited=true, fee=0.0; MEDIUM: expedited=false, fee=5.0; LOW: expedited=false, fee=2.0)
+- Output filename: `processed-REST-002-YYYYMMDD-HHMMSS.json`
 
+## Business Logic
+
+The enrichment process adds the following business rules based on order priority:
+
+- **HIGH Priority**: Expedited processing with no additional fee
+- **MEDIUM Priority**: Standard processing with $5.00 fee
+- **LOW Priority**: Standard processing with $2.00 fee
 
 ## Need Help?
 

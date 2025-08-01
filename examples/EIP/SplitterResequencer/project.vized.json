@@ -15,7 +15,7 @@
           "breakpoints": [],
           "from": [
             {
-              "uri": "file:orders/incoming",
+              "uri": "file",
               "id": "Read Orders File"
             }
           ],

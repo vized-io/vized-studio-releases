@@ -2,11 +2,13 @@
     id: SplitterResequencer
     from:
       id: Read Orders File
-      uri: file:orders/incoming
+      uri: file
       parameters:
-        fileName: orders.json
-        noop: "true"
         delay: 5000
+        directoryName: orders/incoming
+        fileName: orders.json
+        initialDelay: 2000
+        # noop: "true"
       steps:
         - log:
             id: log-start
@@ -14,46 +16,49 @@
         - unmarshal:
             id: unmarshal-json
             json:
-              library: jackson
+              library: Jackson
         - split:
             id: split-orders
-            expression:
-              simple:
-                expression: ${body}
             steps:
               - log:
                   id: log-split-item
-                  message: "Processing order: ${body[orderId]} with date: ${body[orderDate]}"
+                  message: "Processing order: ${body[orderId]} time: ${body[orderTime]}"
               - setHeader:
                   id: set-order-id
-                  name: OrderId
                   expression:
                     simple:
                       expression: ${body[orderId]}
+                  name: OrderId
               - setHeader:
                   id: set-order-date
-                  name: OrderDate
                   expression:
                     simple:
                       expression: ${body[orderDate]}
+                  name: OrderDate
               - setHeader:
                   id: set-priority
-                  name: Priority
                   expression:
                     simple:
                       expression: ${body[priority]}
+                  name: Priority
               - setBody:
                   id: enrich-order
                   expression:
                     groovy:
-                      expression: |
+                      expression: >
                         import java.time.Instant
-                        
+
+
                         def order = request.body
+
                         order.put("processedAt", Instant.now().toString())
-                        order.put("processingSequence", exchange.getProperty("CamelSplitIndex"))
-                        
+
+                        order.put("processingSequence",
+                        exchange.getProperty("CamelSplitIndex") + 1)
+
+
                         // Add enrichment based on priority
+
                         switch(order.priority) {
                           case "HIGH":
                             order.put("expedited", true)
@@ -68,35 +73,40 @@
                             order.put("processingFee", 2.0)
                             break
                         }
-                        
+
+
                         return order
               - resequence:
                   id: resequence-by-date
-                  expression:
-                    simple:
-                      expression: ${header.OrderDate}
                   batchConfig:
                     batchSize: 100
                     batchTimeout: 10000
+                  expression:
+                    simple:
+                      expression: ${body[deliveryTime]}
               - log:
                   id: log-resequenced
-                  message: "Resequenced order: ${header.OrderId} - Original sequence: ${header.CamelSplitIndex}, Date: ${header.OrderDate}"
+                  message: "Resequenced order: ${header.OrderId} - Original sequence:
+                    ${body[processingSequence]}, Delivery Date: ${body[deliveryTime]}"
               - marshal:
                   id: marshal-json
                   json:
-                    library: jackson
+                    library: Jackson
                     prettyPrint: true
               - setHeader:
                   id: set-output-filename
-                  name: CamelFileName
                   expression:
                     simple:
-                      expression: "processed-${header.OrderId}-${date:now:yyyyMMdd-HHmmss}.json"
+                      expression: processed-${header.OrderId}-${date:now:yyyyMMdd-HHmmss}.json
+                  name: CamelFileName
               - to:
                   id: Write Processed Orders
                   uri: file:orders/processed
                   parameters:
-                    fileName: "${header.CamelFileName}"
+                    fileName: ${header.CamelFileName}
               - log:
                   id: log-completed
-                  message: "Completed processing order: ${header.OrderId}" 
+                  message: "Completed processing order: ${header.OrderId}"
+            expression:
+              simple:
+                expression: ${body}

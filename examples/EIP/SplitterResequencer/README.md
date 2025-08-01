@@ -24,28 +24,58 @@ This tutorial demonstrates how to implement **Splitter** and **Resequencer** usi
 
 ### 1. Create a New Integration Project
 
-1. Open VIZED and create a new Integration Project for this pattern.
-2. Add the provided `SplitterResequencer.camel.yaml` route to your project workspace.
+Begin by setting up your project workspace in VIZED:
+
+1. Navigate to the Workspace view.
+2. Create a new Integration Project.
 
 ### 2. Configure Your Source Component
 
-1. Add a File Component to read `orders.json` from the `orders/incoming` directory.
-2. Set parameters: `noop=true` (do not move/delete after reading), `delay=5000` (polling interval).
+Set up the entry point for your integration flow:
 
-### 3. Split and Enrich Orders
+1. Click the "Add Route" button in the visual designer.
+2. Search for the File Component in the Component tab.
+3. Configure it to read `orders.json` from the `orders/incoming` directory.
+4. Set parameters: `noop=true` (do not move/delete after reading), `delay=5000` (polling interval).
 
-1. Unmarshal the JSON array into individual order objects.
-2. Use the Split processor to break the array into single order messages.
-3. Enrich each order with:
+### 3. Parse and Split JSON Data
+
+Convert the JSON content into a structured format and split it into individual records:
+
+1. Add an Unmarshal processor and configure it to parse JSON data using Jackson library.
+2. Add a Split processor to process each order individually.
+
+### 4. Enrich Orders with Business Logic
+
+Enhance each order with processing metadata and business rules:
+
+1. Add Set Header processors to extract order information (orderId, orderDate, priority).
+2. Add a Set Body processor with Groovy script to enrich orders with:
    - Processing timestamp
    - Original processing sequence number
    - Priority-based business rules (expedited flag, processing fee)
 
-### 4. Resequence and Output
+### 5. Implement Resequencing Logic
 
-1. Resequence orders by `orderDate` to ensure chronological processing.
-2. Marshal each order back to JSON.
-3. Write each processed order to `orders/processed` with a dynamic filename.
+Ensure orders are processed in chronological order:
+
+1. Add a Resequence processor to reorder messages by `orderDate`.
+2. Configure batch settings for optimal performance.
+
+### 6. Output Processed Orders
+
+Write each processed order to a separate file:
+
+1. Add a Marshal processor to convert back to JSON format.
+2. Add a Set Header processor to create dynamic filenames.
+3. Add a To processor to write files to `orders/processed` directory.
+
+## Running the Integration Project
+
+1. Select your integration project in VIZED.
+2. Right-click on the Camel file and select "Run" from the context menu.
+3. Monitor the logs to see orders being processed and resequenced.
+4. Check the `orders/processed` directory for output files.
 
 
 ## Sample Input Data
@@ -134,12 +164,6 @@ Each order will be processed in chronological order (by `orderDate`), enriched, 
 - `processingSequence`: Original sequence in the input array
 - `expedited` and `processingFee`: Set based on priority
 - Output filename: `processed-ORD-004-YYYYMMDD-HHMMSS.json`
-
-## Business Logic
-
-- **HIGH Priority**: Expedited processing, no processing fee
-- **MEDIUM Priority**: Standard processing, $5.00 fee
-- **LOW Priority**: Standard processing, $2.00 fee
 
 
 ## Need Help?

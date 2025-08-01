@@ -8,7 +8,7 @@
         directoryName: orders/incoming
         fileName: orders.json
         initialDelay: 2000
-        noop: "true"
+        # noop: "true"
       steps:
         - log:
             id: log-start
@@ -16,13 +16,13 @@
         - unmarshal:
             id: unmarshal-json
             json:
-              library: jackson
+              library: Jackson
         - split:
             id: split-orders
             steps:
               - log:
                   id: log-split-item
-                  message: "Processing order: ${body[orderId]} with date: ${body[orderDate]}"
+                  message: "Processing order: ${body[orderId]} time: ${body[orderTime]}"
               - setHeader:
                   id: set-order-id
                   expression:
@@ -54,7 +54,7 @@
                         order.put("processedAt", Instant.now().toString())
 
                         order.put("processingSequence",
-                        exchange.getProperty("CamelSplitIndex"))
+                        exchange.getProperty("CamelSplitIndex") + 1)
 
 
                         // Add enrichment based on priority
@@ -83,15 +83,15 @@
                     batchTimeout: 10000
                   expression:
                     simple:
-                      expression: ${header.OrderDate}
+                      expression: ${body[deliveryTime]}
               - log:
                   id: log-resequenced
                   message: "Resequenced order: ${header.OrderId} - Original sequence:
-                    ${header.CamelSplitIndex}, Date: ${header.OrderDate}"
+                    ${body[processingSequence]}, Delivery Date: ${body[deliveryTime]}"
               - marshal:
                   id: marshal-json
                   json:
-                    library: jackson
+                    library: Jackson
                     prettyPrint: true
               - setHeader:
                   id: set-output-filename

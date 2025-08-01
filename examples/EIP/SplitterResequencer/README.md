@@ -38,6 +38,8 @@ Set up the entry point for your integration flow:
 3. Configure it to read `orders.json` from the `orders/incoming` directory.
 4. Set parameters: `delay=5000` (polling interval), `initialDelay=2000` (startup delay).
 
+https://github.com/user-attachments/assets/d027650c-8bc3-4352-ba45-c55a4c28ebae
+
 ### 3. Parse and Split JSON Data
 
 Convert the JSON content into a structured format and split it into individual records:
@@ -70,12 +72,17 @@ Write each processed order to a separate file:
 2. Add a Set Header processor to create dynamic filenames.
 3. Add a To processor to write files to `orders/processed` directory.
 
+https://github.com/user-attachments/assets/afcc2223-45b9-472d-8d84-f3688234c51d
+
 ## Running the Integration Project
 
 1. Select your integration project in VIZED.
 2. Right-click on the Camel file and select "Run" from the context menu.
 3. Monitor the logs to see orders being processed and resequenced.
 4. Check the `orders/processed` directory for output files.
+
+https://github.com/user-attachments/assets/57fd55f5-f0eb-4956-b532-05792ba4908c
+
 
 ## Sample Input Data
 

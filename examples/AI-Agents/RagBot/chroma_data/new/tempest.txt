@@ -1,0 +1,114 @@
+# Tempest Motors Company Overview
+## Company Information
+Tempest Motors was founded in 1985 in Detroit, Michigan. The company employs 12,000 people worldwide and operates in 30+ countries with 1,200 dealerships. Their mission is to deliver innovative, sustainable, and affordable mobility solutions.
+
+## Sustainability and Awards
+Tempest Motors has achieved a 40% reduction in manufacturing emissions since 2015. All plants have been powered by renewable energy since 2022. The company has received several awards including 2023 Global Green Mobility Leader and 2022 JD Power Customer Service Champion.
+
+## Community Programs
+Tempest Motors runs a 'Drive for Education' program, donating vehicles and scholarships to underprivileged students. This demonstrates their commitment to community development and education.
+
+# Tempest Strider — Specifications
+## Basic Information
+Tempest Strider is priced at $25,000. It features a 1.5L I4 Petrol engine with a 6-speed Automatic transmission. The vehicle achieves 32 MPG in the city and 40 MPG on the highway.
+
+## Features and Safety
+Tempest Strider includes compact design, smart infotainment system, rear parking sensors, and 6 airbags for comprehensive safety protection. It was awarded 2023 Urban Car of the Year.
+
+## Target Market and Warranty
+This model is best suited for city commuters and first-time buyers. It has a customer rating of 4.2/5 and comes with a 3-year/36,000-mile warranty.
+
+# Tempest Solis — Specifications
+## Basic Information
+Tempest Solis is priced at $35,000. It features a 2.0L I4 Turbo Petrol engine with an 8-speed Automatic transmission. The vehicle achieves 28 MPG in the city and 36 MPG on the highway.
+
+## Features and Comfort
+Tempest Solis is a 7-seater with panoramic sunroof, advanced safety suite, and rear entertainment system. It was awarded 2023 Best Family Car.
+
+## Target Market and Warranty
+This model is ideal for families, road trips, and carpooling. It has a customer rating of 4.5/5 and comes with a 5-year/60,000-mile warranty.
+
+# Tempest Lumora — Specifications
+## Basic Information
+Tempest Lumora is priced at $55,000. It features a 3.0L V6 Turbo Petrol engine with a 9-speed Automatic transmission. The vehicle achieves 24 MPG in the city and 33 MPG on the highway.
+
+## Features and Luxury
+Tempest Lumora includes leather interior, adaptive cruise control, 14-speaker audio system, and wireless charging capabilities. It was awarded 2023 Executive Car of the Year.
+
+## Target Market and Warranty
+Tempest Lumora model is designed for executives and luxury seekers. It has a customer rating of 4.7/5 and comes with a 5-year/60,000-mile warranty.
+
+# Tempest Stormline - Specifications
+## Basic Information
+Tempest Stormline is Smart Hybrid Car priced at $28,000. It features a 1.6L Hybrid engine combining petrol and electric power with an e-CVT transmission. The vehicle achieves an impressive 50 MPG combined fuel efficiency.
+
+## Features and Technology
+Tempest Stormline includes hybrid engine technology, advanced driver assistance systems, spacious interior, and wireless Apple CarPlay/Android Auto integration. It was awarded 2024 Green Car Innovation.
+
+## Target Market and Warranty
+This model is perfect for eco-conscious families and tech-savvy buyers. It has a customer rating of 4.8/5 and comes with an extended 8-year/100,000-mile warranty for the hybrid system.
+
+## Competitive Advantages
+Tempest Stormline outperforms Model A in efficiency and Model B in space, while offering lower running costs compared to traditional vehicles in its class.
+
+# Tempest Auron — Specifications
+## Basic Information
+Tempest Auron is priced at $28,000.
+
+## Features and Technology
+Tempest Auron includes hybrid engine technology, advanced driver assistance systems, spacious interior, and wireless Apple CarPlay/Android Auto integration. It was awarded 2024 Green Car Innovation.
+
+## Target Market and Warranty
+Tempest Auron is perfect for eco-conscious families and tech-savvy buyers. It has a customer rating of 4.8/5 and comes with an extended 8-year/100,000-mile warranty for the hybrid system.
+
+## Competitive Advantages
+Tempest Auron outperforms Tempest Strider in efficiency and Tempest Solis in space, while offering lower running costs compared to traditional vehicles in its class.
+
+# Tempest Altura — Specifications
+## Basic Information
+Tempest Altura is priced at $42,000.
+
+## Capability and Features
+Tempest Altura includes selectable terrain modes, 5,000 lb towing capacity, roof rails, 360-degree camera, and advanced lane-keep assist. Awarded 2023 Adventure SUV of the Year.
+
+## Target Market and Warranty
+Ideal for active families and outdoor enthusiasts needing cargo and towing flexibility. Customer rating: 4.4/5. Warranty: 5 years/60,000 miles.
+
+# Tempest Zephyr — (NEW, competitive disruptor)
+## Basic Information
+Tempest Zephyr is priced at $27,500. It features a next-gen 1.6L Atkinson-cycle hybrid with a 1.9 kWh battery and e-CVT.
+
+## Why it matters
+Tempest Zephyr Delivers 54 MPG combined, 0–60 mph in 7.8 seconds, and a spacious cabin rivaling Tempest Solis. Includes advanced driver assistance, wireless CarPlay/Android Auto, and a heat pump.
+
+## Competitive Edge
+Tempest Zephyr Outperforms Tempest Strider in efficiency, approaches Tempest Solis in space, and undercuts Tempest Auron on price while matching or exceeding its features.
+
+## Warranty and Ratings
+Tempest Zephyr system warranty: 10 years/120,000 miles. Customer rating (early reviews): 4.9/5.
+
+# Customer Services and Support
+## Roadside Assistance and Financing
+All Tempest models come with 24/7 roadside assistance for 3 years. The company offers flexible financing options, trade-in programs, and a 7-day return policy for customer convenience.
+
+## Service Network and Customer Satisfaction
+Tempest operates 1,200+ authorized service centers worldwide. The company maintains a 96% customer satisfaction rate based on their 2023 survey results.
+
+## Digital Services and Loyalty Program
+Tempest Connect is a mobile app providing remote diagnostics, service booking, and vehicle tracking capabilities. The loyalty program allows customers to earn points for every service, which can be redeemed for accessories and discounts.
+
+# Comparison Format (Template)
+Use this template to compare two models side-by-side.
+
+- Purpose: Compare [Model X] vs [Model Y] for [use-case/budget].
+- Key Criteria:
+  - Price: [X] vs [Y]
+  - Powertrain: [X] vs [Y]
+  - Efficiency (MPG or Range): [X] vs [Y]
+  - Interior/Space: [X] vs [Y]
+  - Technology/Safety: [X] vs [Y]
+  - Warranty: [X] vs [Y]
+  - Unique Advantages: [X advantage]; [Y advantage]
+- Recommended For:
+  - Choose [Model X] if you prioritize [reason]
+  - Choose [Model Y] if you prioritize [reason]

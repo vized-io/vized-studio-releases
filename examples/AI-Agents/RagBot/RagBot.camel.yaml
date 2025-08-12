@@ -1,0 +1,258 @@
+
+- route:
+    id: ragbot-http
+    from:
+      id: httpInputFrom
+      uri: platform-http:/ragbot
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - to:
+            id: toProcessQueryHttp
+            uri: direct:process-query
+        - setHeader:
+            expression:
+              constant: text/plain
+            name: Content-Type
+        - setBody:
+            id: setText
+            expression:
+              simple: ${exchangeProperty.aiText}
+- route:
+    id: ragbot-console
+    from:
+      id: consoleInputFrom
+      uri: |-
+        stream:in?promptMessage=
+         RAGBot> Enter your question: 
+      steps:
+        - to:
+            id: toProcessQuery
+            uri: direct:process-query
+- route:
+    id: gemini-text-embed
+    from:
+      uri: direct:geminiEmbeddings
+      steps:
+        - removeHeaders:
+            pattern: CamelHttp*
+        - setHeader:
+            id: set-content-type
+            expression:
+              constant:
+                expression: application/json
+            name: Content-Type
+        - setBody:
+            id: build-embed-request
+            expression:
+              simple:
+                expression: >
+                  {
+                    "content": {
+                      "parts": [ { "text": "${exchangeProperty.originalQuestion}" } ]
+                    },
+                    "taskType": "RETRIEVAL_DOCUMENT"
+                  }
+        - to:
+            id: invoke-gemini
+            uri: https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.embedding.model}}:embedContent
+            parameters:
+              bridgeEndpoint: "false"
+              copyHeaders: "false"
+              followRedirects: "true"
+              httpMethod: POST
+              key: "{{ragbot.embedding.api_key}}"
+              useSystemProperties: "false"
+        - unmarshal:
+            id: unmarshal-json
+            json:
+              library: Jackson
+        - setProperty:
+            id: set embeddings
+            expression:
+              simple:
+                expression: ${body[embedding][values]}
+            name: questionEmbedding
+        - setProperty:
+            expression:
+              simple:
+                expression: ${body[embedding][values].size()}
+            name: embeddingSize
+        - log:
+            id: log-embedding
+            message: "Generated embeddings: ${exchangeProperty.embeddingSize}"
+- route:
+    id: chromaSearch
+    from:
+      uri: direct:searchChroma
+      steps:
+        - setHeader:
+            id: setContentType
+            expression:
+              constant:
+                expression: application/json
+            name: Content-Type
+        - setBody:
+            id: build-search-request
+            expression:
+              simple:
+                expression: |
+                  {
+                    "query_embeddings": [${exchangeProperty.questionEmbedding}],
+                    "n_results": 8,
+                    "include": ["documents", "metadatas", "distances"]
+                  }
+        - to:
+            id: invoke-chroma
+            uri: http://localhost:8000/api/v2/tenants/{{ragbot.chroma.tenant}}/databases/{{ragbot.chroma.database}}/collections/{{ragbot.chroma.collection}}/query
+            parameters:
+              httpMethod: POST
+        - unmarshal:
+            id: unmarshal-chroma-json
+            json:
+              library: Jackson
+        - setProperty:
+            id: setChromaResponse
+            expression:
+              jsonpath: $.documents[0]
+            name: searchResult
+        - setProperty:
+            id: setContextString
+            expression:
+              groovy: |
+                def documents = exchange.getProperty('searchResult')
+                if (documents && documents.size() > 0) {
+                  return documents.join(' ')
+                } else {
+                  return "No relevant context found."
+                }
+            name: contextString
+- route:
+    id: process-query
+    from:
+      id: processQueryFrom
+      uri: direct:process-query
+      steps:
+        - log:
+            message: "Processing query: ${body}"
+        - choice:
+            id: requestTypeChoice
+            otherwise:
+              steps:
+                - setProperty:
+                    expression:
+                      simple: ${body}
+                    name: originalQuestion
+            when:
+              - steps:
+                  - unmarshal:
+                      json:
+                        library: Jackson
+                  - setProperty:
+                      expression:
+                        jsonpath: $.question
+                      name: originalQuestion
+                expression:
+                  simple: ${headers[Content-Type]} contains 'application/json'
+        - to:
+            id: toSearchContext
+            uri: direct:search-context
+        - to:
+            id: toGenerateResponse
+            uri: direct:generate-response
+- route:
+    id: search-context
+    from:
+      id: searchContextFrom
+      uri: direct:search-context
+      steps:
+        - log:
+            logName: org.example.ragbot.search
+            message: "Generating embeddings for query: ${exchangeProperty.originalQuestion}"
+        - to:
+            uri: direct:geminiEmbeddings
+        - log:
+            message: Searching for relevant context in vector database...
+        - to:
+            uri: direct:searchChroma
+        - log:
+            message: "Search result: ${exchangeProperty.searchResult}"
+        - choice:
+            id: emptyContextChoice
+            when:
+              - steps:
+                  - setProperty:
+                      expression:
+                        constant: No specific information found in the knowledge base. Providing a
+                          general response.
+                      name: contextString
+                expression:
+                  simple: ${exchangeProperty.contextString} == ''
+- route:
+    id: generate-response
+    from:
+      id: generateResponseFrom
+      uri: direct:generate-response
+      steps:
+        - removeHeaders:
+            pattern: CamelHttp*
+        - log:
+            message: Generating response with context...
+        - setBody:
+            expression:
+              groovy: >
+                import org.apache.camel.util.json.JsonObject
+
+
+                String prompt = """
+                  You are a helpful assistant. Use the provided context to answer questions accurately. 
+                  
+                  Context: ${exchange.getProperty('contextString')}
+                  
+                  Question: ${exchange.getProperty('originalQuestion')}
+                  
+                  Please provide a helpful answer based on the context provided.
+                """
+
+
+                def request = [
+                  contents: [
+                    [
+                      parts: [
+                        [
+                          text: prompt
+                        ]
+                      ]
+                    ]
+                  ],
+                  generationConfig: [
+                    temperature: 1,
+                    topP: 0.95
+                  ]
+                ]
+
+
+                return new JsonObject(request).toJson()
+        - setHeader:
+            expression:
+              constant: application/json
+            name: Content-Type
+        - to:
+            id: toGeminiApi
+            uri: https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.llm.model}}:generateContent
+            parameters:
+              bridgeEndpoint: "false"
+              httpMethod: POST
+              key: "{{ragbot.api.key}}"
+        - unmarshal:
+            id: unmarshalGeminiJson
+            json:
+              library: Jackson
+        - setProperty:
+            id: setAiText
+            expression:
+              jsonpath: $.candidates[0].content.parts[0].text
+            name: aiText
+        - log:
+            id: logAiText
+            message: ${exchangeProperty.aiText}

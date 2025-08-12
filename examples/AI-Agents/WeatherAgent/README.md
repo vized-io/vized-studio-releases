@@ -1,4 +1,4 @@
-# Weather AI Agent with with VIZED & Apache Camel
+# Weather AI Agent with VIZED & Apache Camel
 
 ## What is a Weather AI Agent?
 

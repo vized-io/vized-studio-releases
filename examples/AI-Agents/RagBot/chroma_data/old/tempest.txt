@@ -1,0 +1,85 @@
+# Tempest Motors Company Overview
+## Company Information
+Tempest Motors was founded in 1985 in Detroit, Michigan. The company employs 12,000 people worldwide and operates in 30+ countries with 1,200 dealerships. Their mission is to deliver innovative, sustainable, and affordable mobility solutions.
+
+## Sustainability and Awards
+Tempest Motors has achieved a 40% reduction in manufacturing emissions since 2015. All plants have been powered by renewable energy since 2022. The company has received several awards including 2023 Global Green Mobility Leader and 2022 JD Power Customer Service Champion.
+
+## Community Programs
+Tempest Motors runs a 'Drive for Education' program, donating vehicles and scholarships to underprivileged students. This demonstrates their commitment to community development and education.
+
+# Tempest Strider — Specifications
+## Basic Information
+Tempest Strider is priced at $25,000.  It features a 1.5L I4 Petrol engine with a 6-speed Automatic transmission. The vehicle achieves 32 MPG in the city and 40 MPG on the highway.
+
+## Features and Safety
+Tempest Strider includes compact design, smart infotainment system, rear parking sensors, and 6 airbags for comprehensive safety protection. It was awarded 2023 Urban Car of the Year.
+
+## Target Market and Warranty
+Tempest Strider is best suited for city commuters and first-time buyers. It has a customer rating of 4.2/5 and comes with a 3-year/36,000-mile warranty.
+
+# Tempest Solis — Specifications
+## Basic Information
+Tempest Solis is priced at $35,000. It features a 2.0L I4 Turbo Petrol engine with an 8-speed Automatic transmission. The vehicle achieves 28 MPG in the city and 36 MPG on the highway.
+
+## Features and Comfort
+Tempest Solis is a 7-seater with panoramic sunroof, advanced safety suite, and rear entertainment system. It was awarded 2023 Best Family Car.
+
+## Target Market and Warranty
+This model is ideal for families, road trips, and carpooling. It has a customer rating of 4.5/5 and comes with a 5-year/60,000-mile warranty.
+
+# Tempest Lumora — Specifications
+## Basic Information
+Tempest Lumora is priced at $55,000.
+
+## Features and Luxury
+Tempest Lumora includes leather interior, adaptive cruise control, 14-speaker audio system, and wireless charging capabilities. It was awarded 2023 Executive Car of the Year.
+
+## Target Market and Warranty
+Tempest Lumora model is designed for executives and luxury seekers. It has a customer rating of 4.7/5 and comes with a 5-year/60,000-mile warranty.
+
+# Tempest Trailblazer X SUV - Specifications
+## Basic Information
+Tempest Trailblazer X SUV is priced at $42,000.
+
+## Capability and Features
+Tempest Trailblazer includes selectable terrain modes, 5,000 lb towing capacity, roof rails, 360-degree camera, and advanced lane-keep assist. Awarded 2023 Adventure SUV of the Year.
+
+## Target Market and Warranty
+Tempest Trailblazer is Ideal for active families and outdoor enthusiasts needing cargo and towing flexibility. Customer rating: 4.4/5. Warranty: 5 years/60,000 miles.
+
+# Tempest Ignis — Specifications
+## Basic Information
+Tempest Ignis is priced at $30,000 MSRP (approx. $27,500 after incentives). It features a 55 kWh battery pack with an EPA-estimated range of 250 miles.
+
+## Charging and Performance
+DC fast charging up to 120 kW enables 10–80% in ~32 minutes. 0–60 mph in 6.9 seconds. Heat pump for efficiency in cold climates.
+
+## Tech and Warranty
+Features OTA updates, one-pedal driving, connected navigation with charger availability, and wireless smartphone integration. Battery warranty: 8 years/100,000 miles.
+
+# Customer Services and Support
+## Roadside Assistance and Financing
+All Tempest models come with 24/7 roadside assistance for 3 years. The company offers flexible financing options, trade-in programs, and a 7-day return policy for customer convenience.
+
+## Service Network and Customer Satisfaction
+Tempest operates 1,200+ authorized service centers worldwide. The company maintains a 96% customer satisfaction rate based on their 2023 survey results.
+
+## Digital Services and Loyalty Program
+Tempest Connect is a mobile app providing remote diagnostics, service booking, and vehicle tracking capabilities. The loyalty program allows customers to earn points for every service, which can be redeemed for accessories and discounts.
+
+# Comparison Format (Template)
+Use this template to compare two models side-by-side.
+
+- Purpose: Compare [Model X] vs [Model Y] for [use-case/budget].
+- Key Criteria:
+  - Price: [X] vs [Y]
+  - Powertrain: [X] vs [Y]
+  - Efficiency (MPG or Range): [X] vs [Y]
+  - Interior/Space: [X] vs [Y]
+  - Technology/Safety: [X] vs [Y]
+  - Warranty: [X] vs [Y]
+  - Unique Advantages: [X advantage]; [Y advantage]
+- Recommended For:
+  - Choose [Model X] if you prioritize [reason]
+  - Choose [Model Y] if you prioritize [reason]

@@ -99,7 +99,7 @@ VIZED also supports implementing AI Agents connecting with various LLM APIs to b
 |---------|-------------|
 | [**Email Summariser**](AI-Agents/EmailSummariser) | Summarize long email contents for quick view of highlights
 | [**Image Recognition**](AI-Agents/ImageRecognition) | Analyze images to identify objects, scenes, and text |
-| [**RAGBot**](AI-Agents/RAGBot) | Retrieve relevant information from documents using Retrieval-Augmented Generation (RAG) and answer user queries |
+| [**RAGBot**](AI-Agents/RagBot) | Retrieve relevant information from documents using Retrieval-Augmented Generation (RAG) and answer user queries |
 | [**Sentiment Analyser**](AI-Agents/SentimentAnalyser) | Analyze the sentiments of feedbacks and store in mongodb
 | [**Ticket Agent**](AI-Agents/TicketAgent) | Automate analysing sentiments on support requests and prioritize 
 | [**Weather Agent**](AI-Agents/WeatherAgent) | AI to retrieve weather information for a specified location |

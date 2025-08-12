@@ -81,6 +81,11 @@ Create a route to generate a grounded response from the LLM:
 2.  In VIZED, right-click the `RagBot.camel.yaml` file and select **Run**.
 3.  The console will become active, and the HTTP endpoint will be available.
 
+
+
+https://github.com/user-attachments/assets/f70fc0d5-ccc3-44ae-a25a-27ace98e4e4d
+
+
 <!-- *(Placeholder for GIF: Running the project)* -->
 
 ## Testing the RAG Bot

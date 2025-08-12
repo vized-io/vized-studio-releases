@@ -1,0 +1,271 @@
+{
+  "name": "RagBot",
+  "version": "0.0.1",
+  "artifactId": "RagBot",
+  "group": "com.vized.project",
+  "relativePath": "RagBot",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "RagBot.camel.yaml": {
+        "ragbot-http": {
+          "id": "ragbot-http",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/ragbot",
+              "id": "httpInputFrom"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:process-query",
+              "id": "toProcessQueryHttp"
+            }
+          ]
+        },
+        "ragbot-console": {
+          "id": "ragbot-console",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "stream:in?promptMessage=\n RAGBot> Enter your question: ",
+              "id": "consoleInputFrom"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:process-query",
+              "id": "toProcessQuery"
+            }
+          ]
+        },
+        "gemini-text-embed": {
+          "id": "gemini-text-embed",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:geminiEmbeddings"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.embedding.model}}:embedContent",
+              "id": "invoke-gemini"
+            }
+          ]
+        },
+        "chromaSearch": {
+          "id": "chromaSearch",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:searchChroma"
+            }
+          ],
+          "to": [
+            {
+              "uri": "http://localhost:8000/api/v2/tenants/{{ragbot.chroma.tenant}}/databases/{{ragbot.chroma.database}}/collections/{{ragbot.chroma.collection}}/query",
+              "id": "invoke-chroma"
+            }
+          ]
+        },
+        "process-query": {
+          "id": "process-query",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:process-query",
+              "id": "processQueryFrom"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:search-context",
+              "id": "toSearchContext"
+            },
+            {
+              "uri": "direct:generate-response",
+              "id": "toGenerateResponse"
+            }
+          ]
+        },
+        "search-context": {
+          "id": "search-context",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:search-context",
+              "id": "searchContextFrom"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:geminiEmbeddings"
+            },
+            {
+              "uri": "direct:searchChroma"
+            }
+          ]
+        },
+        "generate-response": {
+          "id": "generate-response",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:generate-response",
+              "id": "generateResponseFrom"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.llm.model}}:generateContent",
+              "id": "toGeminiApi"
+            }
+          ]
+        }
+      },
+      "backup/RagBotV1.camel.yaml": {
+        "ragbot-api": {
+          "id": "ragbot-api",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "jetty:http://0.0.0.0:8888/ask"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "ragbot-console": {
+          "id": "ragbot-console",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "stream:in?promptMessage=\n RAGBot> Enter your question: "
+            }
+          ],
+          "to": [
+            {},
+            {}
+          ]
+        },
+        "process-query": {
+          "id": "process-query",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:process-query"
+            }
+          ],
+          "to": [
+            {},
+            {},
+            {}
+          ]
+        },
+        "load-knowledge": {
+          "id": "load-knowledge",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:load-knowledge"
+            }
+          ],
+          "to": []
+        },
+        "search-context": {
+          "id": "search-context",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:search-context"
+            }
+          ],
+          "to": []
+        },
+        "generate-response": {
+          "id": "generate-response",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:generate-response"
+            }
+          ],
+          "to": [
+            {}
+          ]
+        },
+        "call-llm": {
+          "id": "call-llm",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:call-llm"
+            }
+          ],
+          "to": [
+            {
+              "uri": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            },
+            {},
+            {}
+          ]
+        },
+        "format-llm-response": {
+          "id": "format-llm-response",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:format-llm-response"
+            }
+          ],
+          "to": []
+        },
+        "fallback-response": {
+          "id": "fallback-response",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:fallback-response"
+            }
+          ],
+          "to": []
+        },
+        "ragbot-health": {
+          "id": "ragbot-health",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "jetty:http://0.0.0.0:8888/health"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "RagBot.camel.yaml": [],
+      "backup/RagBotV1.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": [
+      "ragbot.service.version",
+      "ragbot.embedding.api_key",
+      "ragbot.embedding.model",
+      "ragbot.llm.model",
+      "ragbot.api.key",
+      "ragbot.chroma.host",
+      "ragbot.chroma.port",
+      "ragbot.chroma.tenant",
+      "ragbot.chroma.database",
+      "ragbot.chroma.collection",
+      "camel.server.enabled",
+      "camel.server.staticEnabled"
+    ]
+  }
+}

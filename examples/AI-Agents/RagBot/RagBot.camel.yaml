@@ -3,50 +3,50 @@
     id: ragbot-http
     from:
       id: httpInputFrom
-      uri: "platform-http:/ragbot"
+      uri: platform-http:/ragbot
       parameters:
         httpMethodRestrict: POST
-        # bridgeEndpoint: "false"
       steps:
         - to:
             id: toProcessQueryHttp
-            uri: "direct:process-query"
+            uri: direct:process-query
         - setHeader:
-            name: "Content-Type"
             expression:
-              constant: "text/plain"
+              constant: text/plain
+            name: Content-Type
         - setBody:
+            id: setText
             expression:
-              simple: "${exchangeProperty.aiText}"
-
+              simple: ${exchangeProperty.aiText}
 - route:
     id: ragbot-console
     from:
-      uri: "stream:in?promptMessage=\n RAGBot> Enter your question: "
       id: consoleInputFrom
+      uri: |-
+        stream:in?promptMessage=
+         RAGBot> Enter your question: 
       steps:
         - to:
             id: toProcessQuery
-            uri: "direct:process-query"
-
+            uri: direct:process-query
 - route:
-    id: "gemini-text-embed"
+    id: gemini-text-embed
     from:
-      uri: "direct:geminiEmbeddings"
+      uri: direct:geminiEmbeddings
       steps:
         - removeHeaders:
-            pattern: "CamelHttp*"
+            pattern: CamelHttp*
         - setHeader:
-            id: "set-content-type"
-            name: "Content-Type"
+            id: set-content-type
             expression:
               constant:
-                expression: "application/json"
+                expression: application/json
+            name: Content-Type
         - setBody:
-            id: "build-embed-request"
+            id: build-embed-request
             expression:
               simple:
-                expression: |
+                expression: >
                   {
                     "content": {
                       "parts": [ { "text": "${exchangeProperty.originalQuestion}" } ]
@@ -54,47 +54,46 @@
                     "taskType": "RETRIEVAL_DOCUMENT"
                   }
         - to:
-            id: "invoke-gemini"
-            uri: "https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.embedding.model}}:embedContent"
+            id: invoke-gemini
+            uri: https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.embedding.model}}:embedContent
             parameters:
-              key: "{{ragbot.embedding.api_key}}"
-              httpMethod: "POST"
               bridgeEndpoint: "false"
-              followRedirects: "true"
-              useSystemProperties: "false"
               copyHeaders: "false"
+              followRedirects: "true"
+              httpMethod: POST
+              key: "{{ragbot.embedding.api_key}}"
+              useSystemProperties: "false"
         - unmarshal:
-            id: "unmarshal-json"
+            id: unmarshal-json
             json:
               library: Jackson
         - setProperty:
-            id: "set embeddings"
-            name: "questionEmbedding"
+            id: set embeddings
             expression:
               simple:
-                expression: "${body[embedding][values]}"
+                expression: ${body[embedding][values]}
+            name: questionEmbedding
         - setProperty:
-            name: "embeddingSize"
             expression:
               simple:
-                expression: "${body[embedding][values].size()}"
+                expression: ${body[embedding][values].size()}
+            name: embeddingSize
         - log:
-            id: "log-embedding"
+            id: log-embedding
             message: "Generated embeddings: ${exchangeProperty.embeddingSize}"
-
 - route:
-    id: "chromaSearch"
+    id: chromaSearch
     from:
-      uri: "direct:searchChroma"
+      uri: direct:searchChroma
       steps:
         - setHeader:
-            id: "setContentType"
-            name: "Content-Type"
+            id: setContentType
             expression:
               constant:
-                expression: "application/json"
+                expression: application/json
+            name: Content-Type
         - setBody:
-            id: "build-search-request"
+            id: build-search-request
             expression:
               simple:
                 expression: |
@@ -104,22 +103,21 @@
                     "include": ["documents", "metadatas", "distances"]
                   }
         - to:
-            id: "invoke-chroma"
-            uri: "http://localhost:8000/api/v2/tenants/{{ragbot.chroma.tenant}}/databases/{{ragbot.chroma.database}}/collections/{{ragbot.chroma.collection}}/query"
+            id: invoke-chroma
+            uri: http://localhost:8000/api/v2/tenants/{{ragbot.chroma.tenant}}/databases/{{ragbot.chroma.database}}/collections/{{ragbot.chroma.collection}}/query
             parameters:
-              httpMethod: "POST"
+              httpMethod: POST
         - unmarshal:
-            id: "unmarshal-chroma-json"
+            id: unmarshal-chroma-json
             json:
               library: Jackson
         - setProperty:
-            id: "setChromaResponse"
-            name: "searchResult"
+            id: setChromaResponse
             expression:
-              jsonpath: "$.documents[0]"
+              jsonpath: $.documents[0]
+            name: searchResult
         - setProperty:
-            id: "setContextString"
-            name: "contextString"
+            id: setContextString
             expression:
               groovy: |
                 def documents = exchange.getProperty('searchResult')
@@ -128,83 +126,83 @@
                 } else {
                   return "No relevant context found."
                 }
-
+            name: contextString
 - route:
     id: process-query
     from:
-      uri: "direct:process-query"
       id: processQueryFrom
+      uri: direct:process-query
       steps:
         - log:
             message: "Processing query: ${body}"
         - choice:
             id: requestTypeChoice
+            otherwise:
+              steps:
+                - setProperty:
+                    expression:
+                      simple: ${body}
+                    name: originalQuestion
             when:
-              - expression:
-                  simple: "${headers[Content-Type]} contains 'application/json'"
-                steps:
+              - steps:
                   - unmarshal:
                       json:
                         library: Jackson
                   - setProperty:
-                      name: "originalQuestion"
                       expression:
-                        jsonpath: "$.question"
-            otherwise:
-              steps:
-                - setProperty:
-                    name: "originalQuestion"
-                    expression:
-                      simple: "${body}"
+                        jsonpath: $.question
+                      name: originalQuestion
+                expression:
+                  simple: ${headers[Content-Type]} contains 'application/json'
         - to:
-            uri: "direct:search-context"
             id: toSearchContext
+            uri: direct:search-context
         - to:
-            uri: "direct:generate-response"
             id: toGenerateResponse
-
+            uri: direct:generate-response
 - route:
     id: search-context
     from:
-      uri: "direct:search-context"
       id: searchContextFrom
+      uri: direct:search-context
       steps:
         - log:
+            logName: org.example.ragbot.search
             message: "Generating embeddings for query: ${exchangeProperty.originalQuestion}"
-            logName: "org.example.ragbot.search"
-        - to: 
-            uri: "direct:geminiEmbeddings"
-        - log:
-            message: "Searching for relevant context in vector database..."
         - to:
-            uri: "direct:searchChroma"
+            uri: direct:geminiEmbeddings
+        - log:
+            message: Searching for relevant context in vector database...
+        - to:
+            uri: direct:searchChroma
         - log:
             message: "Search result: ${exchangeProperty.searchResult}"
         - choice:
             id: emptyContextChoice
             when:
-              - expression:
-                  simple: "${exchangeProperty.contextString} == ''"
-                steps:
+              - steps:
                   - setProperty:
-                      name: "contextString"
                       expression:
-                        constant: "No specific information found in the knowledge base. Providing a general response."
-
+                        constant: No specific information found in the knowledge base. Providing a
+                          general response.
+                      name: contextString
+                expression:
+                  simple: ${exchangeProperty.contextString} == ''
 - route:
     id: generate-response
     from:
-      uri: "direct:generate-response"
       id: generateResponseFrom
+      uri: direct:generate-response
       steps:
         - removeHeaders:
-            pattern: "CamelHttp*"
+            pattern: CamelHttp*
         - log:
-            message: "Generating response with context..."
+            message: Generating response with context...
         - setBody:
             expression:
-              groovy: |
+              groovy: >
                 import org.apache.camel.util.json.JsonObject
+
 
                 String prompt = """
                   You are a helpful assistant. Use the provided context to answer questions accurately. 
@@ -215,7 +213,8 @@
                   
                   Please provide a helpful answer based on the context provided.
                 """
-                
+
+
                 def request = [
                   contents: [
                     [
@@ -231,31 +230,29 @@
                     topP: 0.95
                   ]
                 ]
-                
+
+
                 return new JsonObject(request).toJson()
         - setHeader:
-            name: "Content-Type"
             expression:
-              constant: "application/json"
+              constant: application/json
+            name: Content-Type
         - to:
             id: toGeminiApi
-            uri: "https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.llm.model}}:generateContent"
+            uri: https://generativelanguage.googleapis.com/v1beta/models/{{ragbot.llm.model}}:generateContent
             parameters:
-              key: "{{ragbot.api.key}}"
-              httpMethod: "POST"
               bridgeEndpoint: "false"
+              httpMethod: POST
+              key: "{{ragbot.api.key}}"
         - unmarshal:
             id: unmarshalGeminiJson
             json:
               library: Jackson
-        # - log:
-        #     id: logAiRes
-        #     message: "Response: ${body}"
         - setProperty:
             id: setAiText
-            name: "aiText"
             expression:
-              jsonpath: "$.candidates[0].content.parts[0].text"
+              jsonpath: $.candidates[0].content.parts[0].text
+            name: aiText
         - log:
             id: logAiText
-            message: "${exchangeProperty.aiText}"
+            message: ${exchangeProperty.aiText}

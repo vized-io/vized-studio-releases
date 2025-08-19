@@ -1,0 +1,114 @@
+[
+  {
+    "requestId": "REQ-2024-001",
+    "customerId": "CUST-12345",
+    "firstName": "John",
+    "lastName": "Smith",
+    "email": "john.smith@email.com",
+    "phoneNumber": "+1-555-0123",
+    "ssn": "123-45-6789",
+    "dateOfBirth": "1985-03-15",
+    "address": {
+      "street": "123 Main Street",
+      "city": "New York",
+      "state": "NY",
+      "zipCode": "10001"
+    },
+    "employmentInfo": {
+      "employer": "Tech Solutions Inc",
+      "jobTitle": "Software Engineer",
+      "employmentLength": "3 years",
+      "employmentStatus": "FULL_TIME"
+    },
+    "monthlyIncome": 8500.00,
+    "monthlyDebt": 2200.00,
+    "requestedAmount": 250000.00,
+    "loanPurpose": "HOME_PURCHASE",
+    "loanTerm": 30,
+    "applicationDate": "2024-01-15T10:30:00Z"
+  },
+  {
+    "requestId": "REQ-2024-002", 
+    "customerId": "CUST-67890",
+    "firstName": "Sarah",
+    "lastName": "Johnson",
+    "email": "sarah.johnson@email.com",
+    "phoneNumber": "+1-555-0456",
+    "ssn": "987-65-4321",
+    "dateOfBirth": "1990-07-22",
+    "address": {
+      "street": "456 Oak Avenue",
+      "city": "Los Angeles",
+      "state": "CA", 
+      "zipCode": "90210"
+    },
+    "employmentInfo": {
+      "employer": "Marketing Dynamics LLC",
+      "jobTitle": "Marketing Manager",
+      "employmentLength": "5 years",
+      "employmentStatus": "FULL_TIME"
+    },
+    "monthlyIncome": 6200.00,
+    "monthlyDebt": 1800.00,
+    "requestedAmount": 35000.00,
+    "loanPurpose": "AUTO_LOAN",
+    "loanTerm": 5,
+    "applicationDate": "2024-01-15T14:45:00Z"
+  },
+  {
+    "requestId": "REQ-2024-003",
+    "customerId": "CUST-11111", 
+    "firstName": "Michael",
+    "lastName": "Brown",
+    "email": "michael.brown@email.com",
+    "phoneNumber": "+1-555-0789",
+    "ssn": "456-78-9123",
+    "dateOfBirth": "1978-11-08",
+    "address": {
+      "street": "789 Pine Street",
+      "city": "Chicago",
+      "state": "IL",
+      "zipCode": "60601"
+    },
+    "employmentInfo": {
+      "employer": "Construction Corp",
+      "jobTitle": "Project Manager",
+      "employmentLength": "8 years",
+      "employmentStatus": "FULL_TIME"
+    },
+    "monthlyIncome": 7800.00,
+    "monthlyDebt": 4200.00,
+    "requestedAmount": 15000.00,
+    "loanPurpose": "PERSONAL_LOAN",
+    "loanTerm": 3,
+    "applicationDate": "2024-01-15T16:20:00Z"
+  },
+  {
+    "requestId": "REQ-2024-004",
+    "customerId": "CUST-22222",
+    "firstName": "Emily",
+    "lastName": "Davis",
+    "email": "emily.davis@email.com", 
+    "phoneNumber": "+1-555-0321",
+    "ssn": "789-12-3456",
+    "dateOfBirth": "1992-05-03",
+    "address": {
+      "street": "321 Elm Drive",
+      "city": "Austin",
+      "state": "TX",
+      "zipCode": "73301"
+    },
+    "employmentInfo": {
+      "employer": "Healthcare Partners",
+      "jobTitle": "Registered Nurse",
+      "employmentLength": "2 years",
+      "employmentStatus": "FULL_TIME"
+    },
+    "monthlyIncome": 5500.00,
+    "monthlyDebt": 1200.00,
+    "requestedAmount": 180000.00,
+    "loanPurpose": "HOME_PURCHASE",
+    "loanTerm": 30,
+    "applicationDate": "2024-01-15T09:15:00Z"
+  }
+]

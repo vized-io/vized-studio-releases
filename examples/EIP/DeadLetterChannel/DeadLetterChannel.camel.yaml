@@ -109,7 +109,7 @@
         useOriginalBody: true
         redeliveryPolicy:
           maximumRedeliveries: 2
-          redeliveryDelay: 1000
+          redeliveryDelay: "1000"
           backOffMultiplier: 2
           useExponentialBackOff: true
     from:

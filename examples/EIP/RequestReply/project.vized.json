@@ -1,0 +1,83 @@
+{
+  "name": "Request-Reply Pattern",
+  "description": "Demonstrates the Request-Reply Enterprise Integration Pattern using a Customer Credit Check System scenario",
+  "version": "1.0.0",
+  "type": "integration",
+  "author": "VIZED Examples",
+  "tags": ["EIP", "Request-Reply", "Credit-Check", "Synchronous", "Financial"],
+  "camelVersion": "4.0.0",
+  "runtime": "camel-jbang",
+  "mainClass": "RequestReply.camel.yaml",
+  "dependencies": [
+    "camel-platform-http",
+    "camel-jackson",
+    "camel-jsonpath",
+    "camel-file",
+    "camel-direct",
+    "camel-log",
+    "camel-groovy"
+  ],
+  "routes": [
+    {
+      "id": "loan-application-processor",
+      "description": "Main route that processes loan applications and performs credit checks",
+      "pattern": "Request-Reply"
+    },
+    {
+      "id": "credit-bureau-service-route", 
+      "description": "Mock credit bureau service that responds to credit check requests",
+      "pattern": "Service"
+    },
+    {
+      "id": "health-check-route",
+      "description": "Health check endpoint for monitoring service status",
+      "pattern": "Health Check"
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "http",
+      "path": "/api/loan-application",
+      "method": "POST",
+      "description": "Primary REST API endpoint for loan application submission"
+    },
+    {
+      "type": "http",
+      "path": "/index.html",
+      "method": "GET",
+      "description": "Web interface for testing loan applications"
+    },
+    {
+      "type": "file",
+      "path": "loan-applications/incoming",
+      "description": "Batch processing directory for bulk loan application files"
+    },
+    {
+      "type": "file", 
+      "path": "loan-applications/processed",
+      "description": "Output directory for processed loan decisions"
+    },
+    {
+      "type": "http",
+      "path": "/health",
+      "method": "GET",
+      "description": "Health check endpoint"
+    }
+  ],
+  "businessScenario": {
+    "domain": "Financial Services",
+    "useCase": "Loan Application Credit Check",
+    "description": "A loan processing system that needs to check customer credit scores with a credit bureau before making loan approval decisions. This demonstrates the Request-Reply pattern where the system sends customer data to a credit service and waits for a response containing credit score and recommendation.",
+    "benefits": [
+      "Synchronous processing ensures loan decisions are based on current credit data",
+      "Reliable request-reply communication with timeout handling",
+      "Clear separation between request preparation and response processing",
+      "Scalable pattern for integrating with external services"
+    ]
+  },
+  "sampleData": {
+    "input": "loan-applications/incoming/loan-applications.json",
+    "output": "loan-applications/processed/",
+    "description": "Sample loan applications with customer data that will be processed through credit checks"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "DeadLetterChannel",
+  "description": "IoT Sensor Data Processing with Dead Letter Channel EIP - Handle sensor data failures gracefully using Apache Camel's Dead Letter Channel pattern",
+  "version": "1.0.0",
+  "type": "integration",
+  "runtime": "camel-jbang",
+  "main": "DeadLetterChannel.camel.yaml",
+  "dependencies": [
+    "camel-timer",
+    "camel-file",
+    "camel-direct",
+    "camel-log",
+    "camel-groovy",
+    "camel-jsonpath",
+    "camel-bean"
+  ],
+  "tags": [
+    "EIP",
+    "Dead Letter Channel",
+    "Error Handling",
+    "IoT",
+    "Sensor Data",
+    "Retry",
+    "Failure Recovery"
+  ],
+  "author": "VIZED Examples",
+  "license": "Apache-2.0",
+  "created": "2024-12-19",
+  "scenarios": [
+    {
+      "name": "IoT Sensor Data Processing",
+      "description": "Process IoT sensor data with automatic error handling and dead letter queue for failed messages"
+    }
+  ]
+}

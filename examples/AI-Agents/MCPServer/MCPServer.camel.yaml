@@ -1,0 +1,765 @@
+# MCP Server - Model Context Protocol Implementation
+# Apache Camel YAML DSL
+
+# Health Check Route
+- route:
+    id: mcp-health-route
+    from:
+      uri: jetty:http://0.0.0.0:8081/health
+      steps:
+        - setBody:
+            id: health-response
+            expression:
+              groovy: |
+                import java.time.Instant
+                def timestamp = Instant.now().toString()
+                def uptime = System.currentTimeMillis()
+                return """{
+                  "status": "healthy",
+                  "timestamp": "${timestamp}",
+                  "version": "1.0.0",
+                  "uptime": ${uptime},
+                  "services": {
+                    "mcp": "running",
+                    "database": "connected",
+                    "resources": "available"
+                  }
+                }"""
+        - setHeader:
+            id: health-content-type
+            name: Content-Type
+            constant: application/json
+
+# Main MCP HTTP Endpoint
+- route:
+    id: mcp-http-endpoint
+    from:
+      uri: jetty:http://0.0.0.0:8081/mcp
+      parameters:
+        httpMethodRestrict: POST
+      steps:
+        - log:
+            id: log-request
+            message: "MCP Request received: ${body}"
+            loggingLevel: DEBUG
+        - unmarshal:
+            id: unmarshal-json
+            json:
+              library: Jackson
+        - setHeader:
+            id: set-jsonrpc-id
+            name: jsonrpc_id
+            expression:
+              jsonpath: "$.id"
+        - to:
+            id: route-to-main
+            uri: direct:mcp-main
+
+# Main MCP Router
+- route:
+    id: mcp-main-router
+    from:
+      uri: direct:mcp-main
+      steps:
+        - setHeader:
+            id: extract-method
+            name: methodName
+            expression:
+              jsonpath: "$.method"
+        - choice:
+            id: mcp-method-choice
+            when:
+              - simple: "${header.methodName} == 'initialize'"
+                steps:
+                  - to:
+                      id: route-initialize
+                      uri: direct:mcp-initialize
+              - simple: "${header.methodName} startsWith 'resources/'"
+                steps:
+                  - to:
+                      id: route-resources
+                      uri: direct:mcp-resources
+              - simple: "${header.methodName} startsWith 'tools/'"
+                steps:
+                  - to:
+                      id: route-tools
+                      uri: direct:mcp-tools
+              - simple: "${header.methodName} startsWith 'prompts/'"
+                steps:
+                  - to:
+                      id: route-prompts
+                      uri: direct:mcp-prompts
+            otherwise:
+              steps:
+                - setBody:
+                    id: unknown-method-error
+                    expression:
+                      groovy: |
+                        def id = exchange.getIn().getHeader("jsonrpc_id")
+                        return """{
+                          "jsonrpc": "2.0",
+                          "id": "${id}",
+                          "error": {
+                            "code": -32601,
+                            "message": "Method not found"
+                          }
+                        }"""
+                - setHeader:
+                    id: error-content-type
+                    name: Content-Type
+                    constant: application/json
+
+# Initialize Method
+- route:
+    id: mcp-initialize
+    from:
+      uri: direct:mcp-initialize
+      steps:
+        - setBody:
+            id: initialize-response
+            expression:
+              groovy: |
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "protocolVersion": "2025-03-26",
+                    "capabilities": {
+                      "resources": {
+                        "subscribe": true,
+                        "listChanged": true
+                      },
+                      "tools": {},
+                      "prompts": {}
+                    },
+                    "serverInfo": {
+                      "name": "Vized MCP Server",
+                      "version": "1.0.0",
+                      "description": "Apache Camel YAML DSL MCP Server with Database Resources"
+                    }
+                  }
+                }"""
+        - setHeader:
+            id: initialize-content-type
+            name: Content-Type
+            constant: application/json
+
+# Resources Router
+- route:
+    id: mcp-resources-router
+    from:
+      uri: direct:mcp-resources
+      steps:
+        - choice:
+            id: resources-method-choice
+            when:
+              - simple: "${header.methodName} == 'resources/list'"
+                steps:
+                  - to:
+                      id: route-resources-list
+                      uri: direct:mcp-resources-list
+              - simple: "${header.methodName} == 'resources/read'"
+                steps:
+                  - to:
+                      id: route-resources-read
+                      uri: direct:mcp-resources-read
+            otherwise:
+              steps:
+                - setBody:
+                    id: unknown-resource-error
+                    expression:
+                      groovy: |
+                        def id = exchange.getIn().getHeader("jsonrpc_id")
+                        return """{
+                          "jsonrpc": "2.0",
+                          "id": "${id}",
+                          "error": {
+                            "code": -32601,
+                            "message": "Resource method not found"
+                          }
+                        }"""
+
+# Resources List
+- route:
+    id: mcp-resources-list
+    from:
+      uri: direct:mcp-resources-list
+      steps:
+        - setBody:
+            id: resources-list-response
+            expression:
+              groovy: |
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "resources": [
+                      {
+                        "uri": "file://config/server.properties",
+                        "name": "Server Configuration",
+                        "description": "MCP server configuration",
+                        "mimeType": "text/plain"
+                      },
+                      {
+                        "uri": "mysql://localhost:3306/mcp_db",
+                        "name": "MySQL Database",
+                        "description": "MySQL database info",
+                        "mimeType": "application/json"
+                      },
+                      {
+                        "uri": "system://info",
+                        "name": "System Information",
+                        "description": "Current system status",
+                        "mimeType": "application/json"
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: resources-list-content-type
+            name: Content-Type
+            constant: application/json
+
+# Resources Read
+- route:
+    id: mcp-resources-read
+    from:
+      uri: direct:mcp-resources-read
+      steps:
+        - setHeader:
+            id: set-resource-uri
+            name: resourceUri
+            expression:
+              jsonpath: "$.params.uri"
+        - setBody:
+            id: resource-read-response
+            expression:
+              groovy: |
+                def uri = exchange.getIn().getHeader("resourceUri")
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                def content = ""
+                def mimeType = "text/plain"
+                
+                if (uri.startsWith("file://")) {
+                  content = "Sample file content for: " + uri
+                } else if (uri.startsWith("mysql://")) {
+                  mimeType = "application/json"
+                  content = """{
+                    "database": "mcp_db",
+                    "status": "connected",
+                    "tables": ["users", "orders", "products"],
+                    "host": "localhost",
+                    "port": 3306
+                  }"""
+                } else if (uri.startsWith("system://")) {
+                  mimeType = "application/json"
+                  def os = System.getProperty("os.name")
+                  def version = System.getProperty("os.version")
+                  def arch = System.getProperty("os.arch")
+                  def javaVersion = System.getProperty("java.version")
+                  def totalMemory = Runtime.getRuntime().totalMemory()
+                  def freeMemory = Runtime.getRuntime().freeMemory()
+                  def processors = Runtime.getRuntime().availableProcessors()
+                  content = """{
+                    "os": "${os}",
+                    "version": "${version}",
+                    "arch": "${arch}",
+                    "javaVersion": "${javaVersion}",
+                    "totalMemory": ${totalMemory},
+                    "freeMemory": ${freeMemory},
+                    "processors": ${processors}
+                  }"""
+                } else {
+                  content = "Unknown resource type"
+                }
+                
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "contents": [
+                      {
+                        "uri": "${uri}",
+                        "mimeType": "${mimeType}",
+                        "text": ${content}
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: resource-read-content-type
+            name: Content-Type
+            constant: application/json
+
+# Tools Router
+- route:
+    id: mcp-tools-router
+    from:
+      uri: direct:mcp-tools
+      steps:
+        - choice:
+            id: tools-method-choice
+            when:
+              - simple: "${header.methodName} == 'tools/list'"
+                steps:
+                  - to:
+                      id: route-tools-list
+                      uri: direct:mcp-tools-list
+              - simple: "${header.methodName} == 'tools/call'"
+                steps:
+                  - to:
+                      id: route-tools-call
+                      uri: direct:mcp-tools-call
+            otherwise:
+              steps:
+                - setBody:
+                    id: unknown-tools-error
+                    expression:
+                      groovy: |
+                        def id = exchange.getIn().getHeader("jsonrpc_id")
+                        return """{
+                          "jsonrpc": "2.0",
+                          "id": "${id}",
+                          "error": {
+                            "code": -32601,
+                            "message": "Tools method not found"
+                          }
+                        }"""
+
+# Tools List
+- route:
+    id: mcp-tools-list
+    from:
+      uri: direct:mcp-tools-list
+      steps:
+        - setBody:
+            id: tools-list-response
+            expression:
+              groovy: |
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "tools": [
+                      {
+                        "name": "calculator",
+                        "description": "Calculator tool for mathematical operations",
+                        "inputSchema": {
+                          "type": "object",
+                          "properties": {
+                            "operation": {"type": "string", "enum": ["add", "subtract", "multiply", "divide"]},
+                            "a": {"type": "number"},
+                            "b": {"type": "number"}
+                          },
+                          "required": ["operation", "a", "b"]
+                        }
+                      },
+                      {
+                        "name": "text_processor",
+                        "description": "Text processing utilities",
+                        "inputSchema": {
+                          "type": "object",
+                          "properties": {
+                            "action": {"type": "string", "enum": ["uppercase", "lowercase", "reverse", "length"]},
+                            "text": {"type": "string"}
+                          },
+                          "required": ["action", "text"]
+                        }
+                      },
+                      {
+                        "name": "uuid_generator",
+                        "description": "Generate UUIDs",
+                        "inputSchema": {
+                          "type": "object",
+                          "properties": {
+                            "version": {"type": "string", "enum": ["v4"]},
+                            "count": {"type": "number", "minimum": 1, "maximum": 10}
+                          },
+                          "required": ["version"]
+                        }
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: tools-list-content-type
+            name: Content-Type
+            constant: application/json
+
+# Tools Call Router
+- route:
+    id: mcp-tools-call
+    from:
+      uri: direct:mcp-tools-call
+      steps:
+        - setHeader:
+            id: set-tool-name
+            name: toolName
+            expression:
+              jsonpath: "$.params.name"
+        - choice:
+            id: tool-name-choice
+            when:
+              - expression:
+                  simple: "${header.toolName} == 'calculator'"
+                steps:
+                  - to:
+                      id: route-calculator-tool
+                      uri: direct:calculator-tool
+              - expression:
+                  simple: "${header.toolName} == 'text_processor'"
+                steps:
+                  - to:
+                      id: route-text-processor-tool
+                      uri: direct:text-processor-tool
+              - expression:
+                  simple: "${header.toolName} == 'uuid_generator'"
+                steps:
+                  - to:
+                      id: route-uuid-generator-tool
+                      uri: direct:uuid-generator-tool
+            otherwise:
+              steps:
+                - setBody:
+                    id: unknown-tool-error
+                    expression:
+                      groovy: |
+                        def id = exchange.getIn().getHeader("jsonrpc_id")
+                        def toolName = exchange.getIn().getHeader("toolName")
+                        return """{
+                          "jsonrpc": "2.0",
+                          "id": "${id}",
+                          "error": {
+                            "code": -32601,
+                            "message": "Tool not found: ${toolName}"
+                          }
+                        }"""
+
+# Calculator Tool
+- route:
+    id: calculator-tool
+    from:
+      uri: direct:calculator-tool
+      steps:
+        - setBody:
+            id: calculator-implementation
+            expression:
+              groovy: |
+                def request = exchange.getIn().getBody(Map.class)
+                def args = request.params.arguments
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                
+                def operation = args.operation
+                def a = args.a as Double
+                def b = args.b as Double
+                def result
+                
+                switch(operation) {
+                  case "add":
+                    result = a + b
+                    break
+                  case "subtract":
+                    result = a - b
+                    break
+                  case "multiply":
+                    result = a * b
+                    break
+                  case "divide":
+                    if (b == 0) {
+                      return """{
+                        "jsonrpc": "2.0",
+                        "id": "${id}",
+                        "error": {
+                          "code": -32602,
+                          "message": "Division by zero"
+                        }
+                      }"""
+                    }
+                    result = a / b
+                    break
+                  default:
+                    return """{
+                      "jsonrpc": "2.0",
+                      "id": "${id}",
+                      "error": {
+                        "code": -32602,
+                        "message": "Unknown operation: ${operation}"
+                      }
+                    }"""
+                }
+                
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Result: ${result}"
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: calculator-content-type
+            name: Content-Type
+            constant: application/json
+
+# Text Processor Tool
+- route:
+    id: text-processor-tool
+    from:
+      uri: direct:text-processor-tool
+      steps:
+        - setBody:
+            id: text-processor-implementation
+            expression:
+              groovy: |
+                def request = exchange.getIn().getBody(Map.class)
+                def args = request.params.arguments
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                
+                def action = args.action
+                def text = args.text
+                def result = ""
+                
+                switch(action) {
+                  case "uppercase":
+                    result = text.toUpperCase()
+                    break
+                  case "lowercase":
+                    result = text.toLowerCase()
+                    break
+                  case "reverse":
+                    result = text.reverse()
+                    break
+                  case "length":
+                    result = "Length: " + text.length()
+                    break
+                  default:
+                    return """{
+                      "jsonrpc": "2.0",
+                      "id": "${id}",
+                      "error": {
+                        "code": -32602,
+                        "message": "Unknown action: ${action}"
+                      }
+                    }"""
+                }
+                
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "${result}"
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: text-processor-content-type
+            name: Content-Type
+            constant: application/json
+
+# UUID Generator Tool
+- route:
+    id: uuid-generator-tool
+    from:
+      uri: direct:uuid-generator-tool
+      steps:
+        - setBody:
+            id: uuid-generator-implementation
+            expression:
+              groovy: |
+                import java.util.UUID
+                
+                def request = exchange.getIn().getBody(Map.class)
+                def args = request.params.arguments
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                
+                def version = args.version ?: "v4"
+                def count = args.count ?: 1
+                def uuids = []
+                
+                for (int i = 0; i < count; i++) {
+                  uuids.add(UUID.randomUUID().toString())
+                }
+                
+                def result = "Generated UUIDs (" + version + "): " + uuids.join(", ")
+                
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "${result}"
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: uuid-generator-content-type
+            name: Content-Type
+            constant: application/json
+
+# Prompts Router
+- route:
+    id: mcp-prompts-router
+    from:
+      uri: direct:mcp-prompts
+      steps:
+        - choice:
+            id: prompts-method-choice
+            when:
+              - simple: "${header.methodName} == 'prompts/list'"
+                steps:
+                  - to:
+                      id: route-prompts-list
+                      uri: direct:mcp-prompts-list
+              - simple: "${header.methodName} == 'prompts/get'"
+                steps:
+                  - to:
+                      id: route-prompts-get
+                      uri: direct:mcp-prompts-get
+            otherwise:
+              steps:
+                - setBody:
+                    id: unknown-prompts-error
+                    expression:
+                      groovy: |
+                        def id = exchange.getIn().getHeader("jsonrpc_id")
+                        return """{
+                          "jsonrpc": "2.0",
+                          "id": "${id}",
+                          "error": {
+                            "code": -32601,
+                            "message": "Prompts method not found"
+                          }
+                        }"""
+
+# Prompts List
+- route:
+    id: mcp-prompts-list
+    from:
+      uri: direct:mcp-prompts-list
+      steps:
+        - setBody:
+            id: prompts-list-response
+            expression:
+              groovy: |
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "prompts": [
+                      {
+                        "name": "code_generator",
+                        "description": "Generate code based on specifications",
+                        "arguments": [
+                          {
+                            "name": "language",
+                            "description": "Programming language",
+                            "required": true
+                          },
+                          {
+                            "name": "description",
+                            "description": "What the code should do",
+                            "required": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: prompts-list-content-type
+            name: Content-Type
+            constant: application/json
+
+# Prompts Get
+- route:
+    id: mcp-prompts-get
+    from:
+      uri: direct:mcp-prompts-get
+      steps:
+        - setBody:
+            id: prompts-get-response
+            expression:
+              groovy: |
+                def request = exchange.getIn().getBody(Map.class)
+                def args = request.params.arguments ?: [:]
+                def id = exchange.getIn().getHeader("jsonrpc_id")
+                
+                def language = args.language ?: "Python"
+                def description = args.description ?: "A simple function"
+                
+                def prompt = """Generate ${language} code for the following requirement:
+
+                Description: ${description}
+
+                Please provide:
+                1. Clean, well-documented code
+                2. Error handling where appropriate
+                3. Example usage
+              
+                Make sure the code follows ${language} best practices and conventions."""
+
+                return """{
+                  "jsonrpc": "2.0",
+                  "id": "${id}",
+                  "result": {
+                    "description": "Code generation prompt for ${language}",
+                    "messages": [
+                      {
+                        "role": "user",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "${prompt}"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }"""
+        - setHeader:
+            id: prompts-get-content-type
+            name: Content-Type
+            constant: application/json
+
+# Static Content Route
+- route:
+    id: static-content-route
+    from:
+      uri: jetty:http://0.0.0.0:8081
+      parameters:
+        matchOnUriPrefix: true
+      steps:
+        - setHeader:
+            constant: text/html
+            name: Content-Type
+        - script:
+            id: No File Found
+            groovy: |
+              def file = new File("index.html")
+              if (file.exists()) {
+                  exchange.message.body = file.text
+              } else {
+                  exchange.message.body = """
+                  <html><body>
+                  <h1>File not found: index.html</h1>
+                  <p>Current directory: ${System.getProperty('user.dir')}</p>
+                  <p>Files in directory: ${new File('.').listFiles()*.name}</p>
+                  </body></html>
+                  """
+              }
+

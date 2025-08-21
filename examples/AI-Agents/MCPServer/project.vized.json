@@ -1,0 +1,280 @@
+{
+  "name": "MCPServer",
+  "version": "1.0.0",
+  "artifactId": "MCPServer",
+  "group": "com.vized.project",
+  "relativePath": "MCPServer",
+  "type": "integration",
+  "description": "Model Context Protocol Server using Apache Camel YAML DSL with Database Resources",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "MCPServer.camel.yaml": {
+        "mcp-server": {
+          "id": "mcp-server",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "mcp-http-endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:mcp-initialize",
+              "id": "route-to-initialize"
+            },
+            {
+              "uri": "direct:mcp-resources-list",
+              "id": "route-to-resources-list"
+            },
+            {
+              "uri": "direct:mcp-resources-read",
+              "id": "route-to-resources-read"
+            },
+            {
+              "uri": "direct:mcp-resources-subscribe",
+              "id": "route-to-resources-subscribe"
+            },
+            {
+              "uri": "direct:mcp-tools-list",
+              "id": "route-to-tools-list"
+            },
+            {
+              "uri": "direct:mcp-tools-call",
+              "id": "route-to-tools-call"
+            },
+            {
+              "uri": "direct:mcp-prompts-list",
+              "id": "route-to-prompts-list"
+            },
+            {
+              "uri": "direct:mcp-prompts-get",
+              "id": "route-to-prompts-get"
+            },
+            {
+              "uri": "direct:mcp-logging-set-level",
+              "id": "route-to-logging-set-level"
+            },
+            {
+              "uri": "direct:mcp-method-not-found",
+              "id": "route-to-method-not-found"
+            }
+          ]
+        },
+        "mcp-initialize": {
+          "id": "mcp-initialize",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-initialize",
+              "id": "initialize-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-resources-list": {
+          "id": "mcp-resources-list",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-resources-list",
+              "id": "resources-list-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-resources-read": {
+          "id": "mcp-resources-read",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-resources-read",
+              "id": "resources-read-endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:handle-file-resource",
+              "id": "handle-file-resource"
+            },
+            {
+              "uri": "direct:handle-mysql-resource",
+              "id": "handle-mysql-resource"
+            },
+            {
+              "uri": "direct:handle-mongodb-resource",
+              "id": "handle-mongodb-resource"
+            },
+            {
+              "uri": "direct:handle-system-resource",
+              "id": "handle-system-resource"
+            },
+            {
+              "uri": "direct:handle-docs-resource",
+              "id": "handle-docs-resource"
+            }
+          ]
+        },
+        "mcp-resources-subscribe": {
+          "id": "mcp-resources-subscribe",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-resources-subscribe",
+              "id": "resources-subscribe-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-tools-list": {
+          "id": "mcp-tools-list",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-tools-list",
+              "id": "tools-list-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-tools-call": {
+          "id": "mcp-tools-call",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-tools-call",
+              "id": "tools-call-endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:tool-calculator",
+              "id": "call-calculator-tool"
+            },
+            {
+              "uri": "direct:tool-file-operations",
+              "id": "call-file-operations-tool"
+            },
+            {
+              "uri": "direct:tool-database-query",
+              "id": "call-database-query-tool"
+            },
+            {
+              "uri": "direct:tool-system-info",
+              "id": "call-system-info-tool"
+            },
+            {
+              "uri": "direct:tool-text-processor",
+              "id": "call-text-processor-tool"
+            },
+            {
+              "uri": "direct:tool-date-time",
+              "id": "call-date-time-tool"
+            },
+            {
+              "uri": "direct:tool-uuid-generator",
+              "id": "call-uuid-generator-tool"
+            },
+            {
+              "uri": "direct:tool-base64-encoder",
+              "id": "call-base64-encoder-tool"
+            }
+          ]
+        },
+        "mcp-prompts-list": {
+          "id": "mcp-prompts-list",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-prompts-list",
+              "id": "prompts-list-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-prompts-get": {
+          "id": "mcp-prompts-get",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-prompts-get",
+              "id": "prompts-get-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-logging-set-level": {
+          "id": "mcp-logging-set-level",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-logging-set-level",
+              "id": "logging-set-level-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "mcp-method-not-found": {
+          "id": "mcp-method-not-found",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:mcp-method-not-found",
+              "id": "method-not-found-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "health-check": {
+          "id": "health-check",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "health-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "static-files": {
+          "id": "static-files",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http",
+              "id": "static-endpoint"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "MCPServer.camel.yaml": []
+    }
+  },
+  "environments": {
+    "default": []
+  },
+  "features": [
+    "resources",
+    "tools",
+    "prompts",
+    "database",
+    "json-rpc"
+  ],
+  "tags": [
+    "mcp",
+    "model-context-protocol",
+    "database",
+    "mysql",
+    "mongodb",
+    "json-rpc",
+    "tools",
+    "resources",
+    "prompts",
+    "ai-assistant"
+  ]
+}

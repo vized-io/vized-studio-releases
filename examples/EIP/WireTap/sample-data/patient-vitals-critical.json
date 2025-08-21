@@ -1,0 +1,19 @@
+{
+  "patientId": "P002",
+  "timestamp": "2024-01-15T14:35:45.678",
+  "ward": "ICU",
+  "deviceType": "GE_Vital_Signs",
+  "deviceId": "DEV-5678",
+  "vitalSigns": {
+    "heartRate": 135,
+    "bloodPressure": {
+      "systolic": 160,
+      "diastolic": 95
+    },
+    "oxygenSaturation": 88,
+    "temperature": 39.2,
+    "respiratoryRate": 24
+  },
+  "alertLevel": "CRITICAL",
+  "isCritical": true
+}

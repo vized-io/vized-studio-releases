@@ -1,0 +1,19 @@
+{
+  "patientId": "P001",
+  "timestamp": "2024-01-15T14:30:22.123",
+  "ward": "General",
+  "deviceType": "Philips_Monitor",
+  "deviceId": "DEV-1234",
+  "vitalSigns": {
+    "heartRate": 72,
+    "bloodPressure": {
+      "systolic": 120,
+      "diastolic": 80
+    },
+    "oxygenSaturation": 98,
+    "temperature": 36.8,
+    "respiratoryRate": 16
+  },
+  "alertLevel": "NORMAL",
+  "isCritical": false
+}

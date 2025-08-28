@@ -1,0 +1,9 @@
+- route:
+    id: timestamp-logger
+    from:
+      uri: timer:logTimer?period=20000
+      id: time-generator
+      steps:
+        - log:
+            id: time-printer
+            message: "The time is ${date:now:yyyy-MM-dd HH:mm:ss}"

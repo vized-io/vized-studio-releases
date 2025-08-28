@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Patient Monitoring - Wire Tap Pattern</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 30px;
+        }
+        .wire-tap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .wire-tap-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .wire-tap-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .research { border-left-color: #28a745; }
+        .compliance { border-left-color: #dc3545; }
+        .analytics { border-left-color: #ffc107; }
+        .notifications { border-left-color: #17a2b8; }
+        
+        .wire-tap-card h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.2em;
+        }
+        .wire-tap-card p {
+            margin: 0;
+            color: #666;
+            line-height: 1.5;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .active { background-color: #28a745; }
+        .inactive { background-color: #6c757d; }
+        
+        .monitoring-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        .monitoring-section h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 1.5em;
+        }
+        .vital-signs-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .vital-sign {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .vital-sign .label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .vital-sign .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .vital-sign .unit {
+            font-size: 0.8em;
+            color: #888;
+        }
+        
+        .alert-level {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .normal { background-color: #d4edda; color: #155724; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .critical { background-color: #f8d7da; color: #721c24; }
+        
+        .control-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            border: 1px solid #dee2e6;
+        }
+        .control-panel h2 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 1.5em;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .log-section {
+            background: #343a40;
+            color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-timestamp {
+            color: #6c757d;
+        }
+        .log-main { color: #28a745; }
+        .log-research { color: #17a2b8; }
+        .log-compliance { color: #dc3545; }
+        .log-analytics { color: #ffc107; }
+        .log-notifications { color: #fd7e14; }
+        
+        .statistics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .patient-info {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .patient-info h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+        .patient-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .detail-value {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Healthcare Patient Monitoring System</h1>
+            <p>Wire Tap Pattern Demonstration - Real-time Vital Signs Processing</p>
+        </div>
+        
+        <div class="content">
+            <!-- Patient Information -->
+            <div class="patient-info">
+                <h3>👤 Current Patient Information</h3>
+                <div class="patient-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Patient ID:</span>
+                        <span class="detail-value" id="patientId">P001</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Ward:</span>
+                        <span class="detail-value" id="ward">ICU</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Device:</span>
+                        <span class="detail-value" id="deviceType">Philips Monitor</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Last Update:</span>
+                        <span class="detail-value" id="lastUpdate">--:--:--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vital Signs Monitoring -->
+            <div class="monitoring-section">
+                <h2>📊 Real-time Vital Signs <span class="alert-level normal" id="alertLevel">NORMAL</span></h2>
+                <div class="vital-signs-display">
+                    <div class="vital-sign">
+                        <div class="label">Heart Rate</div>
+                        <div class="value" id="heartRate">72</div>
+                        <div class="unit">bpm</div>
+                    </div>
+                    <div class="vital-sign">
+                        <div class="label">Blood Pressure</div>
+                        <div class="value" id="bloodPressure">120/80</div>
+                        <div class="unit">mmHg</div>
+                    </div>
+                    <div class="vital-sign">
+                        <div class="label">Oxygen Saturation</div>
+                        <div class="value" id="oxygenSat">98</div>
+                        <div class="unit">%</div>
+                    </div>
+                    <div class="vital-sign">
+                        <div class="label">Temperature</div>
+                        <div class="value" id="temperature">36.8</div>
+                        <div class="unit">°C</div>
+                    </div>
+                    <div class="vital-sign">
+                        <div class="label">Respiratory Rate</div>
+                        <div class="value" id="respiratoryRate">16</div>
+                        <div class="unit">/min</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wire Tap Information -->
+            <h2>🔀 Wire Tap Destinations</h2>
+            <div class="wire-tap-grid">
+                <div class="wire-tap-card research">
+                    <h3><span class="status-indicator active"></span>Research Data Collection</h3>
+                    <p>All patient data is anonymized and copied to medical research databases for clinical studies and medical advancement.</p>
+                    <small><strong>Condition:</strong> All messages | <strong>Processing:</strong> Asynchronous</small>
+                </div>
+                <div class="wire-tap-card compliance">
+                    <h3><span class="status-indicator active"></span>Regulatory Compliance</h3>
+                    <p>Critical events are copied to audit systems for HIPAA and FDA compliance requirements with 7-year retention.</p>
+                    <small><strong>Condition:</strong> Critical alerts only | <strong>Processing:</strong> Asynchronous</small>
+                </div>
+                <div class="wire-tap-card analytics">
+                    <h3><span class="status-indicator active"></span>Predictive Analytics</h3>
+                    <p>Vital signs patterns are analyzed by AI/ML systems to provide early warning predictions and trend analysis.</p>
+                    <small><strong>Condition:</strong> All messages | <strong>Processing:</strong> Asynchronous</small>
+                </div>
+                <div class="wire-tap-card notifications">
+                    <h3><span class="status-indicator active"></span>Family Notifications</h3>
+                    <p>Critical alerts are sent to patient families via SMS and email for immediate awareness of medical emergencies.</p>
+                    <small><strong>Condition:</strong> Critical conditions only | <strong>Processing:</strong> Asynchronous</small>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <h2>🎛️ System Control Panel</h2>
+                <div class="controls">
+                    <button onclick="simulateNormalVitals()">Generate Normal Vitals</button>
+                    <button onclick="simulateWarningVitals()">Generate Warning Vitals</button>
+                    <button onclick="simulateCriticalVitals()">Generate Critical Alert</button>
+                    <button onclick="clearLogs()">Clear Logs</button>
+                </div>
+                
+                <div class="statistics">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalMessages">0</div>
+                        <div class="stat-label">Total Messages</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="researchCopies">0</div>
+                        <div class="stat-label">Research Copies</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="complianceCopies">0</div>
+                        <div class="stat-label">Compliance Audits</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="analyticsCopies">0</div>
+                        <div class="stat-label">Analytics Copies</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="notificationsSent">0</div>
+                        <div class="stat-label">Family Alerts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Section -->
+            <div class="log-section">
+                <div><strong>📝 System Activity Log</strong></div>
+                <div id="logContainer">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[14:30:22]</span> 
+                        <span class="log-main">System initialized - Healthcare Patient Monitoring active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Statistics counters
+        let stats = {
+            totalMessages: 0,
+            researchCopies: 0,
+            complianceCopies: 0,
+            analyticsCopies: 0,
+            notificationsSent: 0
+        };
+
+        // Sample patient IDs and wards
+        const patients = ['P001', 'P002', 'P003', 'P004', 'P005'];
+        const wards = ['ICU', 'CCU', 'Emergency', 'Surgery', 'General'];
+        const devices = ['Philips Monitor', 'GE Vital Signs', 'Mindray Patient Monitor'];
+
+        function updateStatistics() {
+            document.getElementById('totalMessages').textContent = stats.totalMessages;
+            document.getElementById('researchCopies').textContent = stats.researchCopies;
+            document.getElementById('complianceCopies').textContent = stats.complianceCopies;
+            document.getElementById('analyticsCopies').textContent = stats.analyticsCopies;
+            document.getElementById('notificationsSent').textContent = stats.notificationsSent;
+        }
+
+        function addLog(message, type = 'main') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> <span class="log-${type}">${message}</span>`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateVitalSigns(vitals) {
+            document.getElementById('heartRate').textContent = vitals.heartRate;
+            document.getElementById('bloodPressure').textContent = `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic}`;
+            document.getElementById('oxygenSat').textContent = vitals.oxygenSaturation;
+            document.getElementById('temperature').textContent = vitals.temperature.toFixed(1);
+            document.getElementById('respiratoryRate').textContent = vitals.respiratoryRate;
+            
+            // Update alert level
+            const alertElement = document.getElementById('alertLevel');
+            const alertLevel = vitals.alertLevel || 'NORMAL';
+            alertElement.textContent = alertLevel;
+            alertElement.className = `alert-level ${alertLevel.toLowerCase()}`;
+            
+            // Update patient info
+            document.getElementById('patientId').textContent = vitals.patientId || 'P001';
+            document.getElementById('ward').textContent = vitals.ward || 'ICU';
+            document.getElementById('deviceType').textContent = vitals.deviceType || 'Philips Monitor';
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        function processWireTaps(vitals, isCritical) {
+            stats.totalMessages++;
+            
+            // Wire Tap 1: Research Data (All messages)
+            stats.researchCopies++;
+            addLog(`Wire Tap 1 - Research: Anonymized data stored for medical research (Patient: ANON-${vitals.patientId.substring(1)})`, 'research');
+            
+            // Wire Tap 2: Compliance Audit (Critical only)
+            if (isCritical) {
+                stats.complianceCopies++;
+                addLog(`Wire Tap 2 - Compliance: Critical event logged for HIPAA/FDA audit (Audit ID: AUDIT-${Date.now()})`, 'compliance');
+            }
+            
+            // Wire Tap 3: Analytics (All messages)
+            stats.analyticsCopies++;
+            const riskScore = calculateRiskScore(vitals);
+            addLog(`Wire Tap 3 - Analytics: Pattern analysis completed (Risk Score: ${riskScore}, ML Model: v2.1.3)`, 'analytics');
+            
+            // Wire Tap 4: Family Notifications (Critical only)
+            if (isCritical) {
+                stats.notificationsSent++;
+                addLog(`Wire Tap 4 - Family: Critical alert notification sent to emergency contacts`, 'notifications');
+            }
+            
+            updateStatistics();
+        }
+
+        function calculateRiskScore(vitals) {
+            let score = 0;
+            if (vitals.heartRate > 120 || vitals.heartRate < 50) score += 30;
+            if (vitals.oxygenSaturation < 90) score += 40;
+            if (vitals.temperature > 38.5) score += 20;
+            if (vitals.bloodPressure.systolic > 140) score += 15;
+            return Math.min(score, 100);
+        }
+
+        function simulateNormalVitals() {
+            const vitals = {
+                patientId: patients[Math.floor(Math.random() * patients.length)],
+                ward: wards[Math.floor(Math.random() * wards.length)],
+                deviceType: devices[Math.floor(Math.random() * devices.length)],
+                heartRate: 60 + Math.floor(Math.random() * 40), // 60-100
+                bloodPressure: {
+                    systolic: 90 + Math.floor(Math.random() * 50), // 90-140
+                    diastolic: 60 + Math.floor(Math.random() * 30)  // 60-90
+                },
+                oxygenSaturation: 95 + Math.floor(Math.random() * 6), // 95-100
+                temperature: 36.0 + (Math.random() * 1.5), // 36.0-37.5
+                respiratoryRate: 12 + Math.floor(Math.random() * 8), // 12-20
+                alertLevel: 'NORMAL'
+            };
+            
+            updateVitalSigns(vitals);
+            addLog(`Main Flow - Processing normal vital signs for patient ${vitals.patientId}`, 'main');
+            processWireTaps(vitals, false);
+        }
+
+        function simulateWarningVitals() {
+            const vitals = {
+                patientId: patients[Math.floor(Math.random() * patients.length)],
+                ward: wards[Math.floor(Math.random() * wards.length)],
+                deviceType: devices[Math.floor(Math.random() * devices.length)],
+                heartRate: 100 + Math.floor(Math.random() * 20), // 100-120
+                bloodPressure: {
+                    systolic: 140 + Math.floor(Math.random() * 10), // 140-150
+                    diastolic: 85 + Math.floor(Math.random() * 10)  // 85-95
+                },
+                oxygenSaturation: 92 + Math.floor(Math.random() * 3), // 92-95
+                temperature: 37.5 + (Math.random() * 1.0), // 37.5-38.5
+                respiratoryRate: 20 + Math.floor(Math.random() * 4), // 20-24
+                alertLevel: 'WARNING'
+            };
+            
+            updateVitalSigns(vitals);
+            addLog(`Main Flow - Processing warning vital signs for patient ${vitals.patientId}`, 'main');
+            processWireTaps(vitals, false);
+        }
+
+        function simulateCriticalVitals() {
+            const vitals = {
+                patientId: patients[Math.floor(Math.random() * patients.length)],
+                ward: wards[Math.floor(Math.random() * wards.length)],
+                deviceType: devices[Math.floor(Math.random() * devices.length)],
+                heartRate: Math.random() > 0.5 ? 45 + Math.floor(Math.random() * 10) : 130 + Math.floor(Math.random() * 30), // <55 or >130
+                bloodPressure: {
+                    systolic: 160 + Math.floor(Math.random() * 40), // 160-200
+                    diastolic: 95 + Math.floor(Math.random() * 15)  // 95-110
+                },
+                oxygenSaturation: 85 + Math.floor(Math.random() * 5), // 85-90
+                temperature: 38.5 + (Math.random() * 2.0), // 38.5-40.5
+                respiratoryRate: 25 + Math.floor(Math.random() * 10), // 25-35
+                alertLevel: 'CRITICAL'
+            };
+            
+            updateVitalSigns(vitals);
+            addLog(`Main Flow - CRITICAL ALERT: Processing critical vital signs for patient ${vitals.patientId}`, 'main');
+            processWireTaps(vitals, true);
+        }
+
+        function clearLogs() {
+            const logContainer = document.getElementById('logContainer');
+            logContainer.innerHTML = `
+                <div class="log-entry">
+                    <span class="log-timestamp">[${new Date().toLocaleTimeString()}]</span> 
+                    <span class="log-main">Logs cleared - Healthcare Patient Monitoring active</span>
+                </div>
+            `;
+        }
+
+        // Auto-simulate vital signs every 5 seconds
+        setInterval(() => {
+            const rand = Math.random();
+            if (rand < 0.1) {
+                simulateCriticalVitals(); // 10% critical
+            } else if (rand < 0.3) {
+                simulateWarningVitals(); // 20% warning
+            } else {
+                simulateNormalVitals(); // 70% normal
+            }
+        }, 5000);
+
+        // Initialize with normal vitals
+        simulateNormalVitals();
+    </script>
+</body>
+</html>

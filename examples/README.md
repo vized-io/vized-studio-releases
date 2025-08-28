@@ -73,23 +73,16 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**Circuit Breaker**](EIP/CircuitBreaker) | Prevents repeated failures from impacting your system | • Halts execution temporarily<br>• recover system  gracefully | 
 | [**Content-Based Router**](EIP/ContentBasedRouter) | Route messages to different destinations based on message content | • Route orders based on order type<br>• Direct support requests to appropriate departments|
 | [**Control Bus**](EIP/ControlBus) | Manage and monitor integration components at runtime | • Dynamically start/stop routes<br>• Monitor system health and metrics |
+| [**Dead Letter Channel**](EIP/DeadLetterChannel) | Handle failed message processing | • Capture failed messages for analysis<br>• Implement retry mechanisms |
 | [**Jsonata Mapper**](EIP/JsonataMapper) | Transform JSON data using JSONata expressions | • Convert JSON structures<br>• Map fields between different JSON formats |
 | [**Message Filter**](EIP/MessageFilter) | Remove unwanted messages from a channel based on criteria | • Filter out invalid messages<br>• Remove duplicate messages |
 | [**Ports and Adapters**](EIP/PortsAndAdapters) | Structure your application logic to be independent of external technologies | • Decouple core business logic<br>• Easily swap external dependencies (databases, APIs) |
 | [**Recipient List**](EIP/RecipientList) | Send a copy of the message to one or more recipients | • Broadcasting messages to multiple services or microservices<br>• Sending alerts to multiple channels | 
 | [**SAGA**](EIP/SAGA) | Manage distributed transactions across multiple services | • Coordinate multi-step business processes<br>• Handle compensation for failed transactions |
 | [**Resequencer**](EIP/SplitterResequencer) | Reorder messages based on a specific key | • Ensure messages are processed in the correct order<br>• Handle out-of-order events |
+| [**Request-Reply**](EIP/RequestReply) | Send a request and wait for corresponding reply | • Synchronous API calls to external services<br>• Credit checks and financial verifications<br>• Real-time data validation |
 | [**XSLT Mapper**](EIP/XsltMapper) | Transform XML documents using XSLT  | • Transform XML data structures • Modify XML data |
 
-
-<!-- | **Message Transformer** | Change format, structure, or content of messages | • Convert between XML, JSON, CSV<br>• Map fields between data models | 
-| **API Gateway** | Create a single entry point for multiple microservices | • Unify access to backend services<br>• Implement authentication | 
-| **Dead Letter Channel** | Handle failed message processing | • Capture failed messages for analysis<br>• Implement retry mechanisms | 
-| **File Transfer** | Reliable file transfer between systems | • Secure file transfers<br>• ETL processes |
-| **Request-Reply** | Send a request and wait for corresponding reply | • Synchronous API calls<br>• Database query operations | 
-| **Publish-Subscribe** | Broadcast messages to multiple recipients | • Notify systems about events<br>• Implement event-driven architectures |  
-| [**Splitter**](EIP/Aggregation) | Break a composite message into individual messages | • Process batch files by splitting into records<br>• Break down complex XML documents | 
--->
 
 ## AI Agent Examples
 

@@ -1,0 +1,311 @@
+- beans:
+    - name: creditBureauService
+      scriptLanguage: "groovy"
+      type: "java.lang.Object"
+      script: |
+        import java.text.SimpleDateFormat
+        
+        class CreditBureauService {
+          def checkCredit(customerData) {
+            // Convert input stream to string properly
+            def customerJson = ""
+            if (customerData instanceof java.io.InputStream) {
+              customerJson = customerData.text
+            } else {
+              customerJson = customerData.toString()
+            }
+            
+            // Extract values using simple string manipulation
+            def requestId = extractJsonValue(customerJson, "requestId")
+            def customerId = extractJsonValue(customerJson, "customerId")
+            def monthlyIncomeStr = extractJsonValue(customerJson, "monthlyIncome")
+            def monthlyDebtStr = extractJsonValue(customerJson, "monthlyDebt")
+            def requestedAmountStr = extractJsonValue(customerJson, "requestedAmount")
+            
+            // Validate required fields
+            if (!customerId) {
+              throw new IllegalArgumentException("customerId is required but not found in JSON")
+            }
+            
+            def monthlyIncome = monthlyIncomeStr ? monthlyIncomeStr as Double : 0.0
+            def monthlyDebt = monthlyDebtStr ? monthlyDebtStr as Double : 0.0
+            def requestedAmount = requestedAmountStr ? requestedAmountStr as Double : 0.0
+            
+            // Hybrid credit scoring: Financial data + Customer ID patterns
+            def creditScore = calculateCreditScore(customerId, monthlyIncome, monthlyDebt, requestedAmount)
+            def creditHistory = creditScore > 650 ? "GOOD" : creditScore > 550 ? "FAIR" : "POOR"
+            
+            // Simulate processing delay
+            def sleepTime = 1000 + Math.abs(customerId.hashCode() % 2000) // 1-3 second delay
+            Thread.sleep(sleepTime)
+            
+            // Calculate debt to income ratio
+            def debtToIncomeRatio = (monthlyDebt / monthlyIncome * 100).round(2)
+            def debtRatio = monthlyDebt / monthlyIncome
+            
+            // Determine recommendation
+            def recommendation = creditScore >= 700 && debtRatio < 0.4 ? "APPROVED" : 
+                               creditScore >= 600 && debtRatio < 0.5 ? "CONDITIONAL" : "REJECTED"
+            
+            // Calculate max loan amount
+            def maxLoanAmount = creditScore >= 700 ? requestedAmount : 
+                              creditScore >= 600 ? (requestedAmount * 0.7).intValue() : 0
+            
+            // Calculate interest rate
+            def interestRate = creditScore >= 750 ? 3.5 : 
+                             creditScore >= 700 ? 4.2 : 
+                             creditScore >= 650 ? 5.8 : 
+                             creditScore >= 600 ? 7.5 : 12.0
+            
+            def dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+            def processingTimestamp = dateFormat.format(new Date())
+            
+            // Return a Map instead of JSON string for better Camel integration
+            return [
+              requestId: requestId,
+              customerId: customerId,
+              creditScore: creditScore,
+              creditHistory: creditHistory,
+              monthlyIncome: monthlyIncome,
+              requestedAmount: requestedAmount,
+              debtToIncomeRatio: debtToIncomeRatio,
+              recommendation: recommendation,
+              maxLoanAmount: maxLoanAmount,
+              interestRate: interestRate,
+              processingTimestamp: processingTimestamp
+            ]
+          }
+          
+          private def calculateCreditScore(customerId, monthlyIncome, monthlyDebt, requestedAmount) {
+            // Base credit score calculation using financial data
+            def baseScore = 300
+            
+            // Income factor (0-200 points): Higher income = better score
+            def incomeScore = Math.min(200, (monthlyIncome / 100).intValue())
+            
+            // Debt factor (-150 to 0 points): Higher debt = lower score  
+            def debtScore = Math.max(-150, -(monthlyDebt / 50).intValue())
+            
+            // Loan amount factor (-50 to 0 points): Higher loan request = slight penalty
+            def loanScore = Math.max(-50, -(requestedAmount / 10000).intValue())
+            
+            // Calculate base financial score
+            def financialScore = baseScore + incomeScore + debtScore + loanScore
+            
+            // Apply customer ID pattern overrides for predictable testing
+            def finalScore = financialScore
+            
+            if (customerId.startsWith("APPROVED-") || customerId.contains("APPROVED")) {
+                // Ensure approved customers get high scores (720-850)
+                finalScore = Math.max(financialScore, 720 + (Math.abs(customerId.hashCode()) % 130))
+            } else if (customerId.startsWith("REJECTED-") || customerId.contains("REJECTED")) {
+                // Ensure rejected customers get low scores (300-580)
+                finalScore = Math.min(financialScore, 300 + (Math.abs(customerId.hashCode()) % 280))
+            } else if (customerId.startsWith("CONDITIONAL-") || customerId.contains("CONDITIONAL")) {
+                // Ensure conditional customers get mid-range scores (600-699)
+                finalScore = 600 + (Math.abs(customerId.hashCode()) % 100)
+            } else if (customerId.startsWith("EXCELLENT-")) {
+                finalScore = 800 + (Math.abs(customerId.hashCode()) % 50) // 800-850
+            } else if (customerId.startsWith("GOOD-")) {
+                finalScore = 720 + (Math.abs(customerId.hashCode()) % 80) // 720-799
+            } else if (customerId.startsWith("FAIR-")) {
+                finalScore = 600 + (Math.abs(customerId.hashCode()) % 100) // 600-699
+            } else if (customerId.startsWith("POOR-")) {
+                finalScore = 450 + (Math.abs(customerId.hashCode()) % 150) // 450-599
+            } else if (customerId.startsWith("BAD-")) {
+                finalScore = 300 + (Math.abs(customerId.hashCode()) % 150) // 300-449
+            }
+            
+            // Ensure score stays within valid range (300-850)
+            return Math.max(300, Math.min(850, finalScore))
+          }
+          
+          private def extractJsonValue(jsonString, key) {
+            // Handle both string and numeric values
+            def stringPattern = /"$key"\s*:\s*"([^"]+)"/
+            def numericPattern = /"$key"\s*:\s*([0-9.]+)/
+            
+            // Try string pattern first
+            def matcher = jsonString =~ stringPattern
+            if (matcher) {
+              return matcher[0][1]
+            }
+            
+            // Try numeric pattern
+            matcher = jsonString =~ numericPattern
+            if (matcher) {
+              return matcher[0][1]
+            }
+            
+            return null
+          }
+        }
+
+        return new CreditBureauService()
+
+- route:
+    id: loan-application-api
+    from:
+      uri: platform-http:/api/loan-application?httpMethodRestrict=POST
+      id: loan-api-endpoint
+      steps:
+        - log:
+            id: log-api-request
+            message: "Received loan application via API: ${body}"
+        
+        - setHeader:
+            id: set-request-id
+            name: requestId
+            expression:
+              jsonpath: "$.requestId"
+        
+        - setHeader:
+            id: set-customer-id
+            name: customerId
+            expression:
+              jsonpath: "$.customerId"
+        
+        - log:
+            id: log-processing-request
+            message: "Processing credit check request for customer: ${header.customerId}, Request ID: ${header.requestId}"
+        
+        # Request-Reply Pattern Implementation
+        - to:
+            id: credit-bureau-request-reply
+            uri: direct:credit-bureau-service
+            pattern: InOut  # This enables Request-Reply pattern
+        
+        - log:
+            id: log-credit-response
+            message: "Received credit bureau response for customer: ${header.customerId}"
+        
+        - setHeader:
+            id: set-output-filename
+            name: CamelFileName
+            expression:
+              simple: "loan-decision-${header.customerId}-${date:now:yyyyMMdd-HHmmss}.json"
+        
+        # Save the original response to file
+        - marshal:
+            id: convert-to-json
+            json:
+              library: Jackson
+              prettyPrint: true
+        
+        - to:
+            id: save-processed-application
+            uri: file:loan-applications/processed
+        
+        - log:
+            id: log-application-processed
+            message: "Loan application processed and saved: ${header.CamelFileName}"
+        
+        # Return response to API caller - ensure it's proper JSON
+        - setHeader:
+            id: set-content-type
+            name: Content-Type
+            constant: application/json
+
+# Alternative route for batch file processing (for bulk uploads)
+- route:
+    id: loan-application-batch-processor
+    from:
+      uri: file:loan-applications/incoming
+      id: loan-file-source
+      parameters:
+        delay: 5000
+        initialDelay: 2000
+        include: ".json"
+      steps:
+        - log:
+            id: log-file-received
+            message: "Processing batch loan application file: ${header.CamelFileName}"
+        
+        - unmarshal:
+            id: parse-json
+            json:
+              library: Jackson
+        
+        - split:
+            id: split-applications
+            jsonpath: "$[*]"
+            steps:
+              - setHeader:
+                  id: set-request-id-batch
+                  name: requestId
+                  expression:
+                    jsonpath: "$.requestId"
+              
+              - setHeader:
+                  id: set-customer-id-batch
+                  name: customerId
+                  expression:
+                    jsonpath: "$.customerId"
+              
+              - log:
+                  id: log-processing-request-batch
+                  message: "Processing credit check request for customer: ${header.customerId}, Request ID: ${header.requestId}"
+              
+              # Request-Reply Pattern Implementation
+              - to:
+                  id: credit-bureau-request-reply-batch
+                  uri: direct:credit-bureau-service
+                  pattern: InOut  # This enables Request-Reply pattern
+              
+              - log:
+                  id: log-credit-response-batch
+                  message: "Received credit bureau response for customer: ${header.customerId}"
+              
+              - setHeader:
+                  id: set-output-filename-batch
+                  name: CamelFileName
+                  expression:
+                    simple: "loan-decision-${header.customerId}-${date:now:yyyyMMdd-HHmmss}.json"
+              
+              - marshal:
+                  id: convert-to-json-batch
+                  json:
+                    library: Jackson
+                    prettyPrint: true
+              
+              - to:
+                  id: save-processed-application-batch
+                  uri: file:loan-applications/processed
+              
+              - log:
+                  id: log-application-processed-batch
+                  message: "Loan application processed and saved: ${header.CamelFileName}"
+
+- route:
+    id: credit-bureau-service-route
+    from:
+      uri: direct:credit-bureau-service
+      id: credit-service-endpoint
+      steps:
+        - log:
+            id: log-credit-request
+            message: "Calling Credit Bureau API for customer data: ${body}"
+        
+        - bean:
+            id: call-credit-service
+            ref: creditBureauService
+            method: checkCredit(${body})
+        
+        - log:
+            id: log-credit-response-received
+            message: "Credit Bureau API response received: ${body}"
+
+- route:
+    id: health-check-route
+    from:
+      uri: platform-http:/health?httpMethodRestrict=GET
+      id: health-endpoint
+      steps:
+        - setBody:
+            id: health-response
+            constant: '{"status": "UP", "service": "Credit Check Request-Reply Service", "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"}'
+        
+        - setHeader:
+            id: content-type
+            name: Content-Type
+            constant: application/json

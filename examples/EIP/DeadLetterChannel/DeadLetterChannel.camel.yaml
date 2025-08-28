@@ -1,0 +1,327 @@
+- beans:
+  - name: sensorValidationService
+    type: java.lang.Object
+    scriptLanguage: groovy
+    script: >
+      
+      class SensorValidationService {
+        
+        def validateReadings(exchange) {
+          // Parse JSON body using Camel's type converter
+          def bodyText = exchange.getIn().getBody(String.class)
+          def jsonData = exchange.getContext().getTypeConverter().convertTo(Map.class, bodyText)
+          
+          // Get temperature
+          def temp = jsonData?.readings?.temperature
+          if (temp != "CORRUPT_DATA" && temp != null && (temp < 0 || temp > 150)) {
+            throw new IllegalStateException("Temperature out of range: " + temp + "°C")
+          }
+          
+          // Get pressure
+          def pressure = jsonData?.readings?.pressure
+          if (pressure != null && (pressure < 800 || pressure > 2000)) {
+            throw new IllegalStateException("Pressure out of range: " + pressure + " hPa")
+          }
+          
+          // Get sensor ID
+          def sensorId = exchange.getIn().getHeader('sensorId')
+          if (sensorId == null) {
+            sensorId = jsonData?.sensorId
+          }
+          
+          // Simulate external service failure for sensor 3
+          if (sensorId == 3) {
+            throw new RuntimeException("External validation service unavailable")
+          }
+
+          return bodyText
+        }
+        
+        def addErrorMetadata(exchange) {
+          // Get the original body - try multiple sources
+          def originalBody = null
+          
+          // First try to get from original message if available
+          if (exchange.hasOut() && exchange.getOut().getBody() != null) {
+            originalBody = exchange.getOut().getBody(String.class)
+          } else if (exchange.getIn().getBody() != null) {
+            originalBody = exchange.getIn().getBody(String.class)
+          }
+          
+          // If still null, try to get from exception
+          if (originalBody == null && exchange.getException() != null) {
+            def exception = exchange.getException()
+            if (exception.getCause() != null) {
+              originalBody = exception.getCause().getMessage()
+            } else {
+              originalBody = exception.getMessage()
+            }
+          }
+          
+          // Ensure we have some content
+          if (originalBody == null) {
+            originalBody = "No original data available"
+          }
+          
+          // Get error information
+          def failureReason = exchange.getIn().getHeader('failureReason')
+          if (failureReason == null && exchange.getException() != null) {
+            failureReason = exchange.getException().getMessage()
+          }
+          failureReason = failureReason ?: 'Unknown error'
+          
+          def retryCount = exchange.getIn().getHeader('retryCount') ?: 0
+          def sensorId = exchange.getIn().getHeader('sensorId') ?: 'Unknown'
+          def timestamp = new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss').format(new Date())
+          
+          // Escape special characters in strings
+          def escapedOriginalBody = originalBody.replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+          def escapedFailureReason = failureReason.replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+          def exceptionType = exchange.getException()?.getClass()?.getSimpleName() ?: 'Unknown'
+          
+          // Create properly formatted JSON using string concatenation
+          def enrichedData = "{\n" +
+            "  \"originalData\": \"" + escapedOriginalBody + "\",\n" +
+            "  \"errorInfo\": {\n" +
+            "    \"failureReason\": \"" + escapedFailureReason + "\",\n" +
+            "    \"retryCount\": " + retryCount + ",\n" +
+            "    \"failureTimestamp\": \"" + timestamp + "\",\n" +
+            "    \"sensorId\": \"" + sensorId + "\",\n" +
+            "    \"exceptionType\": \"" + exceptionType + "\"\n" +
+            "  },\n" +
+            "  \"status\": \"FAILED\"\n" +
+            "}"
+          
+          exchange.getIn().setBody(enrichedData)
+          return enrichedData
+        }
+      }
+      
+      return new SensorValidationService()
+
+- route:
+    id: "iot-sensor-data-ingestion"
+    errorHandler:
+      id: "dead-letter-error-handler"
+      deadLetterChannel:
+        deadLetterUri: "direct:deadLetterQueue"
+        useOriginalMessage: true
+        useOriginalBody: true
+        redeliveryPolicy:
+          maximumRedeliveries: 2
+          redeliveryDelay: "1000"
+          backOffMultiplier: 2
+          useExponentialBackOff: true
+    from:
+      id: "sensor-data-input"
+      uri: "timer:sensorDataGenerator"
+      parameters:
+        delay: 3000
+        repeatCount: 10
+      steps:
+        - setHeader:
+            id: "set-sensor-id"
+            name: "sensorId"
+            expression:
+              simple: "${random(1,6)}"
+        - setHeader:
+            id: "set-timestamp"
+            name: "timestamp"
+            expression:
+              simple: "${date:now:yyyy-MM-dd HH:mm:ss}"
+        - setBody:
+            id: "generate-sensor-data"
+            expression:
+              groovy: |
+                def sensorId = exchange.in.getHeader('sensorId')
+                def timestamp = exchange.in.getHeader('timestamp')
+                
+                // Generate realistic IoT sensor data
+                def temperature = 20 + Math.random() * 80  // 20-100°C
+                def pressure = 1000 + Math.random() * 500  // 1000-1500 hPa  
+                def vibration = Math.random() * 10         // 0-10 Hz
+                
+                // Simulate data corruption for some sensors (sensor 5 always fails)
+                def isCorrupted = (sensorId == "5") || (Math.random() < 0.2)
+                
+                def tempValue = isCorrupted ? '"CORRUPT_DATA"' : String.format("%.2f", temperature)
+                def pressureValue = isCorrupted ? "null" : String.format("%.2f", pressure)
+                def vibrationValue = String.format("%.2f", vibration)
+                def statusValue = isCorrupted ? "ERROR" : "OK"
+                
+                // Create JSON string manually
+                def jsonString = """{
+                  "sensorId": "${sensorId}",
+                  "timestamp": "${timestamp}",
+                  "readings": {
+                    "temperature": ${tempValue},
+                    "pressure": ${pressureValue},
+                    "vibration": ${vibrationValue}
+                  },
+                  "status": "${statusValue}"
+                }"""
+                
+                return jsonString
+        - log:
+            id: "log-generated-data"
+            message: "Generated sensor data: ${body}"
+        - choice:
+            id: "validate-sensor-data"
+            when:
+              - simple: "${body} contains '\"status\": \"ERROR\"'"
+                steps:
+                  - throwException:
+                      id: "throw-data-corruption"
+                      exceptionType: "java.lang.IllegalArgumentException"
+                      message: "Corrupted sensor data detected for sensor ${header.sensorId}"
+            otherwise:
+              steps:
+                - bean:
+                    id: "validate-readings"
+                    ref: "sensorValidationService"
+                    method: "validateReadings(${exchange})"
+                - log:
+                    id: "log-validation-success"
+                    message: "Sensor data ${body}"
+                - setHeader:
+                    id: "set-processing-status"
+                    name: "processingStatus"
+                    expression:
+                      simple: "VALIDATED"
+                - log:
+                    id: "log-validation-success"
+                    message: "Sensor data validated successfully for sensor ${header.sensorId}"
+                - to:
+                    id: "send-to-storage"
+                    uri: "direct:storeSensorData"
+
+- route:
+    id: "sensor-data-storage"
+    from:
+      id: "storage-input"
+      uri: "direct:storeSensorData"
+      steps:
+        - log:
+            id: "debug-body-content"
+            message: "Body content before file write: ${body} (Type: ${bodyAs(String).getClass().getSimpleName()})"
+        - setHeader:
+            id: "set-filename"
+            name: "CamelFileName"
+            expression:
+              simple: "sensor-${header.sensorId}-${date:now:yyyyMMdd-HHmmss}.json"
+        - to:
+            id: "write-to-processed"
+            uri: "file:processed"
+            parameters:
+              autoCreate: true
+        - log:
+            id: "log-storage-success"
+            message: "Successfully stored data for sensor ${header.sensorId} in file ${header.CamelFileName}"
+
+- route:
+    id: "dead-letter-queue-handler"
+    from:
+      id: "dead-letter-input"
+      uri: "direct:deadLetterQueue"
+      steps:
+        - log:
+            id: "log-dead-letter"
+            message: "Message sent to Dead Letter Queue - Sensor: ${header.sensorId}, Error: ${exception.message}"
+            loggingLevel: "ERROR"
+        - log:
+            id: "log-original-body"
+            message: "Original body in DLQ: ${body}"
+            loggingLevel: "DEBUG"
+        - setHeader:
+            id: "set-dlq-filename"
+            name: "CamelFileName"
+            expression:
+              simple: "failed-sensor-${header.sensorId}-${date:now:yyyyMMdd-HHmmss}.json"
+        - setHeader:
+            id: "add-failure-info"
+            name: "failureReason"
+            expression:
+              simple: "${exception.message}"
+        - setHeader:
+            id: "add-retry-count"
+            name: "retryCount"
+            expression:
+              simple: "${header.CamelRedeliveryCounter}"
+        - bean:
+            id: "enrich-with-error-info"
+            ref: "sensorValidationService"
+            method: "addErrorMetadata(${exchange})"
+        - log:
+            id: "log-enriched-body"
+            message: "Enriched body for DLQ: ${body}"
+            loggingLevel: "DEBUG"
+        - choice:
+            id: "check-body-null"
+            when:
+              - simple: "${body} == null"
+                steps:
+                  - setBody:
+                      id: "set-fallback-body"
+                      expression:
+                        simple: |
+                          {
+                            "error": "Failed to process message",
+                            "sensorId": "${header.sensorId}",
+                            "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}",
+                            "status": "FAILED"
+                          }
+        - to:
+            id: "write-to-failed"
+            uri: "file:failed"
+            parameters:
+              autoCreate: true
+        - log:
+            id: "log-dlq-storage"
+            message: "Failed message stored in Dead Letter Queue: ${header.CamelFileName}"
+        - choice:
+            id: "check-critical-sensor"
+            when:
+              - simple: "${header.sensorId} == '1'"
+                steps:
+                  - log:
+                      id: "log-critical-alert"
+                      message: "CRITICAL ALERT: Main production sensor (ID: 1) has failed!"
+                      loggingLevel: "ERROR"
+                  - to:
+                      id: "send-alert"
+                      uri: "direct:sendAlert"
+
+- route:
+    id: "alert-system"
+    from:
+      id: "alert-input"
+      uri: "direct:sendAlert"
+      steps:
+        - setBody:
+            id: "create-alert-message"
+            expression:
+              simple: |
+                CRITICAL SYSTEM ALERT
+                =====================
+                Sensor ID: ${header.sensorId}
+                Failure Reason: ${header.failureReason}
+                Timestamp: ${date:now:yyyy-MM-dd HH:mm:ss}
+                Retry Count: ${header.retryCount}
+                
+                This is a critical production sensor failure.
+                Immediate attention required!
+        - log:
+            id: "log-alert-sent"
+            message: "Alert sent: ${body}"
+            loggingLevel: "ERROR"
+        - setHeader:
+            id: "set-alert-filename"
+            name: "CamelFileName"
+            expression:
+              simple: "CRITICAL-ALERT-${date:now:yyyyMMdd-HHmmss}.txt"
+        - to:
+            id: "write-alert-file"
+            uri: "file:alerts"
+            parameters:
+              autoCreate: true
+

@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Server Test Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #34495e;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .response {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .quick-action {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .quick-action:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-action h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .quick-action p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status.online {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        .status.offline {
+            background: #ffeaa7;
+            color: #f39c12;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #7f8c8d;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .examples {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .examples h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .example {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border-left: 3px solid #3498db;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .example:hover {
+            background: #f0f8ff;
+        }
+
+        .example-title {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .example-desc {
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔌 MCP Server Test Client</h1>
+            <p>Model Context Protocol Server - Apache Camel YAML DSL Implementation</p>
+            <div style="margin-top: 15px;">
+                <span class="status online" id="serverStatus">Server Online</span>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="quick-actions">
+                <div class="quick-action" onclick="initializeServer()">
+                    <h3>🚀 Initialize Server</h3>
+                    <p>Initialize MCP server and get capabilities</p>
+                </div>
+                <div class="quick-action" onclick="listResources()">
+                    <h3>📁 List Resources</h3>
+                    <p>Get all available resources</p>
+                </div>
+                <div class="quick-action" onclick="listTools()">
+                    <h3>🔧 List Tools</h3>
+                    <p>Get all available tools</p>
+                </div>
+                <div class="quick-action" onclick="listPrompts()">
+                    <h3>💬 List Prompts</h3>
+                    <p>Get all available prompts</p>
+                </div>
+                <div class="quick-action" onclick="checkHealth()">
+                    <h3>❤️ Health Check</h3>
+                    <p>Check server health status</p>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('custom')">Custom Request</button>
+                <button class="tab" onclick="showTab('resources')">Resources</button>
+                <button class="tab" onclick="showTab('tools')">Tools</button>
+                <button class="tab" onclick="showTab('prompts')">Prompts</button>
+            </div>
+
+            <div id="custom" class="tab-content active">
+                <div class="section">
+                    <h2>Custom JSON-RPC Request</h2>
+                    <div class="form-group">
+                        <label for="method">Method:</label>
+                        <input type="text" id="method" placeholder="e.g., initialize, resources/list, tools/call">
+                    </div>
+                    <div class="form-group">
+                        <label for="params">Parameters (JSON):</label>
+                        <textarea id="params" placeholder='{"key": "value"}'></textarea>
+                    </div>
+                    <button class="btn" onclick="sendCustomRequest()">Send Request</button>
+                    <button class="btn btn-secondary" onclick="clearResponse()">Clear Response</button>
+                </div>
+
+                <div class="examples">
+                    <h4>Example Requests:</h4>
+                    <div class="example" onclick="loadExample('initialize')">
+                        <div class="example-title">Initialize Server</div>
+                        <div class="example-desc">Initialize MCP server and get capabilities</div>
+                    </div>
+                    <div class="example" onclick="loadExample('resources')">
+                        <div class="example-title">List Resources</div>
+                        <div class="example-desc">Get all available resources</div>
+                    </div>
+                    <div class="example" onclick="loadExample('calculator')">
+                        <div class="example-title">Calculator Tool</div>
+                        <div class="example-desc">Use calculator tool to perform math operations</div>
+                    </div>
+                    <div class="example" onclick="loadExample('mysql')">
+                        <div class="example-title">MySQL Database Resource</div>
+                        <div class="example-desc">Read MySQL database information</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resources" class="tab-content">
+                <div class="section">
+                    <h2>Resource Operations</h2>
+                    <div class="form-group">
+                        <label for="resourceUri">Resource URI:</label>
+                        <select id="resourceUri">
+                            <option value="file://config/server.properties">Server Configuration</option>
+                            <option value="file://logs/server.log">Server Logs</option>
+                            <option value="mysql://localhost:3306/mcp_db">MySQL Database</option>
+                            <option value="mongodb://localhost:27017/mcp_db">MongoDB Database</option>
+                            <option value="system://info">System Information</option>
+                            <option value="docs://api">API Documentation</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="readResource()">Read Resource</button>
+                    <button class="btn btn-success" onclick="subscribeToResource()">Subscribe</button>
+                </div>
+            </div>
+
+            <div id="tools" class="tab-content">
+                <div class="section">
+                    <h2>Tool Execution</h2>
+                    <div class="form-group">
+                        <label for="toolName">Tool:</label>
+                        <select id="toolName" onchange="updateToolForm()">
+                            <option value="calculator">Calculator</option>
+                            <option value="file_operations">File Operations</option>
+                            <option value="database_query">Database Query</option>
+                            <option value="system_info">System Info</option>
+                            <option value="text_processor">Text Processor</option>
+                            <option value="date_time">Date/Time</option>
+                            <option value="uuid_generator">UUID Generator</option>
+                            <option value="base64_encoder">Base64 Encoder</option>
+                        </select>
+                    </div>
+                    <div id="toolForm">
+                        <!-- Dynamic form will be populated here -->
+                    </div>
+                    <button class="btn" onclick="executeTool()">Execute Tool</button>
+                </div>
+            </div>
+
+            <div id="prompts" class="tab-content">
+                <div class="section">
+                    <h2>Prompt Generation</h2>
+                    <div class="form-group">
+                        <label for="promptName">Prompt:</label>
+                        <select id="promptName" onchange="updatePromptForm()">
+                            <option value="code_generator">Code Generator</option>
+                            <option value="documentation">Documentation</option>
+                            <option value="query_helper">Query Helper</option>
+                        </select>
+                    </div>
+                    <div id="promptForm">
+                        <!-- Dynamic form will be populated here -->
+                    </div>
+                    <button class="btn" onclick="getPrompt()">Get Prompt</button>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Processing request...</p>
+            </div>
+
+            <div id="response" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let requestId = 1;
+
+        function showTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('response').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResponse(data) {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+            responseDiv.style.display = 'block';
+            hideLoading();
+        }
+
+        function clearResponse() {
+            document.getElementById('response').style.display = 'none';
+        }
+
+        async function sendRequest(method, params = {}) {
+            showLoading();
+            
+            const request = {
+                jsonrpc: "2.0",
+                id: requestId++,
+                method: method,
+                params: params
+            };
+
+            try {
+                const response = await fetch('/mcp', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(request)
+                });
+
+                const data = await response.json();
+                showResponse(data);
+            } catch (error) {
+                showResponse({ error: error.message });
+            }
+        }
+
+        function sendCustomRequest() {
+            const method = document.getElementById('method').value;
+            const paramsText = document.getElementById('params').value;
+            
+            let params = {};
+            if (paramsText.trim()) {
+                try {
+                    params = JSON.parse(paramsText);
+                } catch (e) {
+                    alert('Invalid JSON in parameters');
+                    return;
+                }
+            }
+            
+            sendRequest(method, params);
+        }
+
+        function initializeServer() {
+            sendRequest('initialize', {
+                protocolVersion: "2025-03-26",
+                capabilities: {},
+                clientInfo: {
+                    name: "MCP Test Client",
+                    version: "1.0.0"
+                }
+            });
+        }
+
+        function listResources() {
+            sendRequest('resources/list');
+        }
+
+        function listTools() {
+            sendRequest('tools/list');
+        }
+
+        function listPrompts() {
+            sendRequest('prompts/list');
+        }
+
+        function readResource() {
+            const uri = document.getElementById('resourceUri').value;
+            sendRequest('resources/read', { uri: uri });
+        }
+
+        function subscribeToResource() {
+            const uri = document.getElementById('resourceUri').value;
+            sendRequest('resources/subscribe', { uri: uri });
+        }
+
+        function updateToolForm() {
+            const toolName = document.getElementById('toolName').value;
+            const formDiv = document.getElementById('toolForm');
+            
+            let formHtml = '';
+            
+            switch (toolName) {
+                case 'calculator':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Operation:</label>
+                            <select id="operation">
+                                <option value="add">Add</option>
+                                <option value="subtract">Subtract</option>
+                                <option value="multiply">Multiply</option>
+                                <option value="divide">Divide</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>First Number:</label>
+                            <input type="number" id="numA" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Second Number:</label>
+                            <input type="number" id="numB" value="5">
+                        </div>
+                    `;
+                    break;
+                case 'file_operations':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Action:</label>
+                            <select id="fileAction">
+                                <option value="read">Read</option>
+                                <option value="write">Write</option>
+                                <option value="list">List</option>
+                                <option value="delete">Delete</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Path:</label>
+                            <input type="text" id="filePath" value="/tmp/test.txt">
+                        </div>
+                        <div class="form-group">
+                            <label>Content (for write):</label>
+                            <textarea id="fileContent">Hello, World!</textarea>
+                        </div>
+                    `;
+                    break;
+                case 'database_query':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Database:</label>
+                            <select id="database">
+                                <option value="mysql">MySQL</option>
+                                <option value="mongodb">MongoDB</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Query:</label>
+                            <textarea id="query">SELECT * FROM users LIMIT 10</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Collection (MongoDB only):</label>
+                            <input type="text" id="collection" value="users">
+                        </div>
+                    `;
+                    break;
+                case 'system_info':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Info Type:</label>
+                            <select id="infoType">
+                                <option value="os">Operating System</option>
+                                <option value="memory">Memory</option>
+                                <option value="cpu">CPU</option>
+                                <option value="disk">Disk</option>
+                                <option value="network">Network</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'text_processor':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Action:</label>
+                            <select id="textAction">
+                                <option value="uppercase">Uppercase</option>
+                                <option value="lowercase">Lowercase</option>
+                                <option value="reverse">Reverse</option>
+                                <option value="length">Length</option>
+                                <option value="words">Word Count</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Text:</label>
+                            <textarea id="text">Hello, World!</textarea>
+                        </div>
+                    `;
+                    break;
+                case 'date_time':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Action:</label>
+                            <select id="dateAction">
+                                <option value="now">Current Date/Time</option>
+                                <option value="format">Format</option>
+                                <option value="parse">Parse</option>
+                                <option value="add">Add</option>
+                                <option value="subtract">Subtract</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Amount:</label>
+                            <input type="number" id="amount" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Unit:</label>
+                            <select id="unit">
+                                <option value="days">Days</option>
+                                <option value="hours">Hours</option>
+                                <option value="minutes">Minutes</option>
+                                <option value="seconds">Seconds</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+                case 'uuid_generator':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Version:</label>
+                            <select id="uuidVersion">
+                                <option value="v4">Version 4</option>
+                                <option value="v1">Version 1</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Count:</label>
+                            <input type="number" id="uuidCount" value="1" min="1" max="100">
+                        </div>
+                    `;
+                    break;
+                case 'base64_encoder':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Action:</label>
+                            <select id="base64Action">
+                                <option value="encode">Encode</option>
+                                <option value="decode">Decode</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Data:</label>
+                            <textarea id="base64Data">Hello, World!</textarea>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            formDiv.innerHTML = formHtml;
+        }
+
+        function executeTool() {
+            const toolName = document.getElementById('toolName').value;
+            let arguments = {};
+            
+            switch (toolName) {
+                case 'calculator':
+                    arguments = {
+                        operation: document.getElementById('operation').value,
+                        a: parseFloat(document.getElementById('numA').value),
+                        b: parseFloat(document.getElementById('numB').value)
+                    };
+                    break;
+                case 'file_operations':
+                    arguments = {
+                        action: document.getElementById('fileAction').value,
+                        path: document.getElementById('filePath').value,
+                        content: document.getElementById('fileContent').value
+                    };
+                    break;
+                case 'database_query':
+                    arguments = {
+                        database: document.getElementById('database').value,
+                        query: document.getElementById('query').value,
+                        collection: document.getElementById('collection').value
+                    };
+                    break;
+                case 'system_info':
+                    arguments = {
+                        type: document.getElementById('infoType').value
+                    };
+                    break;
+                case 'text_processor':
+                    arguments = {
+                        action: document.getElementById('textAction').value,
+                        text: document.getElementById('text').value
+                    };
+                    break;
+                case 'date_time':
+                    arguments = {
+                        action: document.getElementById('dateAction').value,
+                        amount: parseInt(document.getElementById('amount').value),
+                        unit: document.getElementById('unit').value
+                    };
+                    break;
+                case 'uuid_generator':
+                    arguments = {
+                        version: document.getElementById('uuidVersion').value,
+                        count: parseInt(document.getElementById('uuidCount').value)
+                    };
+                    break;
+                case 'base64_encoder':
+                    arguments = {
+                        action: document.getElementById('base64Action').value,
+                        data: document.getElementById('base64Data').value
+                    };
+                    break;
+            }
+            
+            sendRequest('tools/call', {
+                name: toolName,
+                arguments: arguments
+            });
+        }
+
+        function updatePromptForm() {
+            const promptName = document.getElementById('promptName').value;
+            const formDiv = document.getElementById('promptForm');
+            
+            let formHtml = '';
+            
+            switch (promptName) {
+                case 'code_generator':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Language:</label>
+                            <input type="text" id="language" value="Python">
+                        </div>
+                        <div class="form-group">
+                            <label>Description:</label>
+                            <textarea id="description">A function to calculate factorial</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Style:</label>
+                            <input type="text" id="style" value="clean">
+                        </div>
+                    `;
+                    break;
+                case 'documentation':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Type:</label>
+                            <select id="docType">
+                                <option value="api">API</option>
+                                <option value="user">User</option>
+                                <option value="developer">Developer</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Title:</label>
+                            <input type="text" id="title" value="MCP Server Documentation">
+                        </div>
+                    `;
+                    break;
+                case 'query_helper':
+                    formHtml = `
+                        <div class="form-group">
+                            <label>Database:</label>
+                            <select id="queryDatabase">
+                                <option value="mysql">MySQL</option>
+                                <option value="mongodb">MongoDB</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Operation:</label>
+                            <select id="queryOperation">
+                                <option value="select">Select</option>
+                                <option value="insert">Insert</option>
+                                <option value="update">Update</option>
+                                <option value="delete">Delete</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Table:</label>
+                            <input type="text" id="queryTable" value="users">
+                        </div>
+                    `;
+                    break;
+            }
+            
+            formDiv.innerHTML = formHtml;
+        }
+
+        function getPrompt() {
+            const promptName = document.getElementById('promptName').value;
+            let arguments = {};
+            
+            switch (promptName) {
+                case 'code_generator':
+                    arguments = {
+                        language: document.getElementById('language').value,
+                        description: document.getElementById('description').value,
+                        style: document.getElementById('style').value
+                    };
+                    break;
+                case 'documentation':
+                    arguments = {
+                        type: document.getElementById('docType').value,
+                        title: document.getElementById('title').value
+                    };
+                    break;
+                case 'query_helper':
+                    arguments = {
+                        database: document.getElementById('queryDatabase').value,
+                        operation: document.getElementById('queryOperation').value,
+                        table: document.getElementById('queryTable').value
+                    };
+                    break;
+            }
+            
+            sendRequest('prompts/get', {
+                name: promptName,
+                arguments: arguments
+            });
+        }
+
+        function loadExample(type) {
+            const methodInput = document.getElementById('method');
+            const paramsInput = document.getElementById('params');
+            
+            switch (type) {
+                case 'initialize':
+                    methodInput.value = 'initialize';
+                    paramsInput.value = JSON.stringify({
+                        protocolVersion: "2025-03-26",
+                        capabilities: {},
+                        clientInfo: {
+                            name: "MCP Test Client",
+                            version: "1.0.0"
+                        }
+                    }, null, 2);
+                    break;
+                case 'resources':
+                    methodInput.value = 'resources/list';
+                    paramsInput.value = '{}';
+                    break;
+                case 'calculator':
+                    methodInput.value = 'tools/call';
+                    paramsInput.value = JSON.stringify({
+                        name: "calculator",
+                        arguments: {
+                            operation: "add",
+                            a: 10,
+                            b: 5
+                        }
+                    }, null, 2);
+                    break;
+                case 'mysql':
+                    methodInput.value = 'resources/read';
+                    paramsInput.value = JSON.stringify({
+                        uri: "mysql://localhost:3306/mcp_db"
+                    }, null, 2);
+                    break;
+            }
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                showResponse(data);
+            } catch (error) {
+                showResponse({ error: error.message });
+                document.getElementById('serverStatus').textContent = 'Server Offline';
+                document.getElementById('serverStatus').className = 'status offline';
+            }
+        }
+
+        // Initialize form
+        updateToolForm();
+        updatePromptForm();
+
+        // Check server health on load
+        checkHealth();
+    </script>
+</body>
+</html> 

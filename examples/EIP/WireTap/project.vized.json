@@ -1,0 +1,141 @@
+{
+  "name": "Wire Tap Pattern",
+  "description": "Demonstrates the Wire Tap Enterprise Integration Pattern using a Healthcare Patient Monitoring System scenario",
+  "version": "1.0.0",
+  "type": "integration",
+  "author": "VIZED Examples",
+  "tags": ["EIP", "Wire-Tap", "Healthcare", "Patient-Monitoring", "Asynchronous", "Medical"],
+  "camelVersion": "4.0.0",
+  "runtime": "camel-jbang",
+  "mainClass": "WireTap.camel.yaml",
+  "dependencies": [
+    "camel-timer",
+    "camel-jackson",
+    "camel-jsonpath",
+    "camel-file",
+    "camel-direct",
+    "camel-log",
+    "camel-groovy"
+  ],
+  "routes": [
+    {
+      "id": "patient-vital-signs-processor",
+      "description": "Main route that generates and processes patient vital signs data",
+      "pattern": "Timer-Driven Data Generation"
+    },
+    {
+      "id": "main-vital-signs-processing", 
+      "description": "Core processing route with multiple wire taps for different purposes",
+      "pattern": "Wire Tap"
+    },
+    {
+      "id": "research-data-collection-route",
+      "description": "Wire tap route for anonymized medical research data collection",
+      "pattern": "Wire Tap - Research"
+    },
+    {
+      "id": "compliance-audit-route",
+      "description": "Wire tap route for regulatory compliance and audit trail",
+      "pattern": "Wire Tap - Compliance"
+    },
+    {
+      "id": "predictive-analytics-route",
+      "description": "Wire tap route for AI/ML predictive analytics processing",
+      "pattern": "Wire Tap - Analytics"
+    },
+    {
+      "id": "family-notification-route",
+      "description": "Wire tap route for critical alert family notifications",
+      "pattern": "Wire Tap - Notifications"
+    },
+    {
+      "id": "dashboard-update-route",
+      "description": "Main flow route for real-time monitoring dashboard updates",
+      "pattern": "Main Flow Processing"
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "timer",
+      "name": "vitalSignsGenerator",
+      "description": "Timer-based vital signs data generation every 3 seconds"
+    },
+    {
+      "type": "file",
+      "path": "research-data/collected",
+      "description": "Anonymized patient data for medical research studies"
+    },
+    {
+      "type": "file",
+      "path": "compliance-audit/critical-events",
+      "description": "Critical events for regulatory compliance and audit trail"
+    },
+    {
+      "type": "file", 
+      "path": "analytics-data/patterns",
+      "description": "Patient data patterns for predictive analytics and ML models"
+    },
+    {
+      "type": "file",
+      "path": "family-notifications/critical-alerts",
+      "description": "Critical alert notifications for patient families"
+    },
+    {
+      "type": "file",
+      "path": "dashboard-updates/real-time",
+      "description": "Real-time dashboard updates for medical staff monitoring"
+    }
+  ],
+  "businessScenario": {
+    "domain": "Healthcare",
+    "useCase": "Hospital Patient Vital Signs Monitoring",
+    "description": "A hospital patient monitoring system that continuously collects vital signs from medical devices and processes them for real-time monitoring. The Wire Tap pattern enables non-intrusive copying of data to multiple systems: research databases for medical studies, compliance systems for regulatory audit, predictive analytics for early warning systems, and family notification systems for critical alerts.",
+    "benefits": [
+      "Non-intrusive monitoring - research and compliance don't slow down critical patient care",
+      "Asynchronous processing - analytics and notifications processed separately from main flow", 
+      "Fault isolation - failures in wire-tapped processes don't affect patient monitoring",
+      "Separation of concerns - different business needs handled by dedicated processes",
+      "Scalable architecture - easy to add new wire taps for additional requirements"
+    ]
+  },
+  "sampleData": {
+    "input": "Timer-generated patient vital signs data",
+    "outputs": [
+      "research-data/collected/ - Anonymized research data",
+      "compliance-audit/critical-events/ - Regulatory audit trail",
+      "analytics-data/patterns/ - Predictive analytics data",
+      "family-notifications/critical-alerts/ - Critical family alerts",
+      "dashboard-updates/real-time/ - Real-time monitoring updates"
+    ],
+    "description": "Simulated patient vital signs including heart rate, blood pressure, oxygen saturation, temperature, and respiratory rate with occasional critical conditions"
+  },
+  "wireTapConfiguration": {
+    "totalWireTaps": 4,
+    "wireTaps": [
+      {
+        "name": "Research Data Collection",
+        "description": "Anonymizes and stores all patient data for medical research",
+        "condition": "All messages",
+        "processing": "Asynchronous"
+      },
+      {
+        "name": "Regulatory Compliance",
+        "description": "Audits critical events for HIPAA and FDA compliance",
+        "condition": "Critical alerts only",
+        "processing": "Asynchronous"
+      },
+      {
+        "name": "Predictive Analytics",
+        "description": "Analyzes patterns for early warning predictions",
+        "condition": "All messages",
+        "processing": "Asynchronous"
+      },
+      {
+        "name": "Family Notifications",
+        "description": "Sends critical alerts to patient families",
+        "condition": "Critical conditions only",
+        "processing": "Asynchronous"
+      }
+    ]
+  }
+}

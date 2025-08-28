@@ -1,0 +1,92 @@
+{
+  "name": "RequestReply",
+  "version": "0.0.1",
+  "artifactId": "RequestReply",
+  "group": "com.vized.project",
+  "relativePath": "RequestReply",
+  "type": "integration",
+  "camelVersion": "latest",
+  "runtime": "camel-main",
+  "camel": {
+    "routes": {
+      "RequestReply.camel.yaml": {
+        "loan-application-api": {
+          "id": "loan-application-api",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/api/loan-application?httpMethodRestrict=POST",
+              "id": "loan-api-endpoint"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:credit-bureau-service",
+              "id": "credit-bureau-request-reply"
+            },
+            {
+              "uri": "file:loan-applications/processed",
+              "id": "save-processed-application"
+            }
+          ]
+        },
+        "loan-application-batch-processor": {
+          "id": "loan-application-batch-processor",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "file:loan-applications/incoming",
+              "id": "loan-file-source"
+            }
+          ],
+          "to": [
+            {
+              "uri": "direct:credit-bureau-service",
+              "id": "credit-bureau-request-reply-batch"
+            },
+            {
+              "uri": "file:loan-applications/processed",
+              "id": "save-processed-application-batch"
+            }
+          ]
+        },
+        "credit-bureau-service-route": {
+          "id": "credit-bureau-service-route",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "direct:credit-bureau-service",
+              "id": "credit-service-endpoint"
+            }
+          ],
+          "to": []
+        },
+        "health-check-route": {
+          "id": "health-check-route",
+          "breakpoints": [],
+          "from": [
+            {
+              "uri": "platform-http:/health?httpMethodRestrict=GET",
+              "id": "health-endpoint"
+            }
+          ],
+          "to": []
+        }
+      }
+    },
+    "beans": {
+      "RequestReply.camel.yaml": [
+        "creditBureauService"
+      ]
+    }
+  },
+  "environments": {
+    "default": [
+      "app.name",
+      "app.description",
+      "app.version",
+      "camel.server.enabled",
+      "camel.server.staticEnabled"
+    ]
+  }
+}

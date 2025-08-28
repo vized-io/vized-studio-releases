@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loan Application • Request-Reply Demo</title>
+  <style>
+    :root {
+      /* Brand palette from Image Recognition (blue + green) */
+      --primary: #2078dd;          /* blue */
+      --primary-600: #1a67bd;      /* darker blue */
+      --secondary: #48bb78;        /* green */
+      --secondary-600: #38a169;    /* darker green */
+
+      --bg-grad-start: #7fdda6;    /* green */
+      --bg-grad-end: #64a7da;      /* blue */
+
+      --text: #2d3748;             /* slate-800 */
+      --muted: #4a5568;            /* slate-700 */
+      --panel-bg: rgba(255,255,255,0.32);
+      --panel-bg-2: rgba(255,255,255,0.20);
+      --border: rgba(255,255,255,0.42);
+      --ring: rgba(32, 120, 221, 0.30);
+
+      /* States using blue/green tints */
+      --success-bg: rgba(72, 187, 120, 0.14);
+      --success-br: #48bb78;
+      --success-fg: #166534;
+
+      --error-bg: rgba(239, 68, 68, 0.14);
+      --error-br: #ef4444;
+      --error-fg: #7f1d1d;
+
+      --info-bg: rgba(32, 120, 221, 0.14);
+      --info-br: #2078dd;
+      --info-fg: #0b4ea2;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    html { background: linear-gradient(30deg, var(--bg-grad-start) 0%, var(--bg-grad-end) 100%); }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: inherit;
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: start center;
+    }
+
+    .container {
+      width: min(960px, 100%);
+      background: linear-gradient(180deg, var(--panel-bg), var(--panel-bg-2));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+    }
+    .logo {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(32,120,221,.25), rgba(72,187,120,.25));
+      border: 1px solid var(--border);
+      color: #1e293b;
+    }
+    .logo span { font-size: 20px; }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.2;
+      margin: 0;
+      letter-spacing: 0.2px;
+      color: #1f2937;
+    }
+    .subtle {
+      color: var(--muted);
+      margin: 4px 0 18px;
+    }
+
+    .sample-data {
+      background: rgba(255,255,255,0.35);
+      border: 1px dashed rgba(255,255,255,0.6);
+      color: var(--muted);
+      padding: 14px 16px;
+      border-radius: 12px;
+      margin: 18px 0 22px;
+    }
+    .sample-data h3 { margin: 0 0 6px; font-size: 14px; color: #1f2937; }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px 16px;
+    }
+    .form-group { grid-column: span 6; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    @media (max-width: 720px) {
+      .form-group { grid-column: 1 / -1; }
+    }
+
+    label {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: .2px;
+      color: var(--muted);
+      margin: 2px 0 6px;
+    }
+    input, select {
+      width: 100%;
+      padding: 12px 12px;
+      color: #0f172a;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 10px;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+    }
+    input::placeholder { color: #6b7280; }
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px var(--ring);
+    }
+
+    .actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+    .btn {
+      appearance: none;
+      border: 1px solid transparent;
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      letter-spacing: .2px;
+      transition: transform .05s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, filter .2s ease;
+      display: inline-flex; align-items: center; gap: 8px;
+      color: #fff;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary {
+      background: linear-gradient(180deg, var(--primary), var(--primary-600));
+      box-shadow: 0 6px 18px rgba(32, 120, 221, .32);
+    }
+    .btn-primary:hover { filter: brightness(1.06); }
+
+    .btn-secondary {
+      background: linear-gradient(180deg, var(--secondary), var(--secondary-600));
+      box-shadow: 0 6px 18px rgba(72, 187, 120, .28);
+    }
+    .btn-secondary:hover { filter: brightness(1.05); }
+
+    .btn[disabled] { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+    .response {
+      grid-column: 1 / -1;
+      margin-top: 8px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.85);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      color: #0f172a;
+    }
+    .response.success { background: var(--success-bg); border-color: var(--success-br); color: var(--success-fg); }
+    .response.error   { background: var(--error-bg);   border-color: var(--error-br);   color: var(--error-fg); }
+    .response.loading { background: var(--info-bg);    border-color: var(--info-br);    color: var(--info-fg); }
+
+    .footnote { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo" aria-hidden="true"><span>🏦</span></div>
+      <div>
+        <h1>Loan Application • Request-Reply</h1>
+        <p class="subtle">Submit a loan application and view the credit-check response in real time.</p>
+      </div>
+    </div>
+
+    <div class="sample-data">
+      <h3>Sample data</h3>
+      <p>Use the form below, or load rotating samples to try different scenarios instantly.</p>
+    </div>
+
+    <form id="loanForm" novalidate>
+      <div class="form-group">
+        <label for="requestId">Request ID</label>
+        <input type="text" id="requestId" placeholder="e.g. REQ-2024-001" value="REQ-2024-001" required />
+      </div>
+
+      <div class="form-group">
+        <label for="customerId">Customer ID</label>
+        <input type="text" id="customerId" placeholder="e.g. CUST-12345" value="CUST-12345" required />
+      </div>
+
+      <div class="form-group">
+        <label for="firstName">First name</label>
+        <input type="text" id="firstName" value="John" required />
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Last name</label>
+        <input type="text" id="lastName" value="Smith" required />
+      </div>
+
+      <div class="form-group">
+        <label for="monthlyIncome">Monthly income ($)</label>
+        <input type="number" id="monthlyIncome" value="8500" required />
+      </div>
+
+      <div class="form-group">
+        <label for="monthlyDebt">Monthly debt ($)</label>
+        <input type="number" id="monthlyDebt" value="2200" required />
+      </div>
+
+      <div class="form-group">
+        <label for="requestedAmount">Requested amount ($)</label>
+        <input type="number" id="requestedAmount" value="250000" required />
+      </div>
+
+      <div class="form-group">
+        <label for="loanPurpose">Loan purpose</label>
+        <select id="loanPurpose" required>
+          <option value="HOME_PURCHASE">Home Purchase</option>
+          <option value="AUTO_LOAN">Auto Loan</option>
+          <option value="PERSONAL_LOAN">Personal Loan</option>
+          <option value="BUSINESS_LOAN">Business Loan</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="loanTerm">Loan term (years)</label>
+        <input type="number" id="loanTerm" value="30" required />
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" id="loadBtn">↻ Load sample data</button>
+        <button type="button" class="btn btn-primary" id="submitBtn">➤ Submit application</button>
+      </div>
+
+      <div id="response" class="response" style="display:none;"></div>
+      <!-- <div class="footnote">Requires backend at http://localhost:8080 (Camel route: POST /api/loan-application)</div> -->
+    </form>
+  </div>
+
+  <script>
+    const sampleData = [
+      {
+        requestId: "REQ-2024-APPROVED",
+        customerId: "APPROVED-CUSTOMER",
+        firstName: "John",
+        lastName: "Smith",
+        monthlyIncome: 8500,
+        monthlyDebt: 2200,
+        requestedAmount: 250000,
+        loanPurpose: "HOME_PURCHASE",
+        loanTerm: 30
+      },
+      {
+        requestId: "REQ-2024-002",
+        customerId: "REJECTED-CUSTOMER",
+        firstName: "Sarah",
+        lastName: "Johnson",
+        monthlyIncome: 4000,
+        monthlyDebt: 2000,
+        requestedAmount: 50000,
+        loanPurpose: "PERSONAL_LOAN",
+        loanTerm: 5
+      },
+      {
+        requestId: "REQ-2024-003",
+        customerId: "HIGH-DEBT-CUSTOMER",
+        firstName: "Michael",
+        lastName: "Brown",
+        monthlyIncome: 4000,
+        monthlyDebt: 3000,
+        requestedAmount: 50000,
+        loanPurpose: "PERSONAL_LOAN",
+        loanTerm: 3
+      }
+    ];
+
+    let currentSampleIndex = 0;
+
+    function setLoading(loading) {
+      const submitBtn = document.getElementById('submitBtn');
+      const loadBtn = document.getElementById('loadBtn');
+      submitBtn.disabled = loading;
+      loadBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Processing…' : '➤ Submit application';
+    }
+
+    function loadSampleData() {
+      const data = sampleData[currentSampleIndex];
+      document.getElementById('requestId').value = data.requestId;
+      document.getElementById('customerId').value = data.customerId;
+      document.getElementById('firstName').value = data.firstName;
+      document.getElementById('lastName').value = data.lastName;
+      document.getElementById('monthlyIncome').value = data.monthlyIncome;
+      document.getElementById('monthlyDebt').value = data.monthlyDebt;
+      document.getElementById('requestedAmount').value = data.requestedAmount;
+      document.getElementById('loanPurpose').value = data.loanPurpose;
+      document.getElementById('loanTerm').value = data.loanTerm;
+      currentSampleIndex = (currentSampleIndex + 1) % sampleData.length;
+    }
+
+    async function submitApplication() {
+      const responseDiv = document.getElementById('response');
+      responseDiv.style.display = 'block';
+      responseDiv.className = 'response loading';
+      responseDiv.textContent = '⏳ Processing loan application…';
+      setLoading(true);
+
+      try {
+        const formData = {
+          requestId: document.getElementById('requestId').value,
+          customerId: document.getElementById('customerId').value,
+          firstName: document.getElementById('firstName').value,
+          lastName: document.getElementById('lastName').value,
+          monthlyIncome: parseFloat(document.getElementById('monthlyIncome').value),
+          monthlyDebt: parseFloat(document.getElementById('monthlyDebt').value),
+          requestedAmount: parseFloat(document.getElementById('requestedAmount').value),
+          loanPurpose: document.getElementById('loanPurpose').value,
+          loanTerm: parseInt(document.getElementById('loanTerm').value),
+          applicationDate: new Date().toISOString()
+        };
+
+        const response = await fetch('/api/loan-application', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (!result || typeof result !== 'object') throw new Error('Invalid response format from server');
+
+          responseDiv.className = 'response success';
+          responseDiv.textContent = '✅ Loan Application Processed Successfully!\n\n' +
+            'Credit Check Results:\n' +
+            '─────────────────────\n' +
+            `Request ID: ${result.requestId || 'N/A'}\n` +
+            `Customer ID: ${result.customerId || 'N/A'}\n` +
+            `Credit Score: ${result.creditScore || 'N/A'}\n` +
+            `Credit History: ${result.creditHistory || 'N/A'}\n` +
+            `Recommendation: ${result.recommendation || 'N/A'}\n` +
+            `Max Loan Amount: $${result.maxLoanAmount ? Number(result.maxLoanAmount).toLocaleString() : 'N/A'}\n` +
+            `Interest Rate: ${result.interestRate || 'N/A'}%\n` +
+            `Debt-to-Income Ratio: ${result.debtToIncomeRatio || 'N/A'}%\n` +
+            `Processing Time: ${result.processingTimestamp || 'N/A'}\n\n` +
+            '📁 Decision saved to: loan-applications/processed/';
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        responseDiv.className = 'response error';
+        responseDiv.textContent = '❌ Error processing loan application:\n\n' + error.message +
+          '\n\n💡 Make sure the Camel service is running on http://localhost:8080';
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    document.getElementById('loadBtn').addEventListener('click', loadSampleData);
+    document.getElementById('submitBtn').addEventListener('click', submitApplication);
+  </script>
+</body>
+</html>

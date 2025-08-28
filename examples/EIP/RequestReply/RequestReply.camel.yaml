@@ -31,8 +31,8 @@
             def monthlyDebt = monthlyDebtStr ? monthlyDebtStr as Double : 0.0
             def requestedAmount = requestedAmountStr ? requestedAmountStr as Double : 0.0
             
-            // Simulate credit bureau logic
-            def creditScore = 300 + (customerId.hashCode() % 550) // Generate score 300-850
+            // Hybrid credit scoring: Financial data + Customer ID patterns
+            def creditScore = calculateCreditScore(customerId, monthlyIncome, monthlyDebt, requestedAmount)
             def creditHistory = creditScore > 650 ? "GOOD" : creditScore > 550 ? "FAIR" : "POOR"
             
             // Simulate processing delay
@@ -74,6 +74,50 @@
               interestRate: interestRate,
               processingTimestamp: processingTimestamp
             ]
+          }
+          
+          private def calculateCreditScore(customerId, monthlyIncome, monthlyDebt, requestedAmount) {
+            // Base credit score calculation using financial data
+            def baseScore = 300
+            
+            // Income factor (0-200 points): Higher income = better score
+            def incomeScore = Math.min(200, (monthlyIncome / 100).intValue())
+            
+            // Debt factor (-150 to 0 points): Higher debt = lower score  
+            def debtScore = Math.max(-150, -(monthlyDebt / 50).intValue())
+            
+            // Loan amount factor (-50 to 0 points): Higher loan request = slight penalty
+            def loanScore = Math.max(-50, -(requestedAmount / 10000).intValue())
+            
+            // Calculate base financial score
+            def financialScore = baseScore + incomeScore + debtScore + loanScore
+            
+            // Apply customer ID pattern overrides for predictable testing
+            def finalScore = financialScore
+            
+            if (customerId.startsWith("APPROVED-") || customerId.contains("APPROVED")) {
+                // Ensure approved customers get high scores (720-850)
+                finalScore = Math.max(financialScore, 720 + (Math.abs(customerId.hashCode()) % 130))
+            } else if (customerId.startsWith("REJECTED-") || customerId.contains("REJECTED")) {
+                // Ensure rejected customers get low scores (300-580)
+                finalScore = Math.min(financialScore, 300 + (Math.abs(customerId.hashCode()) % 280))
+            } else if (customerId.startsWith("CONDITIONAL-") || customerId.contains("CONDITIONAL")) {
+                // Ensure conditional customers get mid-range scores (600-699)
+                finalScore = 600 + (Math.abs(customerId.hashCode()) % 100)
+            } else if (customerId.startsWith("EXCELLENT-")) {
+                finalScore = 800 + (Math.abs(customerId.hashCode()) % 50) // 800-850
+            } else if (customerId.startsWith("GOOD-")) {
+                finalScore = 720 + (Math.abs(customerId.hashCode()) % 80) // 720-799
+            } else if (customerId.startsWith("FAIR-")) {
+                finalScore = 600 + (Math.abs(customerId.hashCode()) % 100) // 600-699
+            } else if (customerId.startsWith("POOR-")) {
+                finalScore = 450 + (Math.abs(customerId.hashCode()) % 150) // 450-599
+            } else if (customerId.startsWith("BAD-")) {
+                finalScore = 300 + (Math.abs(customerId.hashCode()) % 150) // 300-449
+            }
+            
+            // Ensure score stays within valid range (300-850)
+            return Math.max(300, Math.min(850, finalScore))
           }
           
           private def extractJsonValue(jsonString, key) {

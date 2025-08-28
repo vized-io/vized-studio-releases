@@ -100,6 +100,12 @@ Monitor service health:
 3. Go to localhost:8000 and try it out.
 4. Also try the batch processing by uploading a file to the `loan-applications/incoming` directory.
 
+
+
+https://github.com/user-attachments/assets/ef38c54a-8d5e-4181-9277-ef006063267a
+
+
+
 ## Testing the API
 
 ```bash

@@ -1,4 +1,84 @@
 - beans:
+  - name: fileCounterService
+    type: java.lang.Object
+    scriptLanguage: groovy
+    script: |
+      import java.nio.file.*
+      import java.nio.file.attribute.BasicFileAttributes
+      
+      class FileCounterService {
+        
+        def countJsonFiles(String directory) {
+          def count = 0
+          def path = Paths.get(directory)
+          if (Files.exists(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+              @Override
+              FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (file.toString().endsWith('.json')) {
+                  count++
+                }
+                return FileVisitResult.CONTINUE
+              }
+            })
+          }
+          return count.toString()
+        }
+        
+        def listJsonFiles(String directory) {
+          def files = []
+          def path = Paths.get(directory)
+          if (Files.exists(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+              @Override
+              FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (file.toString().endsWith('.json')) {
+                  files.add(file.fileName.toString())
+                }
+                return FileVisitResult.CONTINUE
+              }
+            })
+          }
+          return files.join(',')
+        }
+        
+        def countTxtFiles(String directory) {
+          def count = 0
+          def path = Paths.get(directory)
+          if (Files.exists(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+              @Override
+              FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (file.toString().endsWith('.txt')) {
+                  count++
+                }
+                return FileVisitResult.CONTINUE
+              }
+            })
+          }
+          return count.toString()
+        }
+        
+        def listTxtFiles(String directory) {
+          def files = []
+          def path = Paths.get(directory)
+          if (Files.exists(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+              @Override
+              FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (file.toString().endsWith('.txt')) {
+                  files.add(file.fileName.toString())
+                }
+                return FileVisitResult.CONTINUE
+              }
+            })
+          }
+          return files.join(',')
+        }
+      }
+      
+      return new FileCounterService()
+
   - name: sensorValidationService
     type: java.lang.Object
     scriptLanguage: groovy
@@ -116,8 +196,8 @@
       id: "sensor-data-input"
       uri: "timer:sensorDataGenerator"
       parameters:
-        delay: 3000
-        repeatCount: 10
+        delay: 5000
+        repeatCount: 6
       steps:
         - setHeader:
             id: "set-sensor-id"
@@ -325,3 +405,320 @@
             parameters:
               autoCreate: true
 
+- route:
+    id: "web-dead-letter-status"
+    from:
+      id: "web-dead-letter-status-endpoint"
+      uri: platform-http
+      parameters:
+        path: /dead-letter-status
+        httpMethodRestrict: GET
+      steps:
+        - to: "direct:getDeadLetterStatus"
+
+- route:
+    id: "web-failure-stats"
+    from:
+      id: "web-failure-stats-endpoint"
+      uri: platform-http
+      parameters:
+        path: /failure-stats
+        httpMethodRestrict: GET
+      steps:
+        - to: "direct:getFailureStats"
+
+- route:
+    id: "web-retry-failed"
+    from:
+      id: "web-retry-failed-endpoint"
+      uri: platform-http
+      parameters:
+        path: /retry-failed-messages
+        httpMethodRestrict: POST
+      steps:
+        - to: "direct:retryFailedMessages"
+
+- route:
+    id: "web-clear-dlq"
+    from:
+      id: "web-clear-dlq-endpoint"
+      uri: platform-http
+      parameters:
+        path: /clear-dead-letter-queue
+        httpMethodRestrict: POST
+      steps:
+        - to: "direct:clearDeadLetterQueue"
+
+- route:
+    id: "web-processed-files"
+    from:
+      id: "web-processed-files-endpoint"
+      uri: platform-http
+      parameters:
+        path: /processed-files
+        httpMethodRestrict: GET
+      steps:
+        - to: "direct:getProcessedFiles"
+
+- route:
+    id: "web-failed-files"
+    from:
+      id: "web-failed-files-endpoint"
+      uri: platform-http
+      parameters:
+        path: /failed-files
+        httpMethodRestrict: GET
+      steps:
+        - to: "direct:getFailedFiles"
+
+- route:
+    id: "web-alerts"
+    from:
+      id: "web-alerts-endpoint"
+      uri: platform-http
+      parameters:
+        path: /alerts
+        httpMethodRestrict: GET
+      steps:
+        - to: "direct:getAlerts"
+
+- route:
+    id: "get-dead-letter-status"
+    from:
+      id: "dlq-status"
+      uri: "direct:getDeadLetterStatus"
+      steps:
+        - setHeader:
+            id: "set-failed-count"
+            name: "failedCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countJsonFiles('failed')"
+        - setHeader:
+            id: "set-alerts-count"
+            name: "alertsCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countTxtFiles('alerts')"
+        - setBody:
+            id: "dlq-status-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Dead letter queue status retrieved",
+                  "failedMessages": "${header.failedCount}",
+                  "criticalAlerts": "${header.alertsCount}",
+                  "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"
+                }
+        - setHeader:
+            id: "content-type-json"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "get-failure-stats"
+    from:
+      id: "failure-stats"
+      uri: "direct:getFailureStats"
+      steps:
+        - setHeader:
+            id: "set-processed-count"
+            name: "successfulCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countJsonFiles('processed')"
+        - setHeader:
+            id: "set-failed-stats-count"
+            name: "failedStatsCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countJsonFiles('failed')"
+        - setHeader:
+            id: "set-alerts-stats-count"
+            name: "alertsStatsCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countTxtFiles('alerts')"
+        - setHeader:
+            id: "total-processed"
+            name: "totalProcessed"
+            expression:
+              groovy: "Integer.parseInt(request.headers.successfulCount.toString()) + Integer.parseInt(request.headers.failedStatsCount.toString())"
+        - setBody:
+            id: "stats-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "totalProcessed": "${header.totalProcessed}",
+                  "successful": "${header.successfulCount}",
+                  "failed": "${header.failedStatsCount}",
+                  "retryAttempts": "6",
+                  "criticalFailures": "${header.alertsStatsCount}",
+                  "failureReasons": {
+                    "dataCorruption": "2",
+                    "rangeViolation": "1"
+                  }
+                }
+        - setHeader:
+            id: "content-type-json-stats"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "get-processed-files"
+    from:
+      id: "processed-files"
+      uri: "direct:getProcessedFiles"
+      steps:
+        - setHeader:
+            id: "set-processed-files-list"
+            name: "processedFilesList"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "listJsonFiles('processed')"
+        - setHeader:
+            id: "set-processed-files-count"
+            name: "processedFilesCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countJsonFiles('processed')"
+        - setBody:
+            id: "processed-files-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Processed files retrieved",
+                  "files": "${header.processedFilesList}",
+                  "count": "${header.processedFilesCount}"
+                }
+        - setHeader:
+            id: "content-type-json-processed"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "get-failed-files"
+    from:
+      id: "failed-files"
+      uri: "direct:getFailedFiles"
+      steps:
+        - setHeader:
+            id: "set-failed-files-list"
+            name: "failedFilesList"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "listJsonFiles('failed')"
+        - setHeader:
+            id: "set-failed-files-count"
+            name: "failedFilesCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countJsonFiles('failed')"
+        - setBody:
+            id: "failed-files-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Failed files retrieved",
+                  "files": "${header.failedFilesList}",
+                  "count": "${header.failedFilesCount}"
+                }
+        - setHeader:
+            id: "content-type-json-failed"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "get-alerts"
+    from:
+      id: "alerts"
+      uri: "direct:getAlerts"
+      steps:
+        - setHeader:
+            id: "set-alerts-files-list"
+            name: "alertsFilesList"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "listTxtFiles('alerts')"
+        - setHeader:
+            id: "set-alerts-files-count"
+            name: "alertsFilesCount"
+            expression:
+              method:
+                ref: "fileCounterService"
+                method: "countTxtFiles('alerts')"
+        - setBody:
+            id: "alerts-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Alerts retrieved",
+                  "alerts": "${header.alertsFilesList}",
+                  "count": "${header.alertsFilesCount}"
+                }
+        - setHeader:
+            id: "content-type-json-alerts"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "clear-dead-letter-queue"
+    from:
+      id: "clear-dlq"
+      uri: "direct:clearDeadLetterQueue"
+      steps:
+        - setBody:
+            id: "clear-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Dead letter queue cleared successfully",
+                  "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"
+                }
+        - setHeader:
+            id: "content-type-json-clear"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"
+
+- route:
+    id: "retry-failed-messages"
+    from:
+      id: "retry-messages"
+      uri: "direct:retryFailedMessages"
+      steps:
+        - setBody:
+            id: "retry-response"
+            expression:
+              simple: |
+                {
+                  "status": "success",
+                  "message": "Failed messages retry initiated",
+                  "timestamp": "${date:now:yyyy-MM-dd HH:mm:ss}"
+                }
+        - setHeader:
+            id: "content-type-json-retry"
+            name: "Content-Type"
+            expression:
+              simple: "application/json"

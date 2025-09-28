@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dead Letter Channel Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+        .status-card { transition: all 0.3s ease; }
+        .status-card:hover { transform: translateY(-2px); }
+        .file-item { transition: all 0.2s ease; }
+        .file-item:hover { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto p-6">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Dead Letter Channel Monitor</h1>
+            <p class="text-lg text-gray-600">IoT Sensor Data Processing with Error Handling</p>
+            <div class="mt-2 text-sm text-gray-500">
+                <span class="font-semibold">Port:</span> 8080 | 
+                <span class="font-semibold">Auto-refresh:</span> Every 5 seconds
+            </div>
+        </header>
+
+        <!-- Action Buttons -->
+        <div class="mb-6 flex flex-wrap gap-4">
+            <button onclick="getDeadLetterStatus()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                📊 Get DLQ Status
+            </button>
+            <button onclick="getFailureStats()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                📈 Failure Statistics
+            </button>
+            <button onclick="getProcessedFiles()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                ✅ Processed Files
+            </button>
+            <button onclick="getFailedFiles()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                ❌ Failed Files
+            </button>
+            <button onclick="getAlerts()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                🚨 Alerts
+            </button>
+            <button onclick="clearDeadLetterQueue()" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                🗑️ Clear DLQ
+            </button>
+        </div>
+
+        <!-- Status Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="status-card bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Total Processed</h3>
+                <p class="text-3xl font-bold text-blue-600" id="totalProcessed">-</p>
+            </div>
+            <div class="status-card bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Successful</h3>
+                <p class="text-3xl font-bold text-green-600" id="successful">-</p>
+            </div>
+            <div class="status-card bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Failed</h3>
+                <p class="text-3xl font-bold text-red-600" id="failed">-</p>
+            </div>
+            <div class="status-card bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Critical Alerts</h3>
+                <p class="text-3xl font-bold text-orange-600" id="criticalAlerts">-</p>
+            </div>
+        </div>
+
+        <!-- Results Display -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Results</h2>
+            <div id="loading" class="hidden text-center py-8">
+                <div class="spinner inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                <p class="mt-2 text-gray-600">Loading...</p>
+            </div>
+            <div id="results" class="space-y-4">
+                <p class="text-gray-500 text-center py-8">Click any button above to view results...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function makeRequest(endpoint, method = 'GET', body = null) {
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            loading.classList.remove('hidden');
+            results.innerHTML = '';
+            
+            try {
+                const options = {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(`http://localhost:8080/${endpoint}`, options);
+                const data = await response.json();
+                
+                displayResults(data);
+                updateDashboard(data);
+            } catch (error) {
+                displayError('Failed to connect to server. Make sure the Camel route is running on port 8080.');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            
+            if (data.status === 'success') {
+                let html = '<div class="space-y-4">';
+                
+                // Display different content based on endpoint
+                if (data.failedMessages !== undefined) {
+                    html += `<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h3 class="font-semibold text-blue-800 mb-2">Dead Letter Queue Status</h3>
+                        <p><strong>Failed Messages:</strong> ${data.failedMessages}</p>
+                        <p><strong>Critical Alerts:</strong> ${data.criticalAlerts}</p>
+                        <p><strong>Timestamp:</strong> ${data.timestamp}</p>
+                    </div>`;
+                } else if (data.totalProcessed !== undefined) {
+                    html += `<div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h3 class="font-semibold text-green-800 mb-2">Failure Statistics</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><strong>Total Processed:</strong> ${data.totalProcessed}</div>
+                            <div><strong>Successful:</strong> ${data.successful}</div>
+                            <div><strong>Failed:</strong> ${data.failed}</div>
+                            <div><strong>Critical Failures:</strong> ${data.criticalFailures}</div>
+                        </div>
+                    </div>`;
+                } else if (data.files !== undefined) {
+                    html += `<div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <h3 class="font-semibold text-purple-800 mb-2">Files</h3>
+                        <p><strong>Count:</strong> ${data.count}</p>
+                        <p><strong>Files:</strong> ${data.files}</p>
+                    </div>`;
+                } else {
+                    html += `<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                
+                html += '</div>';
+                results.innerHTML = html;
+            } else {
+                results.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">${data.message || 'An error occurred'}</div>`;
+            }
+        }
+
+        function updateDashboard(data) {
+            if (data.totalProcessed !== undefined) {
+                document.getElementById('totalProcessed').textContent = data.totalProcessed;
+                document.getElementById('successful').textContent = data.successful;
+                document.getElementById('failed').textContent = data.failed;
+                document.getElementById('criticalAlerts').textContent = data.criticalFailures;
+            }
+        }
+
+        function displayError(message) {
+            const results = document.getElementById('results');
+            results.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">${message}</div>`;
+        }
+
+        function getDeadLetterStatus() {
+            makeRequest('/dead-letter-status');
+        }
+
+        function getFailureStats() {
+            makeRequest('/failure-stats');
+        }
+
+        function getProcessedFiles() {
+            makeRequest('/processed-files');
+        }
+
+        function getFailedFiles() {
+            makeRequest('/failed-files');
+        }
+
+        function getAlerts() {
+            makeRequest('/alerts');
+        }
+
+        function clearDeadLetterQueue() {
+            if (confirm('Are you sure you want to clear the dead letter queue?')) {
+                makeRequest('/clear-dead-letter-queue', 'POST');
+            }
+        }
+
+        // Auto-refresh dashboard every 5 seconds
+        setInterval(() => {
+            getFailureStats();
+        }, 5000);
+
+        // Initial load
+        window.onload = function() {
+            getFailureStats();
+        };
+    </script>
+</body>
+</html>

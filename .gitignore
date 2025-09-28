@@ -23,3 +23,17 @@ llm_.txt
 vized.md
 .cursor/rules/vized-rule.mdc
 examples/AI-Agents/RagBot/backup/RagBotV1.camel.yaml
+examples/EIP/ApiAuthentication/project.vized.json
+vized-rules.md
+examples/Components/HttpServerList.md
+.gitignore
+CvAgent/agent.yaml
+CvAgent/user_life_story.txt
+CreditAnalysisAgent/api.openapi.yaml
+CreditAnalysisAgent/application.properties
+CreditAnalysisAgent/DocumentAnalyzer.yaml
+CreditAnalysisAgent/README.md
+CreditAnalysisAgent/swagger.camel.yaml
+CreditAnalysisAgent/data/HDFC_BANK_1.pdf
+CreditAnalysisAgent/data/Financial Sample.xlsx
+CreditAnalysisAgent/static/index.html

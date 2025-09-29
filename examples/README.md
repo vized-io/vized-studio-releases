@@ -81,6 +81,7 @@ VIZED supports implementing various Enterprise Integration Patterns (EIPs) with 
 | [**SAGA**](EIP/SAGA) | Manage distributed transactions across multiple services | • Coordinate multi-step business processes<br>• Handle compensation for failed transactions |
 | [**Resequencer**](EIP/SplitterResequencer) | Reorder messages based on a specific key | • Ensure messages are processed in the correct order<br>• Handle out-of-order events |
 | [**Request-Reply**](EIP/RequestReply) | Send a request and wait for corresponding reply | • Synchronous API calls to external services<br>• Credit checks and financial verifications<br>• Real-time data validation |
+| [**Wire Tap**](EIP/WireTap) | Log or monitor messages without affecting the main flow | • Audit message contents<br>• Monitor traffic for debugging purposes | • Log messages for auditing and monitoring |
 | [**XSLT Mapper**](EIP/XsltMapper) | Transform XML documents using XSLT  | • Transform XML data structures • Modify XML data |
 
 

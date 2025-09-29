@@ -1,12 +1,13 @@
 {
   "name": "XsltMapper",
-  "version": "0.0.1",
-  "artifactId": "XsltMapper",
-  "group": "com.vized.project",
-  "relativePath": "XsltMapper",
   "type": "integration",
-  "camelVersion": "latest",
   "runtime": "camel-main",
+  "group": "com.vized.project",
+  "artifactId": "XsltMapper",
+  "version": "0.0.1",
+  "camelVersion": "latest",
+  "relativePath": "XsltMapper",
+  "dependencies": [],
   "camel": {
     "routes": {
       "XsltMapper.camel.yaml": {
@@ -36,7 +37,17 @@
       "XsltMapper.camel.yaml": []
     }
   },
+  "beanio": {},
   "environments": {
     "default": []
-  }
+  },
+  "kamelets": {},
+  "aggregators": [],
+  "processors": [],
+  "openApi": {},
+  "appPorts": {},
+  "kubernetes": {},
+  "dockers": {},
+  "resources": {},
+  "path": "C:\\Users\\Praveen Kumar\\Documents\\GitHub\\vized-studio-releases\\examples\\EIP\\XsltMapper"
 }

@@ -1,123 +1,168 @@
+
 - route:
     id: patient-vital-signs-processor
     from:
       id: vital-signs-timer
-      uri: timer:vitalSignsGenerator
+      uri: timer
       parameters:
-        delay: 3000
-        repeatCount: 20
+        delay: "10000"
+        repeatCount: 10
+        timerName: vitalSignsGenerator
       steps:
         - setBody:
             id: generate-vital-signs
             expression:
-              groovy:
-                expression: |
-                  import java.util.Random
-                  import java.time.LocalDateTime
-                  import java.time.format.DateTimeFormatter
-                  
-                  def random = new Random()
-                  def patientIds = ["P001", "P002", "P003", "P004", "P005"]
-                  def wards = ["ICU", "CCU", "Emergency", "Surgery", "General"]
-                  def deviceTypes = ["Philips_Monitor", "GE_Vital_Signs", "Mindray_Patient_Monitor"]
-                  
-                  def patientId = patientIds[random.nextInt(patientIds.size())]
-                  def heartRate = 60 + random.nextInt(40) // 60-100 normal range
-                  def systolic = 90 + random.nextInt(50)  // 90-140 range
-                  def diastolic = 60 + random.nextInt(30) // 60-90 range
-                  def oxygenSat = 95 + random.nextInt(6)  // 95-100 normal
-                  def temperature = 36.0 + (random.nextDouble() * 2.5) // 36.0-38.5°C
-                  def respiratoryRate = 12 + random.nextInt(8) // 12-20 normal
-                  
-                  // Simulate some critical conditions occasionally
-                  def isCritical = random.nextInt(10) == 0 // 10% chance
-                  if (isCritical) {
-                    heartRate = random.nextBoolean() ? 45 + random.nextInt(10) : 120 + random.nextInt(40)
-                    oxygenSat = 85 + random.nextInt(10)
-                    temperature = 38.5 + (random.nextDouble() * 2.0)
-                  }
-                  
-                  def vitalSigns = [
-                    patientId: patientId,
-                    timestamp: LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                    ward: wards[random.nextInt(wards.size())],
-                    deviceType: deviceTypes[random.nextInt(deviceTypes.size())],
-                    deviceId: "DEV-" + (1000 + random.nextInt(9000)),
-                    vitalSigns: [
-                      heartRate: heartRate,
-                      bloodPressure: [
-                        systolic: systolic,
-                        diastolic: diastolic
-                      ],
-                      oxygenSaturation: oxygenSat,
-                      temperature: temperature,
-                      respiratoryRate: respiratoryRate
-                    ],
-                    alertLevel: isCritical ? "CRITICAL" : (heartRate > 100 || oxygenSat < 95) ? "WARNING" : "NORMAL",
-                    isCritical: isCritical
-                  ]
-                  
-                  return groovy.json.JsonBuilder(vitalSigns).toString()
+              groovy: >
+                import java.util.Random
+
+                import java.time.LocalDateTime
+
+                import java.time.format.DateTimeFormatter
+
+
+                def random = new Random()
+
+                def patientIds = ["P001", "P002", "P003", "P004", "P005"]
+
+                def wards = ["ICU", "CCU", "Emergency", "Surgery", "General"]
+
+                def deviceTypes = ["Philips_Monitor", "GE_Vital_Signs",
+                "Mindray_Patient_Monitor"]
+
+
+                def patientId = patientIds[random.nextInt(patientIds.size())]
+
+                def heartRate = 60 + random.nextInt(40) // 60-100 normal range
+
+                def systolic = 90 + random.nextInt(50)  // 90-140 range
+
+                def diastolic = 60 + random.nextInt(30) // 60-90 range
+
+                def oxygenSat = 95 + random.nextInt(6)  // 95-100 normal
+
+                def temperature = 36.0 + (random.nextDouble() * 2.5) //
+                36.0-38.5°C
+
+                def respiratoryRate = 12 + random.nextInt(8) // 12-20 normal
+
+                def ward = wards[random.nextInt(wards.size())]
+
+                def deviceType = deviceTypes[random.nextInt(deviceTypes.size())]
+
+                def deviceId = "DEV-" + (1000 + random.nextInt(9000))
+
+                def timestamp =
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+
+                // Simulate some critical conditions occasionally
+
+                def isCritical = random.nextInt(10) == 0 // 10% chance
+
+                if (isCritical) {
+                  heartRate = random.nextBoolean() ? 45 + random.nextInt(10) : 120 + random.nextInt(40)
+                  oxygenSat = 85 + random.nextInt(10)
+                  temperature = 38.5 + (random.nextDouble() * 2.0)
+                }
+
+
+                def alertLevel = isCritical ? "CRITICAL" : (heartRate > 100 ||
+                oxygenSat < 95) ? "WARNING" : "NORMAL"
+
+
+                // Build JSON string manually
+
+                return """{
+                  "patientId": "${patientId}",
+                  "timestamp": "${timestamp}",
+                  "ward": "${ward}",
+                  "deviceType": "${deviceType}",
+                  "deviceId": "${deviceId}",
+                  "vitalSigns": {
+                    "heartRate": ${heartRate},
+                    "bloodPressure": {
+                      "systolic": ${systolic},
+                      "diastolic": ${diastolic}
+                    },
+                    "oxygenSaturation": ${oxygenSat},
+                    "temperature": ${temperature},
+                    "respiratoryRate": ${respiratoryRate}
+                  },
+                  "alertLevel": "${alertLevel}",
+                  "isCritical": ${isCritical}
+                }"""
         - log:
             id: log-incoming-vitals
             message: "Processing vital signs: ${body}"
         - to:
             id: main-processing-flow
             uri: direct:processVitalSigns
-
 - route:
     id: main-vital-signs-processing
     from:
       id: process-vital-signs-entry
       uri: direct:processVitalSigns
       steps:
-        # Wire Tap 1: Research Data Collection (All data for medical research)
         - wireTap:
             id: research-data-wire-tap
             uri: direct:researchDataCollection
             copy: true
-        # Wire Tap 2: Regulatory Compliance (Critical events for audit)
         - choice:
             id: compliance-wire-tap-choice
             when:
-              - predicate:
-                  jsonpath:
-                    expression: "$[?(@.alertLevel == 'CRITICAL')]"
-                steps:
+              - steps:
                   - wireTap:
                       id: compliance-wire-tap
                       uri: direct:complianceAudit
                       copy: true
-        # Wire Tap 3: Predictive Analytics (Pattern analysis for early warnings)
+                groovy: >
+                  def jsonBody = body.toString()
+
+                  def alertLevel = (jsonBody =~
+                  /"alertLevel":\s*"([^"]+)"/)[0][1]
+
+                  return alertLevel == "CRITICAL"
         - wireTap:
             id: analytics-wire-tap
             uri: direct:predictiveAnalytics
             copy: true
-        # Wire Tap 4: Family Notifications (Critical alerts only)
         - choice:
             id: family-notification-choice
             when:
-              - predicate:
-                  jsonpath:
-                    expression: "$[?(@.isCritical == true)]"
-                steps:
+              - steps:
                   - wireTap:
                       id: family-notification-wire-tap
                       uri: direct:familyNotification
                       copy: true
-        # Main processing continues - Real-time monitoring dashboard
+                groovy: >
+                  def jsonBody = body.toString()
+
+                  def isCritical = (jsonBody =~
+                  /"isCritical":\s*(true|false)/)[0][1]
+
+                  return isCritical == "true"
         - setHeader:
             id: set-dashboard-header
+            constant: RealTimeMonitoring
             name: ProcessingStep
-            constant: "RealTimeMonitoring"
+        - setHeader:
+            id: extract-patient-id-header
+            expression:
+              groovy: |
+                def jsonBody = body.toString()
+                def patientIdMatcher = (jsonBody =~ /"patientId":\s*"([^"]+)"/)
+                if (patientIdMatcher.find()) {
+                  return patientIdMatcher[0][1]
+                }
+                return null
+            name: patientId
         - log:
             id: log-main-processing
-            message: "Main Flow - Updating real-time dashboard for patient ${header.patientId}"
+            message: Main Flow - Updating real-time dashboard for patient
+              ${header.patientId}
         - to:
             id: dashboard-update
             uri: direct:updateDashboard
-
-# Wire Tap Route 1: Research Data Collection
 - route:
     id: research-data-collection-route
     from:
@@ -126,36 +171,93 @@
       steps:
         - setHeader:
             id: set-research-header
+            constant: ResearchData
             name: WireTapType
-            constant: "ResearchData"
         - setBody:
             id: anonymize-research-data
             expression:
               groovy:
-                expression: |
-                  import groovy.json.JsonSlurper
-                  import groovy.json.JsonBuilder
-                  
-                  def jsonSlurper = new JsonSlurper()
-                  def data = jsonSlurper.parseText(body)
-                  
+                expression: >
+                  // Extract values using regex patterns from JSON string
+
+                  def jsonBody = body.toString()
+
+
+                  def patientId = (jsonBody =~ /"patientId":\s*"([^"]+)"/)[0][1]
+
+                  def timestamp = (jsonBody =~ /"timestamp":\s*"([^"]+)"/)[0][1]
+
+                  def ward = (jsonBody =~ /"ward":\s*"([^"]+)"/)[0][1]
+
+                  def deviceType = (jsonBody =~
+                  /"deviceType":\s*"([^"]+)"/)[0][1]
+
+                  def deviceId = (jsonBody =~ /"deviceId":\s*"([^"]+)"/)[0][1]
+
+                  def heartRate = (jsonBody =~ /"heartRate":\s*(\d+)/)[0][1]
+
+                  def systolic = (jsonBody =~ /"systolic":\s*(\d+)/)[0][1]
+
+                  def diastolic = (jsonBody =~ /"diastolic":\s*(\d+)/)[0][1]
+
+                  def oxygenSat = (jsonBody =~
+                  /"oxygenSaturation":\s*(\d+)/)[0][1]
+
+                  def temperature = (jsonBody =~
+                  /"temperature":\s*([\d.]+)/)[0][1]
+
+                  def respiratoryRate = (jsonBody =~
+                  /"respiratoryRate":\s*(\d+)/)[0][1]
+
+                  def alertLevel = (jsonBody =~
+                  /"alertLevel":\s*"([^"]+)"/)[0][1]
+
+                  def isCritical = (jsonBody =~
+                  /"isCritical":\s*(true|false)/)[0][1]
+
+
                   // Anonymize patient data for research
-                  data.patientId = "ANON-" + data.patientId.substring(1)
-                  data.researchId = "R-" + System.currentTimeMillis()
-                  data.dataUsage = "MEDICAL_RESEARCH"
-                  data.anonymized = true
-                  
-                  return new JsonBuilder(data).toString()
+
+                  def anonPatientId = "ANON-" + patientId.substring(1)
+
+                  def researchId = "R-" + System.currentTimeMillis()
+
+
+                  // Build JSON string manually and convert to String
+
+                  def result = """{
+                    "patientId": "${anonPatientId}",
+                    "timestamp": "${timestamp}",
+                    "ward": "${ward}",
+                    "deviceType": "${deviceType}",
+                    "deviceId": "${deviceId}",
+                    "vitalSigns": {
+                      "heartRate": ${heartRate},
+                      "bloodPressure": {
+                        "systolic": ${systolic},
+                        "diastolic": ${diastolic}
+                      },
+                      "oxygenSaturation": ${oxygenSat},
+                      "temperature": ${temperature},
+                      "respiratoryRate": ${respiratoryRate}
+                    },
+                    "alertLevel": "${alertLevel}",
+                    "isCritical": ${isCritical},
+                    "researchId": "${researchId}",
+                    "dataUsage": "MEDICAL_RESEARCH",
+                    "anonymized": true
+                  }"""
+
+                  return result.toString()
         - log:
             id: log-research-processing
-            message: "Wire Tap 1 - Research: Anonymized data stored for patient research: ${body}"
+            message: "Wire Tap 1 - Research: Anonymized data stored for patient research:
+              ${body}"
         - to:
             id: research-file-output
             uri: file:research-data/collected
             parameters:
-              fileName: "research-${date:now:yyyyMMdd-HHmmss-SSS}.json"
-
-# Wire Tap Route 2: Regulatory Compliance Audit
+              fileName: research-${date:now:yyyyMMdd-HHmmss-SSS}.json
 - route:
     id: compliance-audit-route
     from:
@@ -164,42 +266,110 @@
       steps:
         - setHeader:
             id: set-compliance-header
+            constant: ComplianceAudit
             name: WireTapType
-            constant: "ComplianceAudit"
         - setBody:
             id: enrich-compliance-data
             expression:
               groovy:
-                expression: |
-                  import groovy.json.JsonSlurper
-                  import groovy.json.JsonBuilder
+                expression: >
                   import java.time.LocalDateTime
+
                   import java.time.format.DateTimeFormatter
-                  
-                  def jsonSlurper = new JsonSlurper()
-                  def data = jsonSlurper.parseText(body)
-                  
+
+
+                  // Extract values using regex patterns from JSON string
+
+                  def jsonBody = body.toString()
+
+
+                  def patientId = (jsonBody =~ /"patientId":\s*"([^"]+)"/)[0][1]
+
+                  def timestamp = (jsonBody =~ /"timestamp":\s*"([^"]+)"/)[0][1]
+
+                  def ward = (jsonBody =~ /"ward":\s*"([^"]+)"/)[0][1]
+
+                  def deviceType = (jsonBody =~
+                  /"deviceType":\s*"([^"]+)"/)[0][1]
+
+                  def deviceId = (jsonBody =~ /"deviceId":\s*"([^"]+)"/)[0][1]
+
+                  def heartRate = (jsonBody =~ /"heartRate":\s*(\d+)/)[0][1]
+
+                  def systolic = (jsonBody =~ /"systolic":\s*(\d+)/)[0][1]
+
+                  def diastolic = (jsonBody =~ /"diastolic":\s*(\d+)/)[0][1]
+
+                  def oxygenSat = (jsonBody =~
+                  /"oxygenSaturation":\s*(\d+)/)[0][1]
+
+                  def temperature = (jsonBody =~
+                  /"temperature":\s*([\d.]+)/)[0][1]
+
+                  def respiratoryRate = (jsonBody =~
+                  /"respiratoryRate":\s*(\d+)/)[0][1]
+
+                  def alertLevel = (jsonBody =~
+                  /"alertLevel":\s*"([^"]+)"/)[0][1]
+
+                  def isCritical = (jsonBody =~
+                  /"isCritical":\s*(true|false)/)[0][1]
+
+
                   // Add compliance metadata
-                  data.auditInfo = [
-                    auditId: "AUDIT-" + System.currentTimeMillis(),
-                    complianceStandard: "HIPAA",
-                    regulatoryBody: "FDA",
-                    auditTimestamp: LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                    eventType: "CRITICAL_VITAL_SIGNS",
-                    retentionPeriod: "7_YEARS"
-                  ]
-                  
-                  return new JsonBuilder(data).toString()
+
+                  def auditId = "AUDIT-" + System.currentTimeMillis()
+
+                  def auditTimestamp =
+                  LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+
+                  // Build JSON string manually and convert to String
+
+                  def result = """{
+                    "patientId": "${patientId}",
+                    "timestamp": "${timestamp}",
+                    "ward": "${ward}",
+                    "deviceType": "${deviceType}",
+                    "deviceId": "${deviceId}",
+                    "vitalSigns": {
+                      "heartRate": ${heartRate},
+                      "bloodPressure": {
+                        "systolic": ${systolic},
+                        "diastolic": ${diastolic}
+                      },
+                      "oxygenSaturation": ${oxygenSat},
+                      "temperature": ${temperature},
+                      "respiratoryRate": ${respiratoryRate}
+                    },
+                    "alertLevel": "${alertLevel}",
+                    "isCritical": ${isCritical},
+                    "auditInfo": {
+                      "auditId": "${auditId}",
+                      "complianceStandard": "HIPAA",
+                      "regulatoryBody": "FDA",
+                      "auditTimestamp": "${auditTimestamp}",
+                      "eventType": "CRITICAL_VITAL_SIGNS",
+                      "retentionPeriod": "7_YEARS"
+                    }
+                  }"""
+
+                  return result.toString()
+        - setHeader:
+            id: extract-compliance-patient-id
+            expression:
+              jsonpath:
+                expression: $.patientId
+            name: patientId
         - log:
             id: log-compliance-processing
-            message: "Wire Tap 2 - Compliance: Critical event logged for audit: ${header.patientId}"
+            message: "Wire Tap 2 - Compliance: Critical event logged for audit:
+              ${header.patientId}"
         - to:
             id: compliance-file-output
             uri: file:compliance-audit/critical-events
             parameters:
-              fileName: "audit-${date:now:yyyyMMdd-HHmmss-SSS}.json"
-
-# Wire Tap Route 3: Predictive Analytics
+              fileName: audit-${date:now:yyyyMMdd-HHmmss-SSS}.json
 - route:
     id: predictive-analytics-route
     from:
@@ -208,52 +378,128 @@
       steps:
         - setHeader:
             id: set-analytics-header
+            constant: PredictiveAnalytics
             name: WireTapType
-            constant: "PredictiveAnalytics"
         - setBody:
             id: prepare-analytics-data
             expression:
               groovy:
-                expression: |
-                  import groovy.json.JsonSlurper
-                  import groovy.json.JsonBuilder
-                  
-                  def jsonSlurper = new JsonSlurper()
-                  def data = jsonSlurper.parseText(body)
-                  
-                  // Add analytics metadata and trend indicators
-                  def vitals = data.vitalSigns
-                  data.analyticsData = [
-                    trendAnalysis: [
-                      heartRateTrend: vitals.heartRate > 100 ? "HIGH" : vitals.heartRate < 60 ? "LOW" : "NORMAL",
-                      oxygenTrend: vitals.oxygenSaturation < 95 ? "DECLINING" : "STABLE",
-                      temperatureTrend: vitals.temperature > 37.5 ? "ELEVATED" : "NORMAL"
-                    ],
-                    riskScore: calculateRiskScore(vitals),
-                    mlModelVersion: "v2.1.3",
-                    predictionTimestamp: data.timestamp
-                  ]
-                  
-                  return new JsonBuilder(data).toString()
-                  
-                  def calculateRiskScore(vitals) {
-                    def score = 0
-                    if (vitals.heartRate > 120 || vitals.heartRate < 50) score += 30
-                    if (vitals.oxygenSaturation < 90) score += 40
-                    if (vitals.temperature > 38.5) score += 20
-                    if (vitals.bloodPressure.systolic > 140) score += 15
-                    return Math.min(score, 100)
-                  }
+                expression: >
+                  // Extract values using regex patterns from JSON string
+
+                  def jsonBody = body.toString()
+
+
+                  def patientId = (jsonBody =~ /"patientId":\s*"([^"]+)"/)[0][1]
+
+                  def timestamp = (jsonBody =~ /"timestamp":\s*"([^"]+)"/)[0][1]
+
+                  def ward = (jsonBody =~ /"ward":\s*"([^"]+)"/)[0][1]
+
+                  def deviceType = (jsonBody =~
+                  /"deviceType":\s*"([^"]+)"/)[0][1]
+
+                  def deviceId = (jsonBody =~ /"deviceId":\s*"([^"]+)"/)[0][1]
+
+                  def heartRate = Integer.parseInt((jsonBody =~
+                  /"heartRate":\s*(\d+)/)[0][1])
+
+                  def systolic = Integer.parseInt((jsonBody =~
+                  /"systolic":\s*(\d+)/)[0][1])
+
+                  def diastolic = Integer.parseInt((jsonBody =~
+                  /"diastolic":\s*(\d+)/)[0][1])
+
+                  def oxygenSat = Integer.parseInt((jsonBody =~
+                  /"oxygenSaturation":\s*(\d+)/)[0][1])
+
+                  def temperature = Double.parseDouble((jsonBody =~
+                  /"temperature":\s*([\d.]+)/)[0][1])
+
+                  def respiratoryRate = Integer.parseInt((jsonBody =~
+                  /"respiratoryRate":\s*(\d+)/)[0][1])
+
+                  def alertLevel = (jsonBody =~
+                  /"alertLevel":\s*"([^"]+)"/)[0][1]
+
+                  def isCritical = (jsonBody =~
+                  /"isCritical":\s*(true|false)/)[0][1]
+
+
+                  // Calculate analytics data
+
+                  def heartRateTrend = heartRate > 100 ? "HIGH" : heartRate < 60
+                  ? "LOW" : "NORMAL"
+
+                  def oxygenTrend = oxygenSat < 95 ? "DECLINING" : "STABLE"
+
+                  def temperatureTrend = temperature > 37.5 ? "ELEVATED" :
+                  "NORMAL"
+
+
+                  // Calculate risk score
+
+                  def riskScore = 0
+
+                  if (heartRate > 120 || heartRate < 50) riskScore += 30
+
+                  if (oxygenSat < 90) riskScore += 40
+
+                  if (temperature > 38.5) riskScore += 20
+
+                  if (systolic > 140) riskScore += 15
+
+                  riskScore = Math.min(riskScore, 100)
+
+
+                  // Build JSON string manually and convert to String
+
+                  def result = """{
+                    "patientId": "${patientId}",
+                    "timestamp": "${timestamp}",
+                    "ward": "${ward}",
+                    "deviceType": "${deviceType}",
+                    "deviceId": "${deviceId}",
+                    "vitalSigns": {
+                      "heartRate": ${heartRate},
+                      "bloodPressure": {
+                        "systolic": ${systolic},
+                        "diastolic": ${diastolic}
+                      },
+                      "oxygenSaturation": ${oxygenSat},
+                      "temperature": ${temperature},
+                      "respiratoryRate": ${respiratoryRate}
+                    },
+                    "alertLevel": "${alertLevel}",
+                    "isCritical": ${isCritical},
+                    "analyticsData": {
+                      "trendAnalysis": {
+                        "heartRateTrend": "${heartRateTrend}",
+                        "oxygenTrend": "${oxygenTrend}",
+                        "temperatureTrend": "${temperatureTrend}"
+                      },
+                      "riskScore": ${riskScore},
+                      "mlModelVersion": "v2.1.3",
+                      "predictionTimestamp": "${timestamp}"
+                    }
+                  }"""
+
+                  return result.toString()
+        - setHeader:
+            id: extract-analytics-patient-id
+            expression:
+              jsonpath:
+                expression: $.patientId
+            name: patientId
         - log:
             id: log-analytics-processing
-            message: "Wire Tap 3 - Analytics: Pattern analysis completed for patient ${header.patientId}"
+            message: "Wire Tap 3 - Analytics: Pattern analysis completed for patient
+              ${header.patientId}"
         - to:
             id: analytics-file-output
             uri: file:analytics-data/patterns
             parameters:
-              fileName: "analytics-${date:now:yyyyMMdd-HHmmss-SSS}.json"
-
-# Wire Tap Route 4: Family Notification System
+              fileName: analytics-${date:now:yyyyMMdd-HHmmss-SSS}.json
 - route:
     id: family-notification-route
     from:
@@ -262,49 +508,105 @@
       steps:
         - setHeader:
             id: set-family-header
+            constant: FamilyNotification
             name: WireTapType
-            constant: "FamilyNotification"
         - setBody:
             id: prepare-family-notification
             expression:
               groovy:
-                expression: |
-                  import groovy.json.JsonSlurper
-                  import groovy.json.JsonBuilder
+                expression: >
                   import java.time.LocalDateTime
+
                   import java.time.format.DateTimeFormatter
-                  
-                  def jsonSlurper = new JsonSlurper()
-                  def data = jsonSlurper.parseText(body)
-                  
+
+
+                  // Extract values using regex patterns from JSON string
+
+                  def jsonBody = body.toString()
+
+
+                  def patientId = (jsonBody =~ /"patientId":\s*"([^"]+)"/)[0][1]
+
+                  def ward = (jsonBody =~ /"ward":\s*"([^"]+)"/)[0][1]
+
+                  def heartRate = (jsonBody =~ /"heartRate":\s*(\d+)/)[0][1]
+
+                  def systolic = (jsonBody =~ /"systolic":\s*(\d+)/)[0][1]
+
+                  def diastolic = (jsonBody =~ /"diastolic":\s*(\d+)/)[0][1]
+
+                  def oxygenSat = (jsonBody =~
+                  /"oxygenSaturation":\s*(\d+)/)[0][1]
+
+                  def temperature = (jsonBody =~
+                  /"temperature":\s*([\d.]+)/)[0][1]
+
+                  def respiratoryRate = (jsonBody =~
+                  /"respiratoryRate":\s*(\d+)/)[0][1]
+
+
                   // Create family notification message
-                  def notification = [
-                    notificationId: "NOTIFY-" + System.currentTimeMillis(),
-                    patientId: data.patientId,
-                    ward: data.ward,
-                    alertLevel: "CRITICAL",
-                    timestamp: LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                    message: "Critical vital signs detected for patient ${data.patientId}. Medical team has been alerted.",
-                    vitalSigns: data.vitalSigns,
-                    contactMethod: "SMS_AND_EMAIL",
-                    urgency: "HIGH",
-                    familyContacts: [
-                      [name: "Emergency Contact", phone: "+1-555-0101", email: "emergency@family.com"],
-                      [name: "Primary Contact", phone: "+1-555-0102", email: "primary@family.com"]
+
+                  def notificationId = "NOTIFY-" + System.currentTimeMillis()
+
+                  def notificationTimestamp =
+                  LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+                  def message = "Critical vital signs detected for patient
+                  ${patientId}. Medical team has been alerted."
+
+
+                  // Build JSON string manually and convert to String
+
+                  def result = """{
+                    "notificationId": "${notificationId}",
+                    "patientId": "${patientId}",
+                    "ward": "${ward}",
+                    "alertLevel": "CRITICAL",
+                    "timestamp": "${notificationTimestamp}",
+                    "message": "${message}",
+                    "vitalSigns": {
+                      "heartRate": ${heartRate},
+                      "bloodPressure": {
+                        "systolic": ${systolic},
+                        "diastolic": ${diastolic}
+                      },
+                      "oxygenSaturation": ${oxygenSat},
+                      "temperature": ${temperature},
+                      "respiratoryRate": ${respiratoryRate}
+                    },
+                    "contactMethod": "SMS_AND_EMAIL",
+                    "urgency": "HIGH",
+                    "familyContacts": [
+                      {
+                        "name": "Emergency Contact",
+                        "phone": "+1-555-0101",
+                        "email": "emergency@family.com"
+                      },
+                      {
+                        "name": "Primary Contact",
+                        "phone": "+1-555-0102",
+                        "email": "primary@family.com"
+                      }
                     ]
-                  ]
-                  
-                  return new JsonBuilder(notification).toString()
+                  }"""
+
+                  return result.toString()
+        - setHeader:
+            id: extract-family-patient-id
+            expression:
+              jsonpath:
+                expression: $.patientId
+            name: patientId
         - log:
             id: log-family-processing
-            message: "Wire Tap 4 - Family: Critical alert notification sent for patient ${header.patientId}"
+            message: "Wire Tap 4 - Family: Critical alert notification sent for patient
+              ${header.patientId}"
         - to:
             id: family-notification-output
             uri: file:family-notifications/critical-alerts
             parameters:
-              fileName: "family-alert-${date:now:yyyyMMdd-HHmmss-SSS}.json"
-
-# Main Dashboard Update Route
+              fileName: family-alert-${date:now:yyyyMMdd-HHmmss-SSS}.json
 - route:
     id: dashboard-update-route
     from:
@@ -312,44 +614,96 @@
       uri: direct:updateDashboard
       steps:
         - setHeader:
-            id: extract-patient-id
-            name: patientId
+            id: extract-dashboard-patient-id
             expression:
-              jsonpath:
-                expression: "$.patientId"
+              groovy: |
+                def jsonBody = body.toString()
+                def patientIdMatcher = (jsonBody =~ /"patientId":\s*"([^"]+)"/)
+                if (patientIdMatcher.find()) {
+                  return patientIdMatcher[0][1]
+                }
+                return null
+            name: patientId
         - setBody:
             id: prepare-dashboard-update
             expression:
               groovy:
-                expression: |
-                  import groovy.json.JsonSlurper
-                  import groovy.json.JsonBuilder
+                expression: >
                   import java.time.LocalDateTime
+
                   import java.time.format.DateTimeFormatter
-                  
-                  def jsonSlurper = new JsonSlurper()
-                  def data = jsonSlurper.parseText(body)
-                  
+
+
+                  // Extract values using regex patterns from JSON string
+
+                  def jsonBody = body.toString()
+
+
+                  def patientId = (jsonBody =~ /"patientId":\s*"([^"]+)"/)[0][1]
+
+                  def ward = (jsonBody =~ /"ward":\s*"([^"]+)"/)[0][1]
+
+                  def deviceType = (jsonBody =~
+                  /"deviceType":\s*"([^"]+)"/)[0][1]
+
+                  def deviceId = (jsonBody =~ /"deviceId":\s*"([^"]+)"/)[0][1]
+
+                  def heartRate = (jsonBody =~ /"heartRate":\s*(\d+)/)[0][1]
+
+                  def systolic = (jsonBody =~ /"systolic":\s*(\d+)/)[0][1]
+
+                  def diastolic = (jsonBody =~ /"diastolic":\s*(\d+)/)[0][1]
+
+                  def oxygenSat = (jsonBody =~
+                  /"oxygenSaturation":\s*(\d+)/)[0][1]
+
+                  def temperature = (jsonBody =~
+                  /"temperature":\s*([\d.]+)/)[0][1]
+
+                  def respiratoryRate = (jsonBody =~
+                  /"respiratoryRate":\s*(\d+)/)[0][1]
+
+                  def alertLevel = (jsonBody =~
+                  /"alertLevel":\s*"([^"]+)"/)[0][1]
+
+
                   // Prepare dashboard update
-                  def dashboardUpdate = [
-                    patientId: data.patientId,
-                    ward: data.ward,
-                    lastUpdate: LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                    currentVitals: data.vitalSigns,
-                    alertLevel: data.alertLevel,
-                    deviceInfo: [
-                      deviceType: data.deviceType,
-                      deviceId: data.deviceId
-                    ],
-                    displayStatus: "ACTIVE_MONITORING"
-                  ]
-                  
-                  return new JsonBuilder(dashboardUpdate).toString()
+
+                  def lastUpdate =
+                  LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+
+                  // Build JSON string manually and convert to String
+
+                  def result = """{
+                    "patientId": "${patientId}",
+                    "ward": "${ward}",
+                    "lastUpdate": "${lastUpdate}",
+                    "currentVitals": {
+                      "heartRate": ${heartRate},
+                      "bloodPressure": {
+                        "systolic": ${systolic},
+                        "diastolic": ${diastolic}
+                      },
+                      "oxygenSaturation": ${oxygenSat},
+                      "temperature": ${temperature},
+                      "respiratoryRate": ${respiratoryRate}
+                    },
+                    "alertLevel": "${alertLevel}",
+                    "deviceInfo": {
+                      "deviceType": "${deviceType}",
+                      "deviceId": "${deviceId}"
+                    },
+                    "displayStatus": "ACTIVE_MONITORING"
+                  }"""
+
+                  return result.toString()
         - log:
             id: log-dashboard-update
-            message: "Main Flow Complete - Dashboard updated for patient ${header.patientId} with alert level: ${header.alertLevel}"
+            message: "Main Flow Complete - Dashboard updated for patient ${header.patientId}
+              with alert level: ${header.alertLevel}"
         - to:
             id: dashboard-file-output
             uri: file:dashboard-updates/real-time
             parameters:
-              fileName: "dashboard-${header.patientId}-${date:now:yyyyMMdd-HHmmss-SSS}.json"
+              fileName: dashboard-${header.patientId}-${date:now:yyyyMMdd-HHmmss-SSS}.json

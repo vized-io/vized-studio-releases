@@ -175,6 +175,11 @@ Finish the main processing flow:
 3. Watch the console logs to see the wire tap pattern in action
 4. Check the output directories to see different types of processed data
 
+
+https://github.com/user-attachments/assets/1d3ed5c4-d7ff-4c51-9eba-1bc8d6cd611a
+
+
+
 ## Sample Input Data
 
 The system generates realistic vital signs data like:
